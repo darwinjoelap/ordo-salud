@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block contenido %}
+<a href="{% url 'reportes:tablero' %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> Reportes</a>
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3 mt-1">
+  <div><div class="os-eyebrow">Ginecología y obstetricia</div><h1 class="h3 mb-0">Reporte de ginecología</h1><div class="text-muted">{{ filtros.periodo_texto }}{% if filtros.profesional %} · {{ filtros.profesional }}{% endif %}</div></div>
+  <a href="?{{ query }}{% if query %}&{% endif %}formato=excel" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Excel</a>
+</div>
+<form method="get" class="card card-body mb-3"><div class="row g-2 align-items-end">
+  <div class="col-6 col-md-3"><label class="form-label">Desde</label><input type="date" name="desde" value="{{ filtros.desde|date:'Y-m-d' }}" class="form-control"></div>
+  <div class="col-6 col-md-3"><label class="form-label">Hasta</label><input type="date" name="hasta" value="{{ filtros.hasta|date:'Y-m-d' }}" class="form-control"></div>
+  <div class="col-md-2"><button class="btn btn-primary w-100">Filtrar</button></div></div>
+  <div class="d-flex flex-wrap gap-2 mt-2">{% for nombre, d, h in rangos %}<a class="btn btn-sm {% if d == filtros.desde and h == filtros.hasta %}btn-success{% else %}btn-outline-secondary{% endif %}" href="?desde={{ d|date:'Y-m-d' }}&hasta={{ h|date:'Y-m-d' }}">{{ nombre }}</a>{% endfor %}</div>
+</form>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Consultas</div><div class="os-cifra">{{ consultas }}</div><div class="small text-muted">{{ pacientes }} pacientes</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Controles prenatales</div><div class="os-cifra">{{ prenatales }}</div><div class="small text-muted">{% if eg_promedio %}EG promedio {{ eg_promedio }}{% else %}en el período{% endif %}</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Embarazos en curso</div><div class="os-cifra">{{ en_curso }}</div><div class="small text-muted">{{ proximos|length }} parto{{ proximos|length|pluralize }} en 30 días</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">VPH</div><div class="os-cifra">{{ vph.vacunadas }}</div><div class="small text-muted">vacunadas · {{ vph.diagnostico }} con diagnóstico</div></div></div></div>
+</div>
+{% if proximos %}
+<div class="card mb-3"><div class="card-header">Partos esperados en los próximos 30 días</div>
+  <ul class="list-group list-group-flush">{% for c in proximos %}<li class="list-group-item d-flex justify-content-between"><a href="{% url 'pacientes:detalle' c.paciente_id %}">{{ c.paciente.nombre_completo }}</a><span>FPP {{ c.fpp|date:'d/m/Y' }}</span></li>{% endfor %}</ul></div>
+{% endif %}
+<div class="row g-3">
+  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Tipo de consulta</div><div class="card-body">{% include 'reportes/_barras.html' with barras=por_tipo vacio='Sin datos.' %}</div></div></div>
+  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Embarazos en curso por trimestre</div><div class="card-body">{% include 'reportes/_barras.html' with barras=trimestres vacio='Sin embarazos en curso.' %}</div></div></div>
+  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Grupos de edad</div><div class="card-body">{% include 'reportes/_barras.html' with barras=edades vacio='Sin pacientes.' %}</div></div></div>
+  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Métodos anticonceptivos</div><div class="card-body">{% include 'reportes/_barras.html' with barras=metodos vacio='Sin fichas de planificación.' %}</div></div></div>
+  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Citología</div><div class="card-body">{% include 'reportes/_barras.html' with barras=citologia vacio='Sin datos.' %}</div></div></div>
+  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Prueba de VIH</div><div class="card-body">{% include 'reportes/_barras.html' with barras=vih vacio='Sin datos.' %}</div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Antecedentes familiares</div><div class="card-body">{% include 'reportes/_barras.html' with barras=familiares vacio='Sin fichas con antecedentes.' %}</div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Citas por día de la semana</div><div class="card-body">{% include 'reportes/_barras.html' with barras=por_dia vacio='Sin citas.' %}</div></div></div>
+</div>
+<p class="small text-muted mt-3 mb-0">Fichas (métodos, citología, VIH, VPH, antecedentes) = pacientes atendidas en el período. Citología al día = hecha en el último año. Embarazos en curso = último control con FPP vigente.</p>
+{% endblock %}

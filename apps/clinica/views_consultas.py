@@ -15,6 +15,7 @@ from apps.core.permisos import requiere
 from apps.pacientes.models import Paciente, normalizar_texto
 
 from . import consultas as srv
+from . import registro
 from .formularios import FormularioSeccion
 from .models import Adjunto, Cie10, Consulta, PlantillaHistoria
 
@@ -36,7 +37,10 @@ def _formularios(consulta, data=None):
     contexto = srv.contexto_calculo(consulta)
     formularios = []
     for item in consulta.estructura:
-        form = FormularioSeccion(item['campos'], data, initial=guardados.get(item['seccion_id']) or {},
+        valores = guardados.get(item['seccion_id'])
+        if valores is None and item['ambito'] != 'PACIENTE' and registro.inicial(item['codigo']):
+            valores = registro.inicial(item['codigo'])(consulta)
+        form = FormularioSeccion(item['campos'], data, initial=valores or {},
                                  prefix=f's{item["seccion_id"]}', contexto=contexto, exigir_requeridos=False)
         formularios.append((item, form))
     return formularios

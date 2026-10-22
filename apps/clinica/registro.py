@@ -80,6 +80,7 @@ _calculos: dict = {}
 _plantillas_nucleo: list[PlantillaDef] = []
 _al_guardar: dict = {}        # codigo_seccion → función(consulta, datos) que copia datos a tablas propias
 _preparar: dict = {}          # codigo_seccion → función(consulta, datos) -> datos (completa al leer o guardar)
+_inicial: dict = {}           # codigo_seccion → función(consulta) -> datos (valores al abrir la sección vacía)
 
 
 def registrar_nucleo(secciones, calculos=None, plantillas=None):
@@ -164,6 +165,15 @@ def registrar_al_guardar(codigo_seccion, funcion):
 
 def registrar_preparar(codigo_seccion, funcion):
     _preparar[codigo_seccion] = funcion
+
+
+def registrar_inicial(codigo_seccion, funcion):
+    """Valores con los que se abre una sección de consulta aún sin guardar (p. ej. la FUR del embarazo en curso)."""
+    _inicial[codigo_seccion] = funcion
+
+
+def inicial(codigo_seccion):
+    return _inicial.get(codigo_seccion)
 
 
 def preparar(codigo_seccion):

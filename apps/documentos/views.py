@@ -54,7 +54,9 @@ def emitir(request, codigo):
                                     'Puedes imprimir la historia desde la consulta.')
             return redirect('clinica:consulta', pk=consulta.pk)
     if definicion.formulario is None:
-        doc = srv.documento_de_consulta(codigo, consulta)
+        # Sin formulario: desde la consulta se reutiliza su número; desde la ficha se emite uno nuevo.
+        doc = (srv.documento_de_consulta(codigo, consulta) if consulta is not None
+               else srv.emitir(codigo, paciente=paciente, profesional=perfil))
         auditoria.registrar(request, 'IMPRIMIR', doc, paciente_id=paciente.pk, detalle=doc.numero)
         return redirect(_url_pdf(doc))
     inicial = {'ciudad': consulta.lugar.ciudad if consulta and consulta.lugar_id else ''}

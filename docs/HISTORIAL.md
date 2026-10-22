@@ -16,6 +16,11 @@
 
 ---
 
+### Fase 14 Ginecología y obstetricia (2026-10-21, falta revisión clínica)
+- Hecho: módulo GO desde Ginea (ficha, consulta, control prenatal con EG/FPP, paneles, constancia de embarazo, carnet prenatal, reporte + Excel), sexo F por defecto en GO; arreglos: editar paciente (500) y documentos sin formulario desde la ficha.
+- Verificado: 181 tests (SQLite + PostgreSQL), ruff limpio, capturas escritorio y móvil.
+- ADR: 039.
+
 ### Cambio de marca: Omnis → Ordo Salud (2026-10-21)
 - Hecho: logo en SVG y todas sus presentaciones, rediseño (paleta del logo, Nunito, menú marino) en la app y en el lienzo de diseño, renombre completo del código (textos, archivos, ajustes, cachés, prefijo CSS `os-`), migraciones de colores por defecto, carpeta y repo `ordo-salud`.
 - Verificado: 169 tests (SQLite + PostgreSQL), ruff limpio, capturas escritorio y móvil.

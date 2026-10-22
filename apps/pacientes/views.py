@@ -19,7 +19,7 @@ from .models import Paciente, Representante
 
 
 def _paciente(request, pk):
-    paciente = _paciente(request, pk)
+    paciente = get_object_or_404(Paciente.objects.all(), pk=pk)
     if not selectors.puede_ver_paciente(request.membresia, paciente):
         raise PermissionDenied
     return paciente
@@ -45,7 +45,8 @@ def lista(request):
 @login_required
 @requiere('pacientes.gestionar')
 def nuevo(request):
-    form = PacienteForm(request.POST or None, instance=Paciente(tenant=request.tenant))
+    form = PacienteForm(request.POST or None, instance=Paciente(tenant=request.tenant,
+                                                                sexo=servicios.sexo_por_defecto(request)))
     form_rep = RepresentanteForm(request.POST or None, prefix='rep', opcional=True,
                                  instance=Representante(tenant=request.tenant))
     duplicado = None

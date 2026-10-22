@@ -1,0 +1,29 @@
+{# Panel de ginecología: resumen de la ficha ginecológica con avisos #}
+<div class="card mb-3">
+  <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-gender-female me-1"></i>Resumen ginecológico</span>
+    <a href="{% url 'clinica:ficha_especialidad' paciente.pk 'ginecologia' %}" class="small">{% if panel.vacio %}Completar ficha{% else %}Ver ficha{% endif %}</a>
+  </div>
+  <div class="card-body small">
+    {% if panel.vacio %}
+      <span class="text-muted">Sin ficha ginecológica. Puedes llenarla aquí o dentro de la primera consulta.</span>
+    {% else %}
+    <div class="d-flex flex-wrap gap-2 mb-2">
+      {% if panel.formula %}<span class="os-chip {% if panel.incongruente %}os-chip-estado{% endif %}" title="{% if panel.incongruente %}La suma de partos, cesáreas, abortos y ectópicos supera las gestas{% else %}Fórmula obstétrica{% endif %}">{{ panel.formula }}{% if panel.incongruente %} <i class="bi bi-exclamation-circle text-danger"></i>{% endif %}</span>{% endif %}
+      {% if panel.fur %}<span class="os-chip">FUR {{ panel.fur|date:'d/m/Y' }}{% if panel.dias_fur is not None and panel.dias_fur <= 60 %} · hace {{ panel.dias_fur }} días{% endif %}</span>{% endif %}
+      {% if panel.ciclo %}<span class="os-chip">Ciclo {{ panel.ciclo }}{% if panel.ciclo_regular is False %}, irregular{% endif %}</span>{% endif %}
+      {% if panel.menopausia %}<span class="os-chip">Menopausia{% if panel.menopausia_edad %} a los {{ panel.menopausia_edad }}{% endif %}</span>{% endif %}
+      {% if panel.histerectomia %}<span class="os-chip">Histerectomía</span>{% endif %}
+      {% if panel.metodo %}<span class="os-chip"><i class="bi bi-shield-check me-1"></i>{{ panel.metodo }}</span>{% endif %}
+      {% if panel.deseo_embarazo %}<span class="os-chip os-chip-ok">Desea embarazo</span>{% endif %}
+    </div>
+    <div class="d-flex flex-wrap gap-3 align-items-center">
+      <div><span class="text-muted">Citología:</span>
+        {% if panel.cito_fecha %}{{ panel.cito_fecha|date:'d/m/Y' }}{% elif panel.cito_hace %}{{ panel.cito_hace }}{% else %}sin registro{% endif %}{% if panel.cito_resultado %} · <span class="{% if panel.cito_alterada %}text-danger fw-semibold{% endif %}">{{ panel.cito_resultado }}</span>{% endif %}
+        {% if panel.cito_vencida %}<span class="badge text-bg-warning ms-1">Toca citología</span>{% endif %}</div>
+      {% if panel.vih %}<div><span class="text-muted">VIH:</span> {{ panel.vih }}</div>{% endif %}
+      {% if panel.vph_vacuna or panel.vph_diagnostico %}<div><span class="text-muted">VPH:</span> {% if panel.vph_vacuna %}vacunada{% endif %}{% if panel.vph_vacuna and panel.vph_diagnostico %} · {% endif %}{% if panel.vph_diagnostico %}<span class="text-danger">con diagnóstico</span>{% endif %}</div>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>

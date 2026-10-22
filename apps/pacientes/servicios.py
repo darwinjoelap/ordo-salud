@@ -97,3 +97,17 @@ def eliminar_representante(*, representante: Representante) -> None:
 def antecedentes_de(paciente: Paciente) -> AntecedenteBase:
     antecedentes, _ = AntecedenteBase.objects.get_or_create(paciente=paciente)
     return antecedentes
+
+
+ESPECIALIDADES_FEMENINAS = {'ginecologia'}
+
+
+def sexo_por_defecto(request):
+    """«F» en consultorios de ginecología (la médica que registra es de GO, o es la única especialidad); si no, ''."""
+    membresia = getattr(request, 'membresia', None)
+    perfil = getattr(membresia, 'perfil_activo', None) if membresia else None
+    if perfil is not None and perfil.especialidad_id:
+        return 'F' if perfil.especialidad.codigo in ESPECIALIDADES_FEMENINAS else ''
+    tenant = getattr(request, 'tenant', None)
+    codigos = set(tenant.especialidades.values_list('codigo', flat=True)) if tenant else set()
+    return 'F' if codigos and codigos <= ESPECIALIDADES_FEMENINAS else ''

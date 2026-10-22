@@ -86,6 +86,37 @@ def actualizar_plantillas_de_modulos():
                 log.info('%s: plantillas de %s actualizadas.', tenant.nombre, especialidad.nombre)
 
 
+def refrescar_plantillas_sistema(especialidad):
+    """
+    Rehace, en el consultorio activo, las plantillas iniciales de la especialidad tal como las define hoy su módulo
+    (orden, secciones, ajustes). Las plantillas propias de cada médico no se tocan; las consultas ya abiertas tampoco
+    (su estructura está congelada). Se pierden los cambios hechos a mano sobre las plantillas del sistema.
+    Devuelve cuántas plantillas rehízo.
+    """
+    asegurar_plantillas_especialidad(especialidad)
+    hechas = 0
+    for definicion in _definiciones_plantillas(especialidad):
+        plantilla = PlantillaHistoria.objects.filter(especialidad=especialidad, profesional__isnull=True,
+                                                     origen=f'{especialidad.codigo}:{definicion.nombre}').first()
+        if plantilla is None:
+            continue
+        plantilla.items.all().delete()
+        for orden, item in enumerate(definicion.secciones, 1):
+            codigo, opciones = (item, {}) if isinstance(item, str) else item
+            seccion = SeccionClinica.objects.filter(tenant__isnull=True, codigo=codigo, activa=True).first()
+            if seccion is None:
+                continue
+            PlantillaSeccion.objects.create(plantilla=plantilla, seccion=seccion, orden=orden * 10,
+                                            obligatoria=opciones.get('obligatoria', False),
+                                            colapsada=opciones.get('colapsada', False),
+                                            ajustes=opciones.get('ajustes', {}))
+        plantilla.descripcion = definicion.descripcion
+        plantilla.activa = True
+        plantilla.save()
+        hechas += 1
+    return hechas
+
+
 def _definiciones_plantillas(especialidad):
     definicion = registro.especialidad(especialidad.codigo)
     return (definicion.plantillas if definicion and definicion.plantillas else registro.plantillas_nucleo())

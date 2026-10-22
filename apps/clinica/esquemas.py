@@ -115,12 +115,13 @@ def asegurar_valido(esquema, permitir_calculado=True):
 
 
 def campos_efectivos(esquema, ajustes=None):
-    """Campos del esquema aplicando los ajustes de la plantilla (ocultos, etiquetas, por defecto, requeridos)."""
+    """Campos del esquema aplicando los ajustes de la plantilla (ocultos, etiquetas, por defecto, requeridos, opcionales)."""
     ajustes = ajustes or {}
     ocultos = set(ajustes.get('ocultos') or [])
     etiquetas = ajustes.get('etiquetas') or {}
     por_defecto = ajustes.get('por_defecto') or {}
     requeridos = set(ajustes.get('requeridos') or [])
+    opcionales = set(ajustes.get('opcionales') or [])     # la plantilla puede volver opcional un campo obligatorio
     salida = []
     for campo in esquema.get('campos', []):
         if campo['clave'] in ocultos and not campo.get('requerido'):
@@ -132,6 +133,8 @@ def campos_efectivos(esquema, ajustes=None):
             c['por_defecto'] = por_defecto[campo['clave']]
         if campo['clave'] in requeridos:
             c['requerido'] = True
+        if campo['clave'] in opcionales:
+            c['requerido'] = False
         salida.append(c)
     return salida
 
