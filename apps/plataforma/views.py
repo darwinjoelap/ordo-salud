@@ -86,7 +86,15 @@ def editar(request, pk):
         'renovaciones': tenant.suscripciones.select_related('plan', 'creado_por', 'anulada_por')[:12],
         'ultima_renovacion': tenant.suscripciones.filter(anulada=False).order_by('-creado_en', '-pk').first(),
         'accesos': tenant.accesos_soporte.select_related('usuario')[:8],
-        'form_renovar': RenovarForm(initial={'plan': tenant.plan}), 'enlace': _enlace(request, tenant)})
+        'form_renovar': RenovarForm(initial={'plan': tenant.plan}), 'enlace': _enlace(request, tenant),
+        'dictado_uso': _dictado_uso(tenant)})
+
+
+def _dictado_uso(tenant):
+    from apps.dictado import servicios as dictado
+    from apps.dictado.models import SesionDictado
+    return {'usados': dictado.minutos_usados(tenant), 'limite': dictado.limite_minutos(tenant),
+            'sesiones': SesionDictado.objects.filter(tenant=tenant).count()}
 
 
 @solo_plataforma

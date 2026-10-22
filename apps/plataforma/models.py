@@ -18,7 +18,8 @@ class Plan(models.Model):
     max_usuarios = models.PositiveSmallIntegerField('Máx. usuarios activos', null=True, blank=True,
                                                     help_text='Vacío = sin límite.')
     incluye_dictado = models.BooleanField('Incluye dictado por voz', default=False)
-    minutos_dictado_mes = models.PositiveIntegerField('Minutos de dictado al mes', default=0)
+    minutos_dictado_mes = models.PositiveIntegerField('Minutos de dictado al mes', default=0,
+                                                      help_text='Dictado con IA. 0 = sin límite.')
     dias_gracia = models.PositiveSmallIntegerField(
         'Días de gracia', default=3,
         help_text='Días después del vencimiento en que el consultorio sigue entrando (con aviso) antes del bloqueo.')

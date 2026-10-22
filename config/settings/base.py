@@ -45,6 +45,7 @@ ORDO_APPS = [
     'apps.documentos',
     'apps.reportes',
     'apps.offline',
+    'apps.dictado',
     # Especialidades (módulos enchufables): agregar aquí + `sincronizar_especialidades`
     'apps.especialidades.general',
     'apps.especialidades.pediatria',
@@ -173,3 +174,12 @@ LOGGING = {
     'root': {'handlers': ['console'], 'level': 'WARNING'},
     'loggers': {'apps': {'handlers': ['console'], 'level': 'INFO', 'propagate': False}},
 }
+
+# ── Dictado de la consulta con IA (ADR-045) ───────────────────────────────────
+# Sin claves funciona en modo de prueba (no sale a internet). El audio nunca se guarda.
+OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
+DICTADO_MODO = config('DICTADO_MODO', default='')                 # 'prueba' fuerza el modo de prueba
+DICTADO_MODELO_TRANSCRIPCION = config('DICTADO_MODELO_TRANSCRIPCION', default='gpt-4o-transcribe')
+DICTADO_MODELO_IA = config('DICTADO_MODELO_IA', default='claude-sonnet-5-5')
+DICTADO_SINCRONO = config('DICTADO_SINCRONO', default=False, cast=bool)

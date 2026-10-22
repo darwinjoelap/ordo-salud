@@ -16,6 +16,11 @@
 
 ---
 
+### Dictado de la consulta con IA (2026-10-22)
+- Hecho: grabar, transcribir (OpenAI), ordenar en la historia (Claude Sonnet 5.5), validar y llenar el formulario resaltado; minutos por plan; audio no se guarda; modo de prueba sin claves.
+- Verificado: 212 tests en verde (SQLite + PostgreSQL), ruff limpio; prueba en navegador con micrófono simulado (modo de prueba y llenado con respuesta simulada). Falta la prueba con claves reales.
+- ADR: 045
+
 ### Fase 15 — Cardiología pediátrica, primera entrega (2026-10-22)
 - Hecho: módulo con antecedentes y párrafo automático, EKG y eco estructurados con cálculos y prosa, informe médico en el formato de la doctora con imágenes y notas de evolución, panel, reporte, dictado por voz opcional.
 - Verificado: 206 tests en verde (SQLite + PostgreSQL), ruff limpio; su caso complejo cargado y el PDF comparado con su Word

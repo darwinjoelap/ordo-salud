@@ -36,6 +36,7 @@ urlpatterns = [
     path('documentos/', include('apps.documentos.urls')),
     path('reportes/', include('apps.reportes.urls')),
     path('offline/', include('apps.offline.urls')),
+    path('dictado/', include('apps.dictado.urls')),
     path('pacientes/', include('apps.pacientes.urls')),
     path('agenda/', include('apps.agenda.urls')),
     *urls_de_especialidades(),

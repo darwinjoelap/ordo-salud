@@ -1,0 +1,31 @@
+{# Dictado de toda la consulta con IA (ADR-045). Recibe: dictado, consulta, nueva #}
+{% load static %}
+<div class="card os-dictado mb-3" id="os-dictado"
+     data-subir="{% url 'dictado:subir' %}" data-estado="{% url 'dictado:estado' 0 %}"
+     data-paciente="{{ consulta.paciente_id }}" data-plantilla="{{ consulta.plantilla_id|default:'' }}"
+     {% if not nueva %}data-consulta="{{ consulta.pk }}"{% endif %}>
+  <div class="card-body py-2 d-flex flex-wrap align-items-center gap-2">
+    <div class="os-dictado-inicio d-flex flex-wrap align-items-center gap-2 flex-grow-1">
+      <button type="button" class="btn btn-danger btn-sm" data-accion="grabar" {% if dictado.agotado %}disabled{% endif %}><i class="bi bi-mic-fill me-1"></i>Dictar consulta</button>
+      <label class="small d-flex align-items-center gap-1 mb-0"><input type="checkbox" class="form-check-input mt-0" data-consentimiento> El paciente o su representante autoriza la grabación</label>
+      <span class="small text-muted ms-auto">{% if dictado.limite %}{{ dictado.usados }} de {{ dictado.limite }} min este mes{% else %}{{ dictado.usados }} min este mes{% endif %}{% if dictado.agotado %} · <span class="text-danger">agotados</span>{% endif %}</span>
+    </div>
+    <div class="os-dictado-grabando d-none align-items-center gap-2 flex-grow-1">
+      <span class="os-punto-rec"></span><span class="fw-semibold font-monospace" data-reloj>00:00</span>
+      <span class="small text-muted d-none d-md-inline">Hable con naturalidad; puede seguir el orden que quiera.</span>
+      <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" data-accion="pausar"><i class="bi bi-pause-fill"></i> Pausa</button>
+      <button type="button" class="btn btn-primary btn-sm" data-accion="terminar"><i class="bi bi-stop-fill"></i> Terminar</button>
+      <button type="button" class="btn btn-link btn-sm text-danger" data-accion="cancelar">Descartar</button>
+    </div>
+    <div class="os-dictado-procesando d-none align-items-center gap-2 flex-grow-1">
+      <span class="spinner-border spinner-border-sm text-primary"></span><span class="small">Transcribiendo y ordenando en la historia… (20 a 60 s). No cierres esta página.</span>
+    </div>
+    <div class="os-dictado-listo d-none flex-grow-1 small" data-resumen></div>
+  </div>
+  <div class="os-dictado-detalle d-none border-top px-3 py-2 small">
+    <div class="alert alert-warning py-2 mb-2 d-none" data-no-ubicado><b>No se pudo ubicar (revísalo y colócalo donde corresponda):</b><div class="mt-1" style="white-space: pre-line" data-no-ubicado-texto></div></div>
+    <details><summary class="text-muted">Ver transcripción</summary><div class="mt-1" style="white-space: pre-line" data-transcripcion></div></details>
+  </div>
+</div>
+<input type="hidden" name="dictado" form="form-consulta" value="">
+<script src="{% static 'js/dictado_ia.js' %}"></script>

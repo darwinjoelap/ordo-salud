@@ -13,6 +13,7 @@ from apps.configuracion.models import Lugar
 from apps.core import auditoria
 from apps.core.excepciones import ErrorDeNegocio
 from apps.core.permisos import requiere
+from apps.dictado.views import vincular as vincular_dictado
 from apps.pacientes.models import Paciente, normalizar_texto
 
 from . import consultas as srv
@@ -121,6 +122,7 @@ def nueva(request, paciente_pk):
                 datos_por_seccion={item['seccion_id']: f.datos_limpios for item, f in formularios}, cita=cita,
                 fecha_hora=_inicio(request.POST.get('inicio')), cerrar=accion == 'cerrar', usuario=request.user)
             auditoria.registrar(request, 'CREAR', creada, paciente_id=paciente.pk)
+            vincular_dictado(request, creada)
             _aviso_control(request, creada, desde)
             if creada.estado == Consulta.Estado.CERRADA:
                 messages.success(request, 'Consulta guardada y cerrada.')
@@ -136,6 +138,7 @@ def nueva(request, paciente_pk):
         'titulo': f'Nueva consulta · {paciente}', 'consulta': consulta, 'formularios': formularios, 'nueva': True,
         'cita': cita, 'previas': consultas_visibles(request, paciente)[:5],
         'accesos': registro.accesos_consulta(consulta.especialidad.codigo, paciente),
+        'dictado': _dictado(request),
         'antecedentes': getattr(paciente, 'antecedentes', None), 'faltan': [], **_glosario(request, paciente)})
 
 
@@ -151,6 +154,7 @@ def editar(request, pk):
             desde = timezone.now()
             srv.guardar_secciones(consulta, {item['seccion_id']: f.datos_limpios for item, f in formularios})
             auditoria.registrar(request, 'EDITAR', consulta, paciente_id=consulta.paciente_id)
+            vincular_dictado(request, consulta)
             _aviso_control(request, consulta, desde)
             if request.POST.get('accion') == 'cerrar':
                 try:
@@ -171,6 +175,7 @@ def editar(request, pk):
         'titulo': f'Consulta · {consulta.paciente}', 'consulta': consulta, 'formularios': formularios,
         'previas': previas, 'antecedentes': antecedentes, 'faltan': srv.faltantes(consulta),
         'accesos': registro.accesos_consulta(consulta.especialidad.codigo, consulta.paciente),
+        'dictado': _dictado(request),
         **_glosario(request, consulta.paciente)})
 
 
@@ -405,3 +410,13 @@ def nota_evolucion_eliminar(request, pk, nota_pk):
     nota.delete()
     messages.success(request, 'Nota eliminada.')
     return redirect(f"{reverse('clinica:consulta', args=[pk])}#evolucion")
+
+
+def _dictado(request):
+    """¿Se muestra «Dictar consulta»? Solo a profesionales y si la plataforma lo activó para el consultorio."""
+    from apps.dictado import servicios as dictado
+    if request.membresia.perfil_activo is None or not request.tenant.configuracion.dictado_activo:
+        return None
+    limite = dictado.limite_minutos(request.tenant)
+    usados = dictado.minutos_usados(request.tenant)
+    return {'limite': limite, 'usados': usados, 'agotado': bool(limite and usados >= limite)}

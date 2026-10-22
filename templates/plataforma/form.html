@@ -26,7 +26,8 @@
         <div class="col-md-4">{% include 'partials/campo.html' with campo=form.limite_usuarios %}</div>
         <div class="col-md-4">{% include 'partials/campo.html' with campo=form.limite_profesionales %}</div>
         <div class="col-md-4">{% include 'partials/campo.html' with campo=form.dias_gracia %}</div>
-        <div class="col-md-4 pt-md-4">{% include 'partials/campo.html' with campo=form.dictado_activo %}</div>{% endif %}
+        <div class="col-md-4 pt-md-4">{% include 'partials/campo.html' with campo=form.dictado_activo %}
+          {% if dictado_uso %}<div class="small text-muted">Este mes: {{ dictado_uso.usados }}{% if dictado_uso.limite %} de {{ dictado_uso.limite }}{% endif %} min · {{ dictado_uso.sesiones }} dictado{{ dictado_uso.sesiones|pluralize }} en total{% if not dictado_uso.limite %} · sin límite en el plan{% endif %}</div>{% endif %}</div>{% endif %}
         <div class="col-12">{% include 'partials/campo.html' with campo=form.notas %}</div>
       </div>
       <h2 class="h6">{{ form.especialidades.label }}</h2>

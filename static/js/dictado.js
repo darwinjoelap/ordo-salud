@@ -1,5 +1,6 @@
 // Dictado por voz (opcional, lo activa la plataforma para el consultorio). Usa el reconocimiento de voz del
-// navegador (Chrome/Edge en computadora o Android). Agrega un micrófono a cada campo de texto de la historia.
+// navegador (Chrome/Edge en computadora o Android). Agrega un micrófono a cada texto largo de la historia (para
+// dictar o corregir un solo campo; el dictado de toda la consulta con IA está en dictado_ia.js).
 (function () {
   const Reconocimiento = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Reconocimiento) return;            // navegador sin dictado: no se muestra nada
@@ -45,7 +46,7 @@
     boton.setAttribute('aria-pressed', 'true');
   }
 
-  document.querySelectorAll('.os-seccion textarea:not([disabled]), .os-seccion input[type=text]:not([disabled])').forEach(function (campo) {
+  document.querySelectorAll('.os-seccion textarea:not([disabled])').forEach(function (campo) {
     if (campo.closest('table')) return;   // tablas (récipe, diagnósticos): se escriben a mano
     const boton = document.createElement('button');
     boton.type = 'button';
