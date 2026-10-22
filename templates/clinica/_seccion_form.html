@@ -1,14 +1,15 @@
 {# Formulario de una sección clínica construido desde su esquema. Recibe: form (FormularioSeccion) #}
 {% for e in form.non_field_errors %}<div class="alert alert-danger py-1 small">{{ e }}</div>{% endfor %}
-<div class="row g-2">
+<div class="row g-2"{% if form.tiene_calculados and form.prefix %} data-calculo="{% url 'clinica:calcular' %}" data-prefijo="{{ form.prefix }}"{% if form.contexto.paciente %} data-paciente="{{ form.contexto.paciente.pk }}" data-fecha="{{ form.contexto.fecha|date:'Y-m-d' }}"{% endif %}{% endif %}>
 {% for it in form.items %}
   {% with c=it.def %}
   {% if c.tipo == 'subtitulo' %}
     <div class="col-12"><div class="os-subtitulo">{{ c.etiqueta }}</div></div>
   {% elif c.tipo == 'calculado' %}
-    <div class="col-6 col-md-{{ it.ancho }}" data-campo="{{ c.clave }}">
+    <div class="{% if it.ancho == 12 %}col-12{% else %}col-6 col-md-{{ it.ancho }}{% endif %}" data-campo="{{ c.clave }}">
       <label class="form-label">{{ c.etiqueta }}</label>
-      <input class="form-control os-calculado" value="{{ form.calculados|obtener:c.clave|default_if_none:'' }}" placeholder="Se calcula al guardar" disabled>
+      {% if c.filas %}<textarea class="form-control os-calculado" rows="{{ c.filas }}" placeholder="Se arma al escribir" disabled data-calculado="{{ c.clave }}">{{ form.calculados|obtener:c.clave|default_if_none:'' }}</textarea>
+      {% else %}<input class="form-control os-calculado" value="{{ form.calculados|obtener:c.clave|default_if_none:'' }}" placeholder="Se calcula al escribir" disabled data-calculado="{{ c.clave }}">{% endif %}
     </div>
   {% elif c.tipo == 'tabla' %}
     <div class="col-12" data-campo="{{ c.clave }}">

@@ -6,6 +6,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -68,9 +69,15 @@ def nuevo(request):
             siguiente = request.POST.get('next') or ''
             if siguiente.startswith('/') and not siguiente.startswith('//'):
                 return redirect(f'{siguiente}{"&" if "?" in siguiente else "?"}paciente={paciente.pk}')
+            despues = request.POST.get('despues')
+            if despues == 'historia' and tiene_permiso(request, 'consultas.crear'):
+                return redirect('clinica:consulta_nueva', paciente_pk=paciente.pk)
+            if despues == 'agendar' and tiene_permiso(request, 'agenda.gestionar'):
+                return redirect(f"{reverse('agenda:cita_nueva')}?paciente={paciente.pk}")
             return redirect('pacientes:detalle', pk=paciente.pk)
     return render(request, 'pacientes/form.html', {
         'titulo': 'Nuevo paciente', 'form': form, 'form_rep': form_rep, 'duplicado': duplicado, 'nuevo': True,
+        'es_menor': _es_menor(form),
         'next': request.GET.get('next') or request.POST.get('next', '')})
 
 
@@ -124,7 +131,22 @@ def editar(request, pk):
                 messages.info(request, form.instance.aviso)
             return redirect('pacientes:detalle', pk=pk)
     return render(request, 'pacientes/form.html', {
-        'titulo': f'Editar · {paciente}', 'form': form, 'paciente': paciente, 'duplicado': duplicado})
+        'titulo': f'Editar · {paciente}', 'form': form, 'paciente': paciente, 'duplicado': duplicado,
+        'es_menor': _es_menor(form)})
+
+
+def _es_menor(form):
+    """Con la fecha que muestra el formulario (lo escrito o lo guardado): ¿menor de 18?"""
+    from apps.core import fechas
+    valor = form['fecha_nacimiento'].value()
+    if isinstance(valor, str):
+        try:
+            from datetime import date
+            valor = date.fromisoformat(valor)
+        except ValueError:
+            return False
+    anios = fechas.edad_anios(valor) if valor else None
+    return anios is not None and anios < 18
 
 
 @login_required

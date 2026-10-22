@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from apps.core import auditoria
@@ -59,6 +60,28 @@ def vacuna_registrar(request, pk):
         auditoria.registrar(request, 'CREAR' if creada else 'EDITAR', paciente, paciente_id=paciente.pk,
                             detalle=f'Vacuna {vacuna}')
         messages.success(request, f'{vacuna} registrada.')
+    return redirect(f"{reverse('pediatria:vacunas', args=[pk])}#v-{vacuna.pk}")
+
+
+@login_required
+@requiere('consultas.crear')
+@require_POST
+def vacunas_lote(request, pk):
+    """«Cargar carnet»: varias dosis de una vez."""
+    paciente = _paciente(request, pk)
+    ids = [i for i in request.POST.getlist('vacunas') if i.isdigit()]
+    seleccion = list(Vacuna.objects.visibles().filter(pk__in=ids))
+    if not seleccion:
+        messages.warning(request, 'No marcaste ninguna vacuna.')
+        return redirect('pediatria:vacunas', pk=pk)
+    try:
+        nuevas = srv.registrar_lote(paciente, seleccion, fecha=_fecha(request.POST.get('fecha')), usuario=request.user)
+    except ErrorDeNegocio as e:
+        messages.error(request, str(e))
+    else:
+        auditoria.registrar(request, 'CREAR', paciente, paciente_id=paciente.pk,
+                            detalle=f'Carnet de vacunas: {nuevas} dosis')
+        messages.success(request, f'{nuevas} dosis registrada{"s" if nuevas != 1 else ""} del carnet.')
     return redirect('pediatria:vacunas', pk=pk)
 
 
@@ -71,7 +94,7 @@ def vacuna_eliminar(request, pk, va_pk):
     auditoria.registrar(request, 'ANULAR', paciente, paciente_id=paciente.pk, detalle=f'Quitó vacuna {va.vacuna}')
     va.delete()
     messages.success(request, 'Registro de vacuna eliminado.')
-    return redirect('pediatria:vacunas', pk=pk)
+    return redirect(f"{reverse('pediatria:vacunas', args=[pk])}#v-{va.vacuna_id}")
 
 
 @login_required

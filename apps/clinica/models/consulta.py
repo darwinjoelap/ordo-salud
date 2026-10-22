@@ -211,3 +211,20 @@ class Adjunto(TenantModel, Auditable):
 
     def __str__(self):
         return self.nombre
+
+
+class NotaEvolucion(TenantModel, Auditable):
+    """Nota corta con fecha agregada a una consulta (también cerrada): «Se entrega Holter con resultado normal…».
+    No cambia la consulta: sale al pie del informe y en la historia."""
+    consulta = models.ForeignKey(Consulta, on_delete=models.CASCADE, related_name='notas_evolucion')
+    paciente = models.ForeignKey('pacientes.Paciente', on_delete=models.CASCADE, related_name='notas_evolucion')
+    fecha = models.DateField('Fecha')
+    texto = models.TextField('Nota')
+
+    class Meta:
+        verbose_name = 'Nota de evolución'
+        verbose_name_plural = 'Notas de evolución'
+        ordering = ['fecha', 'creado_en']
+
+    def __str__(self):
+        return f'{self.fecha:%d/%m/%Y} · {self.texto[:40]}'

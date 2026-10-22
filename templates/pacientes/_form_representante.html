@@ -1,0 +1,13 @@
+<div class="card card-body mb-3" id="bloque-representante">
+  <h2 class="h6 mb-1">Representante</h2>
+  <p class="small text-muted mb-2">Obligatorio para menores sin documento (con su cédula). Opcional en los demás casos. Su teléfono se usa para avisos y WhatsApp.</p>
+  <div class="row g-2">
+    <div class="col-md-5">{% include 'partials/campo.html' with campo=form_rep.nombre %}</div>
+    <div class="col-md-3">{% include 'partials/campo.html' with campo=form_rep.parentesco %}</div>
+    <div class="col-5 col-md-2">{% include 'partials/campo.html' with campo=form_rep.tipo_documento %}</div>
+    <div class="col-7 col-md-2">{% include 'partials/campo.html' with campo=form_rep.numero_documento %}</div>
+    <div class="col-md-4">{% include 'partials/campo.html' with campo=form_rep.telefono %}</div>
+    <div class="col-md-4">{% include 'partials/campo.html' with campo=form_rep.email %}</div>
+    <div class="col-md-4">{% include 'partials/campo.html' with campo=form_rep.ocupacion %}</div>
+  </div>
+</div>

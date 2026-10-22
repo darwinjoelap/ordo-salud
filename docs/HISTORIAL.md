@@ -16,6 +16,17 @@
 
 ---
 
+### Fase 15 — Cardiología pediátrica, primera entrega (2026-10-22)
+- Hecho: módulo con antecedentes y párrafo automático, EKG y eco estructurados con cálculos y prosa, informe médico en el formato de la doctora con imágenes y notas de evolución, panel, reporte, dictado por voz opcional.
+- Verificado: 206 tests en verde (SQLite + PostgreSQL), ruff limpio; su caso complejo cargado y el PDF comparado con su Word
+- ADR: 044
+- Pendiente: SC y Z-score con la doctora, revisión del informe, ecocardiografía fetal
+
+### Ajustes de pediatría (2026-10-22)
+- Hecho: datos del menor en el formulario, registro rápido con «abrir historia / agendar», carnet de vacunas de una vez y botón «Vacunas» en la consulta, referencia con antecedentes elegidos, historia clínica completa en PDF, percentiles y demás calculados en vivo, PDF sin errores con «<» o «&».
+- Verificado: 197 tests en verde (SQLite + PostgreSQL), ruff limpio, capturas (formulario, carnet, consulta, referencia) y PDF de la historia revisados
+- ADR: 043
+
 ### Reportes fijos y por especialidad (2026-10-22)
 - Hecho: pestañas General + una por especialidad; sexo solo si es relevante; reporte GO con enfermedades, VIH, VPH (diagnóstico y vacuna), ITS, citología alterada, condiciones y hábitos (también en Excel); morbilidad en pediatría.
 - Ampliado: «CIE-10» → «Código»; filtro por diagnóstico (tocar una enfermedad filtra); PDF de los reportes de GO y pediatría; controles prenatales por mes con EG promedio.

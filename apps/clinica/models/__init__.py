@@ -5,6 +5,7 @@ from .consulta import (
     DiagnosticoConsulta,
     Enmienda,
     ItemPrescripcion,
+    NotaEvolucion,
     RegistroSeccion,
     RegistroSeccionPaciente,
     SignosVitales,
@@ -16,4 +17,4 @@ from .secciones import SeccionClinica, SeccionClinicaVersion
 
 __all__ = ['SeccionClinica', 'SeccionClinicaVersion', 'PlantillaHistoria', 'PlantillaSeccion', 'Cie10', 'Consulta',
            'RegistroSeccion', 'RegistroSeccionPaciente', 'SignosVitales', 'DiagnosticoConsulta', 'ItemPrescripcion',
-           'Enmienda', 'Adjunto', 'Medicamento', 'Procedimiento']
+           'Enmienda', 'Adjunto', 'Medicamento', 'Procedimiento', 'NotaEvolucion']

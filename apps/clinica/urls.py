@@ -28,6 +28,7 @@ urlpatterns = [
     path('secciones/<int:pk>/editar/', vp.seccion_editar, name='seccion_editar'),
     path('secciones/<int:pk>/activa/', vp.seccion_activa, name='seccion_activa'),
     path('pacientes/<int:paciente_pk>/consultas/nueva/', vc.nueva, name='consulta_nueva'),
+    path('consultas/calcular/', vc.calcular, name='calcular'),
     path('pacientes/<int:paciente_pk>/ficha/<slug:codigo>/', vc.ficha_especialidad, name='ficha_especialidad'),
     path('consultas/<int:pk>/', vc.detalle, name='consulta'),
     path('consultas/<int:pk>/editar/', vc.editar, name='consulta_editar'),
@@ -36,5 +37,8 @@ urlpatterns = [
     path('consultas/<int:pk>/adjuntar/', vc.adjuntar, name='consulta_adjuntar'),
     path('consultas/<int:pk>/enmendar/<int:seccion_id>/', vc.enmendar, name='consulta_enmendar'),
     path('adjuntos/<int:pk>/', vc.adjunto, name='adjunto'),
+    path('consultas/<int:pk>/evolucion/', vc.nota_evolucion, name='nota_evolucion'),
+    path('consultas/<int:pk>/evolucion/<int:nota_pk>/eliminar/', vc.nota_evolucion_eliminar,
+         name='nota_evolucion_eliminar'),
     path('cie10/', vc.cie10, name='cie10'),
 ]

@@ -128,7 +128,7 @@ pagos pendientes.
 - [x] **Cumpleaños del día** en la agenda con «Felicitar» por WhatsApp (representante si es menor, texto
       editable en Configuración).
 - [x] Sexo del paciente **opcional** en el registro rápido (como Pediae), con aviso donde se necesita (percentiles).
-- [ ] Registro rápido por la asistente y botones de la médica (guardar · historia · agendar).
+- [x] Registro rápido por la asistente y botones de la médica (guardar · historia · agendar) (ADR-043).
 - [x] Gancho nuevo del registro: `reportes`, `documentos`, `paneles` en la ficha del paciente, rutas y páginas offline por especialidad (ADR-036).
 
 ### 4.2 `apps/especialidades/pediatria/`
@@ -163,8 +163,7 @@ Ver decisión D2 (núcleo o solo pediatría). Modelo `Medicamento` como el de Pe
 
 ## 6. Tareas (checklist) — en entregas pequeñas
 - [x] 13.1 Núcleo: próximo control → cita tentativa sin hora; cumpleaños en la agenda; panel de horas al agendar;
-      12 h en todo; sexo, cédula y representante opcionales (con aviso). *(registro rápido con botones
-      guardar · historia · agendar: pendiente)*
+      12 h en todo; sexo, cédula y representante opcionales (con aviso). *(registro rápido con botones: hecho, ADR-043)*
 - [x] 13.2 Módulo base: especialidad, ficha pediátrica (6 secciones PACIENTE), hábitos y desarrollo de la consulta,
       4 plantillas; los consultorios que ya tenían Pediatría reciben las plantillas nuevas al migrar.
       *(página «Ficha pediátrica» fuera de la consulta: pendiente)*
@@ -173,7 +172,7 @@ Ver decisión D2 (núcleo o solo pediatría). Modelo `Medicamento` como el de Pe
 - [x] 13.4 Curvas de crecimiento (pantalla + PDF), punto de nacimiento, clic → consulta.
 - [x] 13.5 Vacunas (catálogo, registro, marcar con un toque, anual, resumen, PDF) y pesquisas.
 - [x] 13.6 Glosario + calculadora de dosis + inserción en el récipe (núcleo, ADR-037).
-- [~] 13.7 Documentos: niño sano, lactancia, lactancia trabajo, carnet de vacunas, curvas ✔ · falta historia completa.
+- [x] 13.7 Documentos: niño sano, lactancia, lactancia trabajo, carnet de vacunas, curvas, historia completa, referencia con antecedentes elegidos (ADR-043).
 - [~] 13.8 Reportes pediátricos + Excel ✔ · falta PDF.
 - [x] 13.9 Offline: ficha, curvas y vacunas en `PAGINAS_OFFLINE` y en la precarga.
 - [ ] 13.10 Revisión con una pediatra real (Dra. de Pediae) antes de cerrar.

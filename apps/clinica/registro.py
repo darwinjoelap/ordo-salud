@@ -71,6 +71,15 @@ class ReporteDef:
 
 
 @dataclass
+class AccesoDef:
+    """Atajo que el módulo muestra arriba de la consulta (p. ej. «Vacunas»): abre una página del paciente."""
+    titulo: str
+    url: str                          # nombre de URL con el pk del paciente ('pediatria:vacunas')
+    icono: str = 'bi-box-arrow-up-right'
+    aviso: object = None              # función(paciente) -> (texto, color) | None  (insignia junto al botón)
+
+
+@dataclass
 class EspecialidadDef:
     codigo: str
     nombre: str
@@ -85,7 +94,8 @@ class EspecialidadDef:
     paneles: list = field(default_factory=list)
     reportes: list = field(default_factory=list)
     paginas_paciente: list = field(default_factory=list)
-    extras_procedimiento: list = field(default_factory=list)   # nombres de URL (pk del paciente) que se precargan offline
+    extras_procedimiento: list = field(default_factory=list)   # ExtraProcedimientoDef
+    accesos_consulta: list = field(default_factory=list)       # AccesoDef
     basica: bool = False         # registrada por `general` sin módulo propio: un módulo real la reemplaza
 
 
@@ -145,6 +155,17 @@ def extras_procedimiento():
 
 def reportes(codigos):
     return [r for c, e in _especialidades.items() if c in codigos for r in e.reportes]
+
+
+def accesos_consulta(codigo, paciente):
+    """[{titulo, url, icono, aviso}] para la consulta de esa especialidad."""
+    from django.urls import reverse
+    esp = _especialidades.get(codigo)
+    salida = []
+    for a in (esp.accesos_consulta if esp else []):
+        salida.append({'titulo': a.titulo, 'icono': a.icono, 'url': reverse(a.url, args=[paciente.pk]),
+                       'aviso': a.aviso(paciente) if a.aviso else None})
+    return salida
 
 
 def especialidad(codigo):

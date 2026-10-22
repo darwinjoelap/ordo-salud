@@ -128,8 +128,12 @@ def crear_consulta_completa(*, paciente, profesional, plantilla, tipo, lugar, da
 
 def contexto_calculo(consulta):
     p = consulta.paciente
-    return {'paciente': p, 'sexo': p.sexo, 'fecha': timezone.localtime(consulta.fecha_hora).date(),
-            'edad_meses': edad_meses(p.fecha_nacimiento, timezone.localtime(consulta.fecha_hora).date())}
+    contexto = {'paciente': p, 'sexo': p.sexo, 'fecha': timezone.localtime(consulta.fecha_hora).date(),
+                'edad_meses': edad_meses(p.fecha_nacimiento, timezone.localtime(consulta.fecha_hora).date())}
+    signos = SignosVitales.objects.filter(consulta_id=consulta.pk).first() if consulta.pk else None
+    if signos is not None and signos.peso_kg and signos.talla_cm:     # superficie corporal (volúmenes indexados)
+        contexto['sc'] = round((float(signos.peso_kg) * float(signos.talla_cm) / 3600) ** 0.5, 2)
+    return contexto
 
 
 def datos_guardados(consulta):

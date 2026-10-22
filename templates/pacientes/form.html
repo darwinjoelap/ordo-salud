@@ -18,46 +18,38 @@
       <div class="col-md-6">{% include 'partials/campo.html' with campo=form.apellidos %}</div>
       <div class="col-6 col-md-3">{% include 'partials/campo.html' with campo=form.sexo %}</div>
       <div class="col-6 col-md-3">{% include 'partials/campo.html' with campo=form.fecha_nacimiento %}</div>
-      <div class="col-5 col-md-2">{% include 'partials/campo.html' with campo=form.tipo_documento %}</div>
-      <div class="col-7 col-md-4">{% include 'partials/campo.html' with campo=form.numero_documento %}</div>
+      <div class="col-5 col-md-3">{% include 'partials/campo.html' with campo=form.tipo_documento %}</div>
+      <div class="col-7 col-md-3">{% include 'partials/campo.html' with campo=form.numero_documento %}</div>
     </div>
   </div>
+  {% if form_rep %}{% include 'pacientes/_form_representante.html' %}{% endif %}
   <div class="card card-body mb-3">
     <h2 class="h6">Contacto</h2>
     <div class="row g-2">
       <div class="col-md-4">{% include 'partials/campo.html' with campo=form.telefono %}</div>
       <div class="col-md-4">{% include 'partials/campo.html' with campo=form.telefono_2 %}</div>
       <div class="col-md-4">{% include 'partials/campo.html' with campo=form.email %}</div>
+    </div>
+    {% if nuevo %}<button type="button" class="btn btn-link btn-sm px-0 mt-2 text-decoration-none" data-bs-toggle="collapse" data-bs-target="#mas-datos" aria-expanded="false"><i class="bi bi-plus-circle me-1"></i>Más datos (dirección, emergencia, seguro, grupo sanguíneo…)</button>{% endif %}
+    <div class="{% if nuevo %}collapse{% endif %}" id="mas-datos">
+    <div class="row g-2 mt-0">
       <div class="col-md-8">{% include 'partials/campo.html' with campo=form.direccion %}</div>
       <div class="col-md-4">{% include 'partials/campo.html' with campo=form.ciudad %}</div>
       <div class="col-md-6">{% include 'partials/campo.html' with campo=form.contacto_emergencia %}</div>
       <div class="col-md-6">{% include 'partials/campo.html' with campo=form.referido_por %}</div>
     </div>
-  </div>
-  <div class="card card-body mb-3">
-    <h2 class="h6">Otros datos</h2>
+    <h2 class="h6 mt-3">Otros datos</h2>
     <div class="row g-2">
-      <div class="col-md-4">{% include 'partials/campo.html' with campo=form.ocupacion %}</div>
-      <div class="col-md-3">{% include 'partials/campo.html' with campo=form.estado_civil %}</div>
-      <div class="col-md-2">{% include 'partials/campo.html' with campo=form.grupo_sanguineo %}</div>
-      <div class="col-md-3">{% include 'partials/campo.html' with campo=form.seguro %}</div>
+      <div class="col-md-4" data-solo-adulto {% if es_menor %}hidden{% endif %}>{% include 'partials/campo.html' with campo=form.ocupacion %}</div>
+      <div class="col-md-3" data-solo-adulto {% if es_menor %}hidden{% endif %}>{% include 'partials/campo.html' with campo=form.estado_civil %}</div>
+      <div class="col-6 col-md-2">{% include 'partials/campo.html' with campo=form.grupo_sanguineo %}</div>
+      <div class="col-6 col-md-3">{% include 'partials/campo.html' with campo=form.seguro %}</div>
       <div class="col-12">{% include 'partials/campo.html' with campo=form.observaciones %}</div>
+    </div>
+    <p class="small text-muted mb-0 mt-1" data-solo-menor {% if not es_menor %}hidden{% endif %}><i class="bi bi-info-circle me-1"></i>Menor de edad: ocupación y estado civil no aplican. Los datos de los padres van en «Representante»{% if not nuevo %} (en la ficha){% endif %}.</p>
     </div>
   </div>
   {% if form_rep %}
-  <div class="card card-body mb-3" id="bloque-representante">
-    <h2 class="h6 mb-1">Representante</h2>
-    <p class="small text-muted mb-2">Obligatorio para menores sin documento (con su cédula). Opcional en los demás casos.</p>
-    <div class="row g-2">
-      <div class="col-md-5">{% include 'partials/campo.html' with campo=form_rep.nombre %}</div>
-      <div class="col-md-3">{% include 'partials/campo.html' with campo=form_rep.parentesco %}</div>
-      <div class="col-5 col-md-2">{% include 'partials/campo.html' with campo=form_rep.tipo_documento %}</div>
-      <div class="col-7 col-md-2">{% include 'partials/campo.html' with campo=form_rep.numero_documento %}</div>
-      <div class="col-md-4">{% include 'partials/campo.html' with campo=form_rep.telefono %}</div>
-      <div class="col-md-4">{% include 'partials/campo.html' with campo=form_rep.email %}</div>
-      <div class="col-md-4">{% include 'partials/campo.html' with campo=form_rep.ocupacion %}</div>
-    </div>
-  </div>
   {% if 'historia.ver' in permisos %}
   <div class="card card-body mb-3">
     <h2 class="h6">Alergias</h2>
@@ -65,6 +57,32 @@
   </div>
   {% endif %}
   {% endif %}
-  <button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar</button>
+  <div class="d-flex flex-wrap gap-2">
+    <button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar</button>
+    {% if nuevo and not next %}
+      {% if 'consultas.crear' in permisos %}<button class="btn btn-outline-primary" name="despues" value="historia"><i class="bi bi-clipboard2-pulse me-1"></i>Guardar y abrir historia</button>{% endif %}
+      {% if 'agenda.gestionar' in permisos %}<button class="btn btn-outline-primary" name="despues" value="agendar"><i class="bi bi-calendar-plus me-1"></i>Guardar y agendar cita</button>{% endif %}
+    {% endif %}
+  </div>
 </form>
+<script>
+// Menores: ocupación y estado civil no aplican (se ocultan al escribir la fecha de nacimiento)
+(function () {
+  const fecha = document.querySelector('[name=fecha_nacimiento]');
+  if (!fecha) return;
+  function revisar() {
+    let menor = false;
+    if (fecha.value) {
+      const n = new Date(fecha.value + 'T00:00:00'), hoy = new Date();
+      let edad = hoy.getFullYear() - n.getFullYear();
+      if (hoy < new Date(hoy.getFullYear(), n.getMonth(), n.getDate())) edad--;
+      menor = edad < 18;
+    }
+    document.querySelectorAll('[data-solo-adulto]').forEach(e => { e.hidden = menor; });
+    document.querySelectorAll('[data-solo-menor]').forEach(e => { e.hidden = !menor; });
+  }
+  fecha.addEventListener('change', revisar);
+  fecha.addEventListener('input', revisar);
+})();
+</script>
 {% endblock %}

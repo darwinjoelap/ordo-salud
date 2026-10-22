@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block contenido %}
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+  <div><div class="os-eyebrow">Cardiología pediátrica</div><h1 class="h3 mb-0">Reporte de cardiología</h1><div class="text-muted">{{ filtros.periodo_texto }}{% if filtros.profesional %} · {{ filtros.profesional }}{% endif %}{% if filtros.diagnostico %} · Diagnóstico: {{ filtros.diagnostico }}{% endif %}</div></div>
+  {% include 'reportes/_exportar_especialidad.html' %}
+</div>
+{% include 'reportes/_pestanas.html' %}
+{% include 'reportes/_filtros_especialidad.html' %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Consultas</div><div class="os-cifra">{{ consultas }}</div><div class="small text-muted">{{ pacientes }} paciente{{ pacientes|pluralize }}</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Ecocardiogramas</div><div class="os-cifra">{{ ecos }}</div><div class="small text-muted">{{ ekgs }} EKG</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Con hallazgos</div><div class="os-cifra">{{ con_cardiopatia }}</div><div class="small text-muted">{{ sin_hallazgos }} sin hallazgos marcados</div></div></div></div>
+</div>
+<h2 class="os-titulo-bloque">Enfermedades y hallazgos</h2>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Enfermedades más frecuentes</div><div class="card-body">{% include 'reportes/_morbilidad.html' with barras=morbilidad vacio='Sin diagnósticos en el período.' %}</div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Hallazgos del ecocardiograma</div><div class="card-body">{% include 'reportes/_barras.html' with barras=hallazgos vacio='Sin hallazgos anormales en el período.' %}</div></div></div>
+</div>
+<h2 class="os-titulo-bloque">Función, ritmo y pacientes</h2>
+<div class="row g-3">
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">FEVI (Teichholz)</div><div class="card-body">{% include 'reportes/_barras.html' with barras=fevi vacio='Sin datos.' %}</div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">Ritmo en el EKG</div><div class="card-body">{% include 'reportes/_barras.html' with barras=ritmos vacio='Sin EKG.' %}</div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">Grupos de edad</div><div class="card-body">{% include 'reportes/_barras.html' with barras=edades vacio='Sin pacientes.' %}</div></div></div>
+</div>
+<p class="small text-muted mt-3 mb-0">Hallazgos = último ecocardiograma de cada paciente en el período. Solo conteos, sin nombres.</p>
+{% endblock %}

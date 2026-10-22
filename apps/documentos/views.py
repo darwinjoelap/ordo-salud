@@ -62,7 +62,7 @@ def emitir(request, codigo):
     inicial = {'ciudad': consulta.lugar.ciudad if consulta and consulta.lugar_id else ''}
     if definicion.inicial:
         inicial.update(definicion.inicial(paciente, consulta))
-    form = definicion.formulario(request.POST or None, initial=inicial)
+    form = definicion.formulario(request.POST or None, initial=inicial, paciente=paciente, request=request)
     if request.method == 'POST' and form.is_valid():
         doc = srv.emitir(codigo, paciente=paciente, profesional=perfil, consulta=consulta, datos=form.datos())
         auditoria.registrar(request, 'CREAR', doc, paciente_id=paciente.pk, detalle=doc.numero)

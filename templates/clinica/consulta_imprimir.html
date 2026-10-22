@@ -50,6 +50,7 @@
     <h2>{{ item.nombre }}</h2>
     <dl>{% for c, texto in filas %}<dt>{{ c.etiqueta }}</dt><dd>{{ texto }}</dd>{% endfor %}</dl>
   {% endfor %}
+  {% with notas=consulta.notas_evolucion.all %}{% if notas %}<h2>Notas de evolución</h2><dl>{% for n in notas %}<dt>{{ n.fecha|date:"d/m/Y" }}</dt><dd>{{ n.texto|linebreaksbr }}</dd>{% endfor %}</dl>{% endif %}{% endwith %}
   {% if enmiendas %}<h2>Enmiendas</h2><dl>{% for e in enmiendas %}<dt>{{ e.creado_en|date:"d/m/Y" }} · {{ e.seccion }}</dt><dd>{{ e.motivo }}</dd>{% endfor %}</dl>{% endif %}
   <div class="firma">
     {% if pr.firma %}<img src="{{ pr.firma.url }}" alt="">{% endif %}{% if pr.sello %}<img src="{{ pr.sello.url }}" alt="">{% endif %}

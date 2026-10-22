@@ -4,7 +4,7 @@
 > Menos de 100 líneas: el detalle de fases cerradas va a `HISTORIAL.md`; las decisiones, a `DECISIONES.md`.
 
 **Última actualización:** 2026-10-21
-**Fase actual:** 13 Pediatría **en curso** (13.1–13.6 y 13.9 hechas; 13.7–13.8 casi; ver `roadmap/13_pediatria.md`) · 14 Ginecobstetricia hecha (falta revisión con ginecóloga) → siguiente: pendientes de 13/14 o Railway staging
+**Fase actual:** 15 Cardiología pediátrica **primera entrega** (ver `roadmap/15_cardiologia_pediatrica.md`) · 13 Pediatría y 14 Ginecobstetricia hechas (faltan revisiones con especialistas) → siguiente: respuestas de la cardióloga o Railway staging
 **Repositorio:** `github.com/darwinjoelap/ordo-salud` (privado), rama `main` — código en `C:\proyectos\ordo-salud`
 **Último commit:** `c0155ed` cambio de marca a Ordo Salud (pusheado 2026-10-21 a `ordo-salud`) · entorno local: `venv\Scripts\Activate.ps1` (carpeta `venv`, no `.venv`; recreado con Python 3.14)
 **Staging / producción:** pendientes (Railway no creado)
@@ -16,7 +16,10 @@
    Si sigue sin ver secciones: `sincronizar_especialidades` + `refrescar_plantillas <esp> --consultorio <enlace>` y
    Ctrl+F5; si la plantilla es del consultorio y su usuario no la puede editar, usar «Hacer mi copia».
 2. Darwin: revisar «Reportes» (ADR-042): pestañas, filtro por diagnóstico, PDF/Excel de cada especialidad.
-3. Siguiente: tercera especialidad (definir cuál y su sistema de origen).
+3. Darwin: probar pediatría (ADR-043): «Cargar carnet», botón «Vacunas» en la consulta, referencia, historia completa.
+4. Fase 15 Cardiología pediátrica (ADR-044, `roadmap/15_cardiologia_pediatrica.md`): Darwin la prueba y lleva a la
+   doctora 3 preguntas: fórmula de SC, calculadora de Z-score y revisión del informe. Dictado: activarlo desde la
+   plataforma solo cuando haya acuerdo económico.
 
 ## Completado (código + tests; falta prueba manual de Darwin)
 - [x] 01 Esqueleto (settings por entorno, Dockerfile, railway.json, cron, `/salud/`)
@@ -64,7 +67,7 @@ E2E con navegador: paciente → consulta → cierre → PDF; offline (servidor a
 - Suscripciones: sin aviso por correo antes de vencer (solo dentro de la app); sin descuentos ni prueba gratuita; el ingreso mensual estimado usa el precio de lista del plan.
 - Railway con problemas (2026-10-21): se avanza en lo que no depende del despliegue.
 
-- Pediatría: percentiles al guardar (sin vista previa en vivo); falta PDF «historia completa», PDF del reporte pediátrico, informe de referencia con antecedentes seleccionables y registro rápido con botones (guardar · historia · agendar); falta revisión de una pediatra real (13.10).
+- Pediatría: todo lo de Pediae portado (ADR-043); falta revisión de una pediatra real (13.10).
 - Ginecología: sin gráfico de altura uterina; migración de consultorios de Ginea pendiente (Fase 18, ver incompatibilidades en `roadmap/14_ginecologia.md`).
 - Corregido 2026-10-21: «Editar datos» del paciente daba error 500 (función que se llamaba a sí misma).
 - Glosario: vacío al empezar (sin dosis precargadas, a propósito); en el récipe solo funciona con conexión.

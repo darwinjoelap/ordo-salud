@@ -603,3 +603,20 @@ textarea.form-control { min-height: auto; }
   border-bottom: 3px solid transparent; font-weight: 600; }
 .os-pestana:hover { color: var(--os-marino-800); }
 .os-pestana.activa { color: var(--os-marino-800); border-bottom-color: var(--os-primario); }
+
+/* Esquema de vacunas: modo «Cargar carnet» */
+.os-solo-carnet { display: none !important; }
+.os-modo-carnet .os-solo-carnet { display: initial !important; }
+.os-modo-carnet label.os-solo-carnet { display: inline-flex !important; align-items: center; }
+.os-modo-carnet .os-oculto-carnet { display: none !important; }
+.os-modo-carnet .os-barra-carnet { display: block !important; }
+.os-barra-carnet { position: sticky; bottom: 0; z-index: 20; background: #fff; border: 1px solid var(--os-borde, #DCE4EB);
+  border-radius: .75rem; box-shadow: 0 -4px 16px rgba(11, 46, 76, .12); padding: .75rem 1rem; margin-top: 1rem; }
+.os-ayuda-vacunas { background: #F7FAFC; }
+
+/* Dictado por voz (opcional) */
+.os-con-mic { position: relative; }
+.os-con-mic > textarea, .os-con-mic > input { padding-right: 2.6rem; }
+.os-mic { position: absolute; top: .3rem; right: .3rem; padding: .1rem .45rem; line-height: 1.2; }
+.os-mic.os-dictando { background: #C0392B; border-color: #C0392B; color: #fff; animation: os-latido 1.2s infinite; }
+@keyframes os-latido { 50% { opacity: .6; } }

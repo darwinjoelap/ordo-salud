@@ -18,23 +18,41 @@
   </div>
 </div>
 {% if not paciente.fecha_nacimiento %}<div class="alert alert-warning py-2 small">Sin fecha de nacimiento no se puede saber qué vacunas tocan.</div>{% endif %}
+{% if 'consultas.crear' in permisos %}
+<div class="card card-body mb-3 os-ayuda-vacunas small">
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    <div class="flex-grow-1">
+      <b>¿Cómo se registra?</b> <i class="bi bi-check2"></i> marca una dosis como aplicada (sin fecha) · <i class="bi bi-pencil"></i> con fecha, lote u observación, o para corregirla · «quitar» borra el registro.
+      {% if conteo.atrasada > 3 %}<div class="text-danger-emphasis mt-1"><i class="bi bi-lightbulb me-1"></i>Si trae su carnet, usa <b>«Cargar carnet»</b> y marca todas de una vez.</div>{% endif %}
+    </div>
+    <button type="button" class="btn btn-sm btn-primary" id="btn-carnet"><i class="bi bi-card-checklist me-1"></i>Cargar carnet</button>
+  </div>
+</div>
+<form method="post" action="{% url 'pediatria:vacunas_lote' paciente.pk %}" id="form-carnet">{% csrf_token %}</form>
+{% endif %}
 {% for g in grupos %}
-<div class="card mb-3">
-  <div class="card-header bg-white fw-semibold">{{ g.nombre }}</div>
+<div class="card mb-3" data-grupo>
+  <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+    <span>{{ g.nombre }}</span>
+    <label class="small fw-normal os-solo-carnet"><input type="checkbox" class="form-check-input me-1" data-todo-grupo>Todo el grupo</label>
+  </div>
   <div class="list-group list-group-flush">
     {% for f in g.vacunas %}
-    <div class="list-group-item">
+    <div class="list-group-item" id="v-{{ f.vacuna.pk }}">
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div><span class="fw-semibold">{{ f.vacuna.nombre }}</span> <span class="small text-muted">· dosis {{ f.vacuna.dosis }}{% if f.vacuna.anual %} · anual{% endif %} · {{ f.vacuna.edad_texto }}</span>
-          <div class="small text-muted">{{ f.vacuna.enfermedad }}</div></div>
+        <label class="d-flex align-items-start gap-2 mb-0 flex-grow-1">
+          {% if not f.aplicada or f.vacuna.anual %}<input type="checkbox" class="form-check-input mt-1 os-solo-carnet" name="vacunas" value="{{ f.vacuna.pk }}" form="form-carnet" data-estado="{{ f.estado }}" {% if f.vacuna.anual %}data-anual{% endif %}>{% endif %}
+          <span><span class="fw-semibold">{{ f.vacuna.nombre }}</span> <span class="small text-muted">· dosis {{ f.vacuna.dosis }}{% if f.vacuna.anual %} · anual{% endif %} · {{ f.vacuna.edad_texto }}</span>
+          <span class="d-block small text-muted">{{ f.vacuna.enfermedad }}</span></span>
+        </label>
         <div class="d-flex align-items-center gap-2">
           <span class="badge text-bg-{{ f.color }}">{{ f.texto }}</span>
           {% if 'consultas.crear' in permisos %}
             {% if not f.aplicada or f.vacuna.anual %}
-            <form method="post" action="{% url 'pediatria:vacuna_registrar' paciente.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="vacuna" value="{{ f.vacuna.pk }}">
-              <button class="btn btn-sm btn-outline-success py-0" title="Marcar como aplicada (sin fecha)"><i class="bi bi-check2"></i></button></form>
+            <form method="post" action="{% url 'pediatria:vacuna_registrar' paciente.pk %}" class="d-inline os-oculto-carnet">{% csrf_token %}<input type="hidden" name="vacuna" value="{{ f.vacuna.pk }}">
+              <button class="btn btn-sm btn-outline-success py-0" title="Marcar como aplicada (sin fecha)" aria-label="Marcar {{ f.vacuna.nombre }} como aplicada"><i class="bi bi-check2"></i></button></form>
             {% endif %}
-            <button type="button" class="btn btn-sm btn-outline-secondary py-0" data-bs-toggle="collapse" data-bs-target="#va-{{ f.vacuna.pk }}" title="Con fecha y lote"><i class="bi bi-pencil"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-secondary py-0 os-oculto-carnet" data-bs-toggle="collapse" data-bs-target="#va-{{ f.vacuna.pk }}" title="{% if f.aplicada and not f.vacuna.anual %}Corregir fecha, lote u observación{% else %}Con fecha y lote{% endif %}" aria-label="Editar {{ f.vacuna.nombre }}"><i class="bi bi-pencil"></i></button>
           {% endif %}
         </div>
       </div>
@@ -43,21 +61,58 @@
           {% if 'consultas.crear' in permisos %}<form method="post" action="{% url 'pediatria:vacuna_eliminar' paciente.pk a.pk %}" onsubmit="return confirm('¿Quitar este registro?')">{% csrf_token %}<button class="btn btn-link btn-sm p-0 text-danger">quitar</button></form>{% endif %}</div>
       {% endfor %}
       {% if 'consultas.crear' in permisos %}
+      {% with a=f.aplicada %}
       <form method="post" action="{% url 'pediatria:vacuna_registrar' paciente.pk %}" class="collapse mt-2" id="va-{{ f.vacuna.pk }}">{% csrf_token %}
         <input type="hidden" name="vacuna" value="{{ f.vacuna.pk }}">
         <div class="row g-2 align-items-end">
-          <div class="col-6 col-md-3"><label class="form-label small mb-0">Fecha</label><input type="date" name="fecha" class="form-control form-control-sm" max="{{ hoy|date:'Y-m-d' }}"></div>
-          <div class="col-6 col-md-3"><label class="form-label small mb-0">Lote / laboratorio</label><input name="lote" class="form-control form-control-sm" maxlength="60"></div>
-          <div class="col-md-4"><label class="form-label small mb-0">Observaciones</label><input name="observaciones" class="form-control form-control-sm" maxlength="300"></div>
-          <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Guardar</button></div>
+          <div class="col-6 col-md-3"><label class="form-label small mb-0">Fecha</label><input type="date" name="fecha" class="form-control form-control-sm" max="{{ hoy|date:'Y-m-d' }}" {% if a and not f.vacuna.anual %}value="{{ a.fecha|date:'Y-m-d' }}"{% endif %}></div>
+          <div class="col-6 col-md-3"><label class="form-label small mb-0">Lote / laboratorio</label><input name="lote" class="form-control form-control-sm" maxlength="60" {% if a and not f.vacuna.anual %}value="{{ a.lote }}"{% endif %}></div>
+          <div class="col-md-4"><label class="form-label small mb-0">Observaciones</label><input name="observaciones" class="form-control form-control-sm" maxlength="300" {% if a and not f.vacuna.anual %}value="{{ a.observaciones }}"{% endif %}></div>
+          <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">{% if a and not f.vacuna.anual %}Guardar cambios{% else %}Guardar{% endif %}</button></div>
         </div>
       </form>
+      {% endwith %}
       {% endif %}
     </div>
     {% endfor %}
   </div>
 </div>
 {% endfor %}
+{% if 'consultas.crear' in permisos %}
+<div class="os-barra-carnet os-solo-carnet" role="region" aria-label="Cargar carnet">
+  <div class="d-flex flex-wrap align-items-end gap-2">
+    <div class="me-auto small"><b><span id="carnet-n">0</span> marcadas</b><br><button type="button" class="btn btn-link btn-sm p-0" id="carnet-tocaban">Marcar todas las que ya le tocaban</button></div>
+    <div><label class="form-label small mb-0" for="carnet-fecha">Fecha (opcional, si fueron el mismo día)</label><input type="date" id="carnet-fecha" name="fecha" form="form-carnet" class="form-control form-control-sm" max="{{ hoy|date:'Y-m-d' }}"></div>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="carnet-cancelar">Cancelar</button>
+    <button type="submit" form="form-carnet" class="btn btn-sm btn-primary"><i class="bi bi-check2-all me-1"></i>Guardar marcadas</button>
+  </div>
+</div>
+<script>
+(function () {
+  const btn = document.getElementById('btn-carnet');
+  if (!btn) return;
+  const casillas = () => [...document.querySelectorAll('input[name=vacunas]')];
+  const contar = () => { document.getElementById('carnet-n').textContent = casillas().filter(c => c.checked).length; };
+  btn.addEventListener('click', () => { document.body.classList.add('os-modo-carnet'); contar(); });
+  document.getElementById('carnet-cancelar').addEventListener('click', () => {
+    document.body.classList.remove('os-modo-carnet'); casillas().forEach(c => { c.checked = false; }); contar();
+  });
+  document.getElementById('carnet-tocaban').addEventListener('click', () => {
+    casillas().forEach(c => { if (!c.hasAttribute('data-anual') && (c.dataset.estado === 'atrasada' || c.dataset.estado === 'pendiente')) c.checked = true; });
+    contar();
+  });
+  document.querySelectorAll('[data-todo-grupo]').forEach(t => t.addEventListener('change', () => {
+    t.closest('[data-grupo]').querySelectorAll('input[name=vacunas]').forEach(c => { c.checked = t.checked; });
+    contar();
+  }));
+  document.addEventListener('change', e => { if (e.target.name === 'vacunas') contar(); });
+  if (new URLSearchParams(location.search).get('carnet')) btn.click();
+  document.getElementById('form-carnet').addEventListener('submit', e => {
+    if (!casillas().some(c => c.checked)) { e.preventDefault(); alert('Marca al menos una vacuna.'); }
+  });
+})();
+</script>
+{% endif %}
 <div class="card mb-3" id="pesquisas">
   <div class="card-header bg-white fw-semibold">Pesquisas</div>
   <div class="list-group list-group-flush">

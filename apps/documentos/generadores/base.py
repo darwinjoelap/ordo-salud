@@ -3,6 +3,7 @@ Piezas comunes de los documentos clínicos: datos del paciente, títulos, texto 
 El encabezado, la firma y el pie salen de apps.core.pdf (configuración del consultorio + perfil profesional).
 """
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_JUSTIFY, TA_RIGHT
@@ -50,7 +51,8 @@ def color_tenant(tenant):
 
 
 def lineas(texto, estilo=CUERPO):
-    """Texto libre → párrafos; las líneas que empiezan con «-», «•» o «1.» se sangran como lista."""
+    """Texto libre → párrafos (escapado: «<» o «&» no rompen el PDF).
+    Las líneas que empiezan con «-», «•» o «1.» se sangran como lista."""
     salida = []
     for linea in (texto or '').strip().split('\n'):
         linea = linea.strip()
@@ -58,7 +60,7 @@ def lineas(texto, estilo=CUERPO):
             salida.append(Spacer(1, 2 * mm))
             continue
         es_item = linea[0] in '-·•' or (len(linea) > 2 and linea[0].isdigit() and linea[1] in '.)')
-        salida.append(Paragraph(linea, CUERPO_ITEM if es_item and estilo is CUERPO else estilo))
+        salida.append(Paragraph(escape(linea), CUERPO_ITEM if es_item and estilo is CUERPO else estilo))
     return salida
 
 

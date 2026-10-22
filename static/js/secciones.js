@@ -164,3 +164,40 @@
     }).catch(function () { msg.textContent = 'No se pudo calcular (¿sin conexión?). Escribe la dosis a mano.'; });
   });
 })();
+
+// Campos calculados (percentiles, IMC, EG, FPP…): vista previa mientras se escribe. Sin conexión, se calculan al guardar.
+(function () {
+  function token() {
+    const c = document.querySelector('input[name=csrfmiddlewaretoken]');
+    return c ? c.value : '';
+  }
+  document.querySelectorAll('[data-calculo]').forEach(function (bloque) {
+    const prefijo = bloque.dataset.prefijo;
+    let espera = null;
+    function calcular() {
+      const datos = new FormData();
+      bloque.querySelectorAll('[name^="' + prefijo + '-"]').forEach(function (el) {
+        if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return;
+        datos.append(el.name, el.value);
+      });
+      datos.append('_prefijo', prefijo);
+      if (bloque.dataset.paciente) datos.append('_paciente', bloque.dataset.paciente);
+      if (bloque.dataset.fecha) datos.append('_fecha', bloque.dataset.fecha);
+      const sc = document.querySelector('[data-calculado="superficie_corporal"]');
+      if (sc && sc.value) datos.append('_sc', sc.value);
+      fetch(bloque.dataset.calculo, {method: 'POST', body: datos, credentials: 'same-origin',
+                                     headers: {'X-CSRFToken': token(), 'X-Requested-With': 'fetch'}})
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (res) {
+          if (!res) return;
+          Object.keys(res).forEach(function (clave) {
+            const campo = bloque.querySelector('[data-calculado="' + clave + '"]');
+            if (campo) campo.value = res[clave] || '';
+          });
+        })
+        .catch(function () { /* sin conexión: se calcula al guardar */ });
+    }
+    bloque.addEventListener('input', function () { clearTimeout(espera); espera = setTimeout(calcular, 450); });
+    bloque.addEventListener('change', function () { clearTimeout(espera); espera = setTimeout(calcular, 150); });
+  });
+})();

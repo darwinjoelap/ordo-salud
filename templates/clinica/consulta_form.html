@@ -10,6 +10,7 @@
   </div>
   {% if nueva %}<span class="badge text-bg-info">Nueva{% if cita %} · cita {{ cita.hora_inicio|hora12 }}{% endif %}</span>{% else %}<span class="badge text-bg-warning">En curso</span>{% endif %}
 </div>
+{% if accesos %}<div class="d-flex flex-wrap gap-2 mb-2">{% for a in accesos %}<a href="{{ a.url }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi {{ a.icono }} me-1"></i>{{ a.titulo }}{% if a.aviso %} <span class="badge text-bg-{{ a.aviso.1 }} ms-1">{{ a.aviso.0 }}</span>{% endif %}</a>{% endfor %}</div>{% endif %}
 {% if antecedentes.tiene_alergias %}<div class="os-alerta-alergia p-2 px-3 mb-2 small"><i class="bi bi-exclamation-triangle-fill me-1"></i><b>Alergias:</b> {{ antecedentes.alergias }}</div>{% endif %}
 {% if previas %}
 <details class="mb-3 small"><summary class="text-muted">Consultas anteriores ({{ previas|length }})</summary>
@@ -59,7 +60,7 @@
 {% endwith %}
 {% endblock %}
 {% block extra_js %}
-<script src="{% static 'js/secciones.js' %}"></script>
+<script src="{% static 'js/secciones.js' %}"></script>{% include 'clinica/_dictado.html' %}
 <script>
 // Hora real de la consulta: cuándo se abrió el formulario (aunque se envíe más tarde desde la cola sin conexión)
 document.querySelectorAll('[data-os-inicio]').forEach(function (el) { if (!el.value) el.value = new Date().toISOString(); });

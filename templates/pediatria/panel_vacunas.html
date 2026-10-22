@@ -2,7 +2,7 @@
 <div class="card mb-3">
   <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
     <span><i class="bi bi-shield-plus me-1"></i>Vacunas y pesquisas</span>
-    <a href="{% url 'pediatria:vacunas' paciente.pk %}" class="small">Ver esquema completo</a>
+    <a href="{% url 'pediatria:vacunas' paciente.pk %}" class="small">Ver y registrar</a>
   </div>
   <div class="card-body small">
     {% with r=panel.resumen %}
@@ -17,6 +17,9 @@
       {% for f in r.atrasadas|slice:":4" %}<li><i class="bi bi-exclamation-circle text-danger me-1"></i>{{ f.vacuna.nombre }} · dosis {{ f.vacuna.dosis }} <span class="text-muted">({{ f.vacuna.edad_texto }})</span></li>{% endfor %}
       {% for f in r.pendientes|slice:":3" %}<li><i class="bi bi-clock text-warning-emphasis me-1"></i>{{ f.vacuna.nombre }} · dosis {{ f.vacuna.dosis }} <span class="text-muted">({{ f.vacuna.edad_texto }})</span></li>{% endfor %}
     </ul>
+    {% endif %}
+    {% if 'consultas.crear' in permisos and r.atrasadas|length > 3 %}
+    <a href="{% url 'pediatria:vacunas' paciente.pk %}?carnet=1" class="btn btn-sm btn-outline-primary mb-2"><i class="bi bi-card-checklist me-1"></i>¿Trae carnet? Cárgalo de una vez</a>
     {% endif %}
     {% endwith %}
     <div class="d-flex flex-wrap gap-1">

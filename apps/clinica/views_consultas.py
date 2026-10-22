@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html_join
 from django.views.decorators.http import require_POST
@@ -134,6 +135,7 @@ def nueva(request, paciente_pk):
     return render(request, 'clinica/consulta_form.html', {
         'titulo': f'Nueva consulta · {paciente}', 'consulta': consulta, 'formularios': formularios, 'nueva': True,
         'cita': cita, 'previas': consultas_visibles(request, paciente)[:5],
+        'accesos': registro.accesos_consulta(consulta.especialidad.codigo, paciente),
         'antecedentes': getattr(paciente, 'antecedentes', None), 'faltan': [], **_glosario(request, paciente)})
 
 
@@ -168,6 +170,7 @@ def editar(request, pk):
     return render(request, 'clinica/consulta_form.html', {
         'titulo': f'Consulta · {consulta.paciente}', 'consulta': consulta, 'formularios': formularios,
         'previas': previas, 'antecedentes': antecedentes, 'faltan': srv.faltantes(consulta),
+        'accesos': registro.accesos_consulta(consulta.especialidad.codigo, consulta.paciente),
         **_glosario(request, consulta.paciente)})
 
 
@@ -183,7 +186,8 @@ def detalle(request, pk):
         'vacias': [i for i in consulta.estructura if i['seccion_id'] not in con_datos],
         'es_autor': request.membresia.perfil_activo and consulta.profesional_id == request.membresia.perfil_activo.pk,
         'enmiendas': consulta.enmiendas.select_related('seccion', 'creado_por'),
-        'adjuntos': consulta.adjuntos.all()})
+        'adjuntos': consulta.adjuntos.all(), 'notas': consulta.notas_evolucion.select_related('creado_por'),
+        'hoy': timezone.localdate()})
 
 
 @login_required
@@ -326,3 +330,78 @@ def _glosario(request, paciente):
     meds = visibles(request).filter(activo=True).order_by('nombre').only('pk', 'nombre', 'presentacion')
     return {'glosario': list(meds),
             'edad_meses': edad_meses(paciente.fecha_nacimiento) if paciente.fecha_nacimiento else ''}
+
+
+@login_required
+@requiere('historia.ver')
+@require_POST
+def calcular(request):
+    """Vista previa de los campos calculados de una sección (percentiles, IMC, EG, FPP…) mientras se escribe."""
+    from django.http import JsonResponse
+    from django.utils.dateparse import parse_date
+
+    from apps.core.fechas import edad_meses
+
+    from . import esquemas
+    from .models import SeccionClinica
+    prefijo = request.POST.get('_prefijo', '')
+    if not (prefijo.startswith('s') and prefijo[1:].isdigit()):
+        return JsonResponse({}, status=400)
+    seccion = get_object_or_404(SeccionClinica.objects.visibles(), pk=int(prefijo[1:]))
+    contexto = {}
+    pk = request.POST.get('_paciente')
+    if pk and pk.isdigit():
+        paciente = get_object_or_404(Paciente.objects.all(), pk=pk)
+        fecha = parse_date(request.POST.get('_fecha') or '') or timezone.localdate()
+        contexto = {'paciente': paciente, 'sexo': paciente.sexo, 'fecha': fecha,
+                    'edad_meses': edad_meses(paciente.fecha_nacimiento, fecha)}
+    try:                                    # superficie corporal de la consulta (volúmenes indexados)
+        sc = float((request.POST.get('_sc') or '').replace(',', '.').split()[0])
+        if 0 < sc < 4:
+            contexto['sc'] = sc
+    except (ValueError, IndexError):
+        pass
+    campos = esquemas.campos_efectivos(seccion.esquema)
+    form = FormularioSeccion(campos, request.POST, prefix=prefijo, contexto=contexto, exigir_requeridos=False)
+    form.is_valid()
+    limpios = getattr(form, 'datos_limpios', {}) or {}
+    return JsonResponse({c['clave']: esquemas.texto_valor(c, limpios.get(c['clave']))
+                         for c in campos if c['tipo'] == 'calculado'})
+
+
+@login_required
+@requiere('consultas.crear')
+@require_POST
+def nota_evolucion(request, pk):
+    """Agrega una nota de evolución con fecha (la consulta puede estar cerrada: no la modifica)."""
+    from datetime import date
+
+    from .models import NotaEvolucion
+    consulta = _consulta_visible(request, pk)
+    texto = (request.POST.get('texto') or '').strip()
+    if consulta.estado == Consulta.Estado.ANULADA or not texto:
+        messages.error(request, 'Escribe la nota.' if not texto else 'La consulta está anulada.')
+        return redirect('clinica:consulta', pk=pk)
+    try:
+        fecha = date.fromisoformat(request.POST.get('fecha') or '')
+    except ValueError:
+        fecha = timezone.localdate()
+    nota = NotaEvolucion.objects.create(consulta=consulta, paciente=consulta.paciente, fecha=fecha, texto=texto[:2000])
+    auditoria.registrar(request, 'CREAR', nota, paciente_id=consulta.paciente_id, detalle='Nota de evolución')
+    messages.success(request, 'Nota de evolución agregada.')
+    return redirect(f"{reverse('clinica:consulta', args=[pk])}#evolucion")
+
+
+@login_required
+@requiere('consultas.crear')
+@require_POST
+def nota_evolucion_eliminar(request, pk, nota_pk):
+    from .models import NotaEvolucion
+    consulta = _consulta_visible(request, pk)
+    nota = get_object_or_404(NotaEvolucion.objects.filter(consulta=consulta), pk=nota_pk)
+    if nota.creado_por_id != request.user.pk:
+        raise PermissionDenied
+    auditoria.registrar(request, 'ANULAR', nota, paciente_id=consulta.paciente_id, detalle='Quitó nota de evolución')
+    nota.delete()
+    messages.success(request, 'Nota eliminada.')
+    return redirect(f"{reverse('clinica:consulta', args=[pk])}#evolucion")

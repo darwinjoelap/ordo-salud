@@ -39,6 +39,15 @@
     {% if consulta.estado != 'ANULADA' %}<form method="post" action="{% url 'clinica:consulta_adjuntar' consulta.pk %}" enctype="multipart/form-data" class="card-body d-flex gap-2" data-offline="off">{% csrf_token %}
       <input type="file" name="archivo" class="form-control form-control-sm" required><button class="btn btn-sm btn-outline-primary">Subir</button></form>{% endif %}
   </div></div>
+  <div class="col-md-6" id="evolucion"><div class="card"><div class="card-header bg-white fw-semibold">Notas de evolución <span class="small text-muted fw-normal">· salen al pie del informe</span></div>
+    <ul class="list-group list-group-flush small">{% for n in notas %}<li class="list-group-item d-flex justify-content-between gap-2"><span><b>{{ n.fecha|date:"d/m/Y" }}</b> {{ n.texto|linebreaksbr }}</span>
+      {% if n.creado_por_id == request.user.pk %}<form method="post" action="{% url 'clinica:nota_evolucion_eliminar' consulta.pk n.pk %}" onsubmit="return confirm('¿Quitar esta nota?')">{% csrf_token %}<button class="btn btn-link btn-sm p-0 text-danger">quitar</button></form>{% endif %}</li>
+    {% empty %}<li class="list-group-item text-muted">Sin notas. Ej.: «Se entrega Holter con resultado normal».</li>{% endfor %}</ul>
+    {% if consulta.estado != 'ANULADA' and 'consultas.crear' in permisos %}<form method="post" action="{% url 'clinica:nota_evolucion' consulta.pk %}" class="card-body d-flex flex-wrap gap-2">{% csrf_token %}
+      <input type="date" name="fecha" value="{{ hoy|date:'Y-m-d' }}" class="form-control form-control-sm" style="max-width: 11rem">
+      <input name="texto" class="form-control form-control-sm flex-grow-1" placeholder="Nota de evolución" required maxlength="2000" style="min-width: 12rem">
+      <button class="btn btn-sm btn-outline-primary">Agregar</button></form>{% endif %}
+  </div></div>
   {% if enmiendas %}<div class="col-md-6"><div class="card"><div class="card-header bg-white fw-semibold">Enmiendas</div>
     <ul class="list-group list-group-flush small">{% for e in enmiendas %}<li class="list-group-item"><b>{{ e.seccion }}</b> · {{ e.creado_en|date:"d/m/Y" }} {{ e.creado_en|hora12 }} · {{ e.creado_por.nombre_visible }}<br><span class="text-muted">Motivo: {{ e.motivo }}</span></li>{% endfor %}</ul>
   </div></div>{% endif %}

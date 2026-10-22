@@ -49,6 +49,7 @@ ORDO_APPS = [
     'apps.especialidades.general',
     'apps.especialidades.pediatria',
     'apps.especialidades.ginecologia',
+    'apps.especialidades.cardiologia_pediatrica',
 ]
 
 # apps.usuarios primero para que su `createsuperuser` reemplace al de Django

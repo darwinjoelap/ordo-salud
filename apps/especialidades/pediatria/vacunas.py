@@ -57,6 +57,28 @@ def resumen(paciente):
             'al_dia': not any(f['estado'] in ('atrasada', 'pendiente') for f in filas)}
 
 
+def aviso_consulta(paciente):
+    """Insignia del botón «Vacunas» en la consulta."""
+    r = resumen(paciente)
+    if r['atrasadas']:
+        return (f"{len(r['atrasadas'])} atrasada{'s' if len(r['atrasadas']) > 1 else ''}", 'danger')
+    if r['pendientes']:
+        return (f"{len(r['pendientes'])} pendiente{'s' if len(r['pendientes']) > 1 else ''}", 'warning')
+    return ('Al día', 'success')
+
+
+@transaction.atomic
+def registrar_lote(paciente, vacunas, *, fecha=None, usuario=None):
+    """Carga del carnet: marca varias dosis como aplicadas (misma fecha, o sin fecha). Devuelve cuántas nuevas."""
+    nuevas = 0
+    for v in vacunas:
+        if not v.anual and VacunaAplicada.objects.filter(paciente=paciente, vacuna=v).exists():
+            continue
+        registrar_vacuna(paciente, v, fecha=fecha, observaciones='Cargada del carnet', usuario=usuario)
+        nuevas += 1
+    return nuevas
+
+
 @transaction.atomic
 def registrar_vacuna(paciente, vacuna, *, fecha=None, lote='', observaciones='', usuario=None):
     """Dosis única: crea o completa el registro. Vacuna anual: siempre una aplicación nueva."""

@@ -109,6 +109,10 @@ class FormularioSeccion(forms.Form):
                 self.fields[c['clave']].widget.attrs['data-visible-si'] = _json(c['visible_si'])
 
     @property
+    def tiene_calculados(self):
+        return any(c['tipo'] == 'calculado' for c in self.campos_def)
+
+    @property
     def calculados(self):
         """Valores de los campos calculados: lo recién validado o, si no, lo que ya estaba guardado."""
         fuente = getattr(self, 'datos_limpios', None) or self.guardados

@@ -3,6 +3,7 @@ Documentos clínicos comunes en carta vertical: informe médico, referencia, rep
 Textos inspirados en los de Ginea/Pediae, con género del paciente y números en letras.
 """
 from datetime import date, timedelta
+from xml.sax.saxutils import escape
 
 from reportlab.lib.units import mm
 from reportlab.platypus import Spacer
@@ -10,6 +11,7 @@ from reportlab.platypus import Spacer
 from apps.core.fechas import hora12
 from apps.core.pdf import Paragraph
 
+from . import antecedentes
 from .base import (
     CUERPO,
     SUBTITULO,
@@ -110,7 +112,7 @@ def informe(doc, con_firma=True):
                 cuerpo.append(Paragraph(f"<b>{campo['etiqueta']}:</b>", CUERPO))
                 cuerpo += lineas(texto)
             else:
-                cuerpo.append(Paragraph(f"<b>{campo['etiqueta']}:</b> {texto}", CUERPO))
+                cuerpo.append(Paragraph(f"<b>{escape(campo['etiqueta'])}:</b> {escape(texto)}", CUERPO))
     if doc.datos.get('conclusion'):
         cuerpo += seccion('Conclusión', doc.tenant) + lineas(doc.datos['conclusion'])
     cuerpo += nota_confidencial()
@@ -133,6 +135,7 @@ def referencia(doc, con_firma=True):
         cuerpo += seccion('Impresión diagnóstica', doc.tenant) + lineas(d['diagnosticos'])
     if d.get('tratamiento'):
         cuerpo += seccion('Tratamiento actual', doc.tenant) + lineas(d['tratamiento'])
+    cuerpo += antecedentes.flowables(d.get('antecedentes_texto'), doc.tenant)
     cuerpo += [Spacer(1, 4 * mm), Paragraph('Agradeciendo la atención prestada, quedo a su disposición.', CUERPO)]
     cuerpo += nota_confidencial()
     return construir(doc, cuerpo, con_firma=con_firma)

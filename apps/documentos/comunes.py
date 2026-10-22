@@ -1,6 +1,6 @@
 """Documentos comunes a todas las especialidades (Fase 10)."""
 from . import forms
-from .generadores import clinicos, recibo, recipe
+from .generadores import clinicos, historia, recibo, recipe
 from .registro import DocumentoDef, registrar
 
 RECIPE = registrar(DocumentoDef('recipe', 'Récipe e indicaciones', prefijo='RCP', generar=recipe.generar,
@@ -18,5 +18,8 @@ REPOSO = registrar(DocumentoDef('reposo', 'Reposo médico', prefijo='REP', gener
 CONSTANCIA = registrar(DocumentoDef('constancia', 'Constancia de asistencia', prefijo='CON', generar=clinicos.constancia,
                                     formulario=forms.ConstanciaForm, inicial=clinicos.inicial_constancia,
                                     icono='bi-patch-check', orden=50))
+HISTORIA = registrar(DocumentoDef('historia', 'Historia clínica completa', prefijo='HCL', generar=historia.generar,
+                                  formulario=forms.HistoriaForm, icono='bi-journal-medical', orden=60,
+                                  descripcion='Datos, antecedentes, fichas y consultas, para entregar o archivar.'))
 RECIBO = registrar(DocumentoDef('recibo', 'Recibo de pago', prefijo='RCB', generar=recibo.generar,
                                 icono='bi-receipt', orden=90, extra={'interno': True}))

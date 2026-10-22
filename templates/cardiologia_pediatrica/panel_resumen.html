@@ -1,0 +1,24 @@
+{# Panel de cardiología pediátrica: último EKG, hallazgos del eco y acceso al informe #}
+<div class="card mb-3">
+  <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-heart-pulse me-1"></i>Resumen cardiológico</span>
+    <a href="{% url 'clinica:ficha_especialidad' paciente.pk 'cardiologia_pediatrica' %}" class="small">Antecedentes</a>
+  </div>
+  <div class="card-body small">
+    {% if panel.vacio %}
+      <span class="text-muted">Sin EKG ni ecocardiograma registrados todavía.</span>
+    {% else %}
+      <div class="text-muted mb-1">Último estudio: {{ panel.fecha|date:'d/m/Y' }}</div>
+      {% if panel.ekg %}<div class="mb-1"><span class="text-muted">EKG:</span> <span class="font-monospace">{{ panel.ekg }}</span></div>{% endif %}
+      <div class="d-flex flex-wrap gap-2 mb-2">
+        {% if panel.fevi %}<span class="os-chip">FEVI {{ panel.fevi }}</span>{% endif %}
+        {% if panel.tapse %}<span class="os-chip">TAPSE {{ panel.tapse }} mm</span>{% endif %}
+        {% for h in panel.hallazgos %}<span class="os-chip os-chip-estado">{{ h }}</span>{% empty %}<span class="os-chip os-chip-ok">Eco sin hallazgos anormales marcados</span>{% endfor %}
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'clinica:consulta' panel.consulta.pk %}" class="btn btn-sm btn-outline-secondary">Ver consulta</a>
+        {% if panel.informe_url %}<a href="{{ panel.informe_url }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-file-earmark-medical me-1"></i>Informe médico</a>{% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
