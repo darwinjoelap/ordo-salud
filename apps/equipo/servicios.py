@@ -29,7 +29,7 @@ class ErrorEquipo(ErrorDeNegocio):
 
 
 def clave_temporal():
-    return 'Omnis-' + ''.join(secrets.choice(ALFABETO) for _ in range(10))
+    return 'Ordo-' + ''.join(secrets.choice(ALFABETO) for _ in range(10))
 
 
 def roles_asignables(actor):

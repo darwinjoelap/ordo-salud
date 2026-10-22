@@ -1,21 +1,21 @@
 {% extends 'base.html' %}
 {% block contenido %}
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-  <div><h1 class="h3 mb-0">Consultorios y clínicas</h1><div class="small text-muted">Panel de plataforma · solo administradores de Omnis</div></div>
+  <div><h1 class="h3 mb-0">Consultorios y clínicas</h1><div class="small text-muted">Panel de plataforma · solo administradores de Ordo Salud</div></div>
   <div class="d-flex gap-2"><a href="{% url 'plataforma:nuevo' %}" class="btn btn-primary btn-sm"><i class="bi bi-building-add me-1"></i>Nuevo consultorio</a></div>
 </div>
 {% include 'plataforma/_nav.html' %}
 <form method="get" class="mb-3" style="max-width:420px"><div class="input-group input-group-sm">
   <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Nombre, RIF o enlace"><button class="btn btn-outline-secondary"><i class="bi bi-search"></i></button></div></form>
 <div class="card"><div class="table-responsive">
-  <table class="table align-middle mb-0 om-tabla">
+  <table class="table align-middle mb-0 os-tabla">
     <thead class="table-light"><tr><th>Consultorio</th><th>Enlace</th><th>Especialidades</th><th>Plan</th><th>Vence</th><th class="text-center">Usuarios</th><th>Estado</th><th></th></tr></thead>
     <tbody>
     {% for t in tenants %}
       <tr onclick="location.href='{% url 'plataforma:editar' t.pk %}'" role="button">
         <td><div class="fw-semibold">{{ t.nombre }}</div><div class="small text-muted">{{ t.configuracion.rif|default:"" }}</div></td>
         <td class="small"><a href="{{ t.enlace }}" target="_blank" onclick="event.stopPropagation()">/{{ t.slug }}/</a></td>
-        <td class="small">{% for e in t.especialidades.all %}<span class="om-chip me-1 mb-1">{{ e }}</span>{% empty %}—{% endfor %}</td>
+        <td class="small">{% for e in t.especialidades.all %}<span class="os-chip me-1 mb-1">{{ e }}</span>{% empty %}—{% endfor %}</td>
         <td>{{ t.plan|default:"—" }}</td>
         <td class="small">{% if t.activo_hasta %}<span class="{% if t.dias_para_vencer < 0 %}text-danger fw-semibold{% elif t.dias_para_vencer <= 7 %}text-warning-emphasis fw-semibold{% endif %}">{{ t.activo_hasta|date:"d/m/Y" }}</span>{% else %}—{% endif %}</td>
         <td class="text-center">{{ t.n_activos }}{% if t.max_usuarios %} / {{ t.max_usuarios }}{% endif %}</td>

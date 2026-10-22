@@ -46,7 +46,7 @@ class Membresia(models.Model):
 
 
 def _ruta_firma(instancia, archivo):
-    return f'omnis/{instancia.tenant.slug}/profesionales/{instancia.membresia_id}/{archivo}'
+    return f'ordo-salud/{instancia.tenant.slug}/profesionales/{instancia.membresia_id}/{archivo}'
 
 
 class PerfilProfesional(TenantModel, Auditable):
@@ -81,7 +81,7 @@ class PerfilProfesional(TenantModel, Auditable):
                                        'Si no carga uno, se usa el logo del consultorio.')
     marca_agua = models.BooleanField('Logo de fondo (marca de agua) en los PDF', default=True,
                                      help_text='Logo tenue en el centro de récipes, informes y constancias.')
-    color_agenda = models.CharField('Color en la agenda', max_length=7, default='#5D9680')
+    color_agenda = models.CharField('Color en la agenda', max_length=7, default='#1C8577')
     activo = models.BooleanField('Activo', default=True)
 
     class Meta:

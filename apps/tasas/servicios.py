@@ -15,7 +15,7 @@ from .models import TasaCambio, TasaTenant
 
 log = logging.getLogger('apps.tasas')
 URL_BCV = 'https://www.bcv.org.ve/'
-CLAVE_CACHE = 'omnis:tasa_vigente'
+CLAVE_CACHE = 'ordo:tasa_vigente'
 
 
 def tasa_global():
@@ -143,7 +143,7 @@ def intermedios_por_aia(host, port=443, max_niveles=3):
         urls = _urls_ca_issuers(cert)
         if not urls:
             break
-        respuesta = requests.get(urls[0], timeout=20, headers={'User-Agent': 'Mozilla/5.0 (Omnis)'})
+        respuesta = requests.get(urls[0], timeout=20, headers={'User-Agent': 'Mozilla/5.0 (Ordo Salud)'})
         respuesta.raise_for_status()
         siguiente = None
         for c in _cargar_certs(respuesta.content, urls[0]):
@@ -172,7 +172,7 @@ def bundle_con_intermedios(host, port=443):
         raise ValueError(f'No se pudo obtener el certificado intermedio de {host}.')
     with open(certifi.where()) as f:
         base = f.read()
-    fd, ruta = tempfile.mkstemp(prefix='omnis-ca-', suffix='.pem')
+    fd, ruta = tempfile.mkstemp(prefix='ordo-ca-', suffix='.pem')
     with os.fdopen(fd, 'w') as f:
         f.write(base + '\n' + '\n'.join(intermedios))
     return ruta
@@ -180,7 +180,7 @@ def bundle_con_intermedios(host, port=443):
 
 def descargar_bcv(url=None):
     url = url or URL_BCV
-    cabeceras = {'User-Agent': 'Mozilla/5.0 (Omnis)'}
+    cabeceras = {'User-Agent': 'Mozilla/5.0 (Ordo Salud)'}
     try:
         return requests.get(url, timeout=20, headers=cabeceras)
     except requests.exceptions.SSLError:

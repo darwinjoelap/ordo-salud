@@ -2,7 +2,7 @@
 {% block contenido %}
 <a href="{% url 'reportes:tablero' %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> Reportes</a>
 <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3 mt-1">
-  <div><div class="om-eyebrow">Pediatría</div><h1 class="h3 mb-0">Reporte pediátrico</h1><div class="text-muted">{{ filtros.periodo_texto }}{% if filtros.profesional %} · {{ filtros.profesional }}{% endif %}</div></div>
+  <div><div class="os-eyebrow">Pediatría</div><h1 class="h3 mb-0">Reporte pediátrico</h1><div class="text-muted">{{ filtros.periodo_texto }}{% if filtros.profesional %} · {{ filtros.profesional }}{% endif %}</div></div>
   <a href="?{{ query }}{% if query %}&{% endif %}formato=excel" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Excel</a>
 </div>
 <form method="get" class="card card-body mb-3"><div class="row g-2 align-items-end">
@@ -12,10 +12,10 @@
   <div class="d-flex flex-wrap gap-2 mt-2">{% for nombre, d, h in rangos %}<a class="btn btn-sm {% if d == filtros.desde and h == filtros.hasta %}btn-success{% else %}btn-outline-secondary{% endif %}" href="?desde={{ d|date:'Y-m-d' }}&hasta={{ h|date:'Y-m-d' }}">{{ nombre }}</a>{% endfor %}</div>
 </form>
 <div class="row g-3 mb-3">
-  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="om-cifra-etiqueta">Consultas</div><div class="om-cifra">{{ consultas }}</div><div class="small text-muted">{{ pacientes }} pacientes</div></div></div></div>
-  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="om-cifra-etiqueta">Con antropometría</div><div class="om-cifra">{{ con_medicion }}</div><div class="small text-muted">pacientes medidos</div></div></div></div>
-  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="om-cifra-etiqueta">Vacunas al día</div><div class="om-cifra">{% if vacunas.pct_al_dia is not None %}{{ vacunas.pct_al_dia }}%{% else %}—{% endif %}</div><div class="small text-muted">{{ vacunas.atrasados }} con dosis atrasadas</div></div></div></div>
-  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="om-cifra-etiqueta">Lactancia exclusiva</div><div class="om-cifra">{% if lactancia.pct is not None %}{{ lactancia.pct }}%{% else %}—{% endif %}</div><div class="small text-muted">{% if lactancia.promedio_meses %}promedio {{ lactancia.promedio_meses }} meses{% else %}según la ficha{% endif %}</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Consultas</div><div class="os-cifra">{{ consultas }}</div><div class="small text-muted">{{ pacientes }} pacientes</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Con antropometría</div><div class="os-cifra">{{ con_medicion }}</div><div class="small text-muted">pacientes medidos</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Vacunas al día</div><div class="os-cifra">{% if vacunas.pct_al_dia is not None %}{{ vacunas.pct_al_dia }}%{% else %}—{% endif %}</div><div class="small text-muted">{{ vacunas.atrasados }} con dosis atrasadas</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Lactancia exclusiva</div><div class="os-cifra">{% if lactancia.pct is not None %}{{ lactancia.pct }}%{% else %}—{% endif %}</div><div class="small text-muted">{% if lactancia.promedio_meses %}promedio {{ lactancia.promedio_meses }} meses{% else %}según la ficha{% endif %}</div></div></div></div>
 </div>
 <div class="row g-3">
   <div class="col-lg-6"><div class="card h-100"><div class="card-header">Estado nutricional (peso/edad)</div><div class="card-body">{% include 'reportes/_barras.html' with barras=nutricion vacio='Sin mediciones en el período.' %}</div></div></div>

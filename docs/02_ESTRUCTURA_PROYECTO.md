@@ -1,7 +1,7 @@
 # 02 — Estructura del proyecto
 
 ```
-omnis/
+ordo-salud/
 ├── CLAUDE.md                      ← contexto permanente (raíz)
 ├── README.md
 ├── .env.example
@@ -33,7 +33,7 @@ omnis/
 │   │   ├── secuencias.py          ← siguiente_numero('REC')
 │   │   ├── pwa.py                 ← manifest, sw.js, /offline/, /instalar/, /visor/
 │   │   ├── context_processors.py
-│   │   ├── templatetags/omnis.py  ← hora12, usd, bs, edad, icon
+│   │   ├── templatetags/ordo.py  ← hora12, usd, bs, edad, icon
 │   │   └── management/commands/tareas_programadas.py
 │   ├── plataforma/                ← Tenant, Plan, Suscripcion, TenantEspecialidad, panel
 │   ├── usuarios/                  ← Usuario, backends.py, Mi perfil, cambio de clave
@@ -72,7 +72,7 @@ omnis/
 ├── templates/                     ← base.html, parciales comunes, errores
 ├── static/
 │   ├── vendor/                    ← bootstrap, bootstrap-icons, htmx (sin sourceMappingURL)
-│   ├── css/omnis.css
+│   ├── css/ordo-salud.css
 │   ├── js/{pwa.js, offline.js, secciones.js}
 │   └── img/marca/                 ← logo, iconos PWA (incl. maskable y apple-touch-icon)
 ├── tests/                         ← python manage.py test tests
@@ -92,7 +92,7 @@ omnis/
 ```
 
 Notas:
-- `config/` y no `omnis/` como paquete del proyecto (evita choque de nombres; igual que Ordo y Biolife).
+- `config/` y no `ordo_salud/` como paquete del proyecto (evita choque de nombres; igual que Ordo y Biolife).
 - `apps/clinica/models/` es paquete porque el motor tendrá varios archivos; el resto de apps usa `models.py`.
 - Las especialidades viven todas bajo `apps/especialidades/`; `INSTALLED_APPS` las lista una por una
   (habilitar = instalar app + `sincronizar_especialidades` + habilitar en el tenant).

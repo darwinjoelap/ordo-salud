@@ -16,6 +16,11 @@
 
 ---
 
+### Cambio de marca: Omnis → Ordo Salud (2026-10-21)
+- Hecho: logo en SVG y todas sus presentaciones, rediseño (paleta del logo, Nunito, menú marino) en la app y en el lienzo de diseño, renombre completo del código (textos, archivos, ajustes, cachés, prefijo CSS `os-`), migraciones de colores por defecto, carpeta y repo `ordo-salud`.
+- Verificado: 169 tests (SQLite + PostgreSQL), ruff limpio, capturas escritorio y móvil.
+- ADR: 038.
+
 ### Fase 13 Pediatría — avance (2026-10-21, fase abierta)
 - Hecho: perfil por especialidad (paneles, reportes, rutas y páginas offline por módulo), ficha pediátrica en página propia, curvas OMS SVG/PDF, vacunas (35 dosis, anual) y pesquisas, constancias pediátricas, reporte pediátrico + Excel, glosario de medicamentos con calculadora de dosis en el récipe (núcleo).
 - Verificado: 169 tests (SQLite + PostgreSQL), ruff limpio, `makemigrations --check`, capturas escritorio y móvil.

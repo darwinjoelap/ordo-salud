@@ -6,7 +6,7 @@
   <a href="{% url 'plataforma:plan_nuevo' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Nuevo plan</a>
 </div>
 <div class="card"><div class="table-responsive">
-  <table class="table align-middle mb-0 om-tabla">
+  <table class="table align-middle mb-0 os-tabla">
     <thead class="table-light"><tr><th>Plan</th><th class="text-end">Mensual</th><th class="text-end">Anual</th><th class="text-center">Profesionales</th><th class="text-center">Usuarios</th><th class="text-center">Gracia</th><th class="text-center">Dictado</th><th class="text-center">Consultorios</th><th>Estado</th></tr></thead>
     <tbody>{% for p in planes %}
       <tr onclick="location.href='{% url 'plataforma:plan_editar' p.pk %}'" role="button" class="{% if not p.activo %}text-muted{% endif %}">

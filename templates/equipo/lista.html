@@ -46,7 +46,7 @@
         </td>
         <td>
           {% if m.perfil_activo %}
-            <a href="{% url 'equipo:perfil_profesional' m.pk %}" class="text-decoration-none"><span class="om-color-punto me-1" style="background:{{ m.perfil_activo.color_agenda }}"></span>{{ m.perfil_activo.especialidad }}</a>
+            <a href="{% url 'equipo:perfil_profesional' m.pk %}" class="text-decoration-none"><span class="os-color-punto me-1" style="background:{{ m.perfil_activo.color_agenda }}"></span>{{ m.perfil_activo.especialidad }}</a>
             {% if not m.perfil_activo.tiene_firma %}<div class="small text-warning-emphasis"><i class="bi bi-exclamation-circle"></i> Sin firma ni sello</div>{% endif %}
           {% else %}
             <a href="{% url 'equipo:perfil_profesional' m.pk %}" class="small">Hacer profesional</a>

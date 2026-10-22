@@ -3,25 +3,26 @@
 {% block titulo %}Entrar{% endblock %}
 
 {% block cuerpo %}
-<div class="om-login">
-  <section class="om-login-marca" aria-label="Omnis">
-    <img src="{% static 'img/marca/omnis-logo.png' %}" alt="Omnis, tu consulta en un solo lugar" class="om-logo-login">
+<div class="os-login">
+  <section class="os-login-marca" aria-label="Ordo Salud">
+    <img src="{% static 'img/marca/ordo-salud-icono-blanco.svg' %}" alt="" aria-hidden="true" class="os-login-fondo">
+    <img src="{% static 'img/marca/ordo-salud-logo-blanco.svg' %}" alt="Ordo Salud" class="os-logo-login">
     <div class="d-flex flex-column gap-2">
-      <p class="om-login-lema mb-0">Historias clínicas, agenda, cobros y documentos de tu consultorio.</p>
-      <p class="om-login-detalle text-muted mb-0">Instálala en tu teléfono desde el navegador y úsala como una app.</p>
+      <p class="os-login-lema mb-0">Tu consulta, en orden.</p>
+      <p class="os-login-detalle mb-0">Historias clínicas por especialidad, agenda, cobros y documentos de tu consultorio. Instálala en el teléfono y trabaja aunque se vaya la señal.</p>
     </div>
   </section>
 
-  <section class="om-login-formulario">
-    <div class="om-login-caja">
+  <section class="os-login-formulario">
+    <div class="os-login-caja">
       <div class="mb-4">
         {% if tenant_marca %}
           {% if tenant_marca.configuracion.logo %}<img src="{{ tenant_marca.configuracion.logo.url }}" alt="" class="mb-3" style="max-height:72px;max-width:200px">{% endif %}
-          <div class="om-eyebrow">Consultorio</div>
+          <div class="os-eyebrow">Consultorio</div>
           <h1 class="h3 mt-1 mb-1">{{ tenant_marca.configuracion.nombre_display }}</h1>
           <p class="text-muted mb-0">Entra con tu usuario de este consultorio.</p>
         {% else %}
-          <div class="om-eyebrow">Omnis</div>
+          <div class="os-eyebrow">Ordo Salud</div>
           <h1 class="h3 mt-1 mb-1">Entrar</h1>
           <p class="text-muted mb-0">Gestión de consultas médicas.</p>
         {% endif %}

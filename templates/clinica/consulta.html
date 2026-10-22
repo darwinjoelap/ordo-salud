@@ -19,7 +19,7 @@
 </div>
 {% if consulta.estado == 'ANULADA' %}<div class="alert alert-danger py-2 small">Anulada: {{ consulta.motivo_anulacion }}</div>{% endif %}
 {% for item, filas in lectura %}
-  <div class="card om-seccion {% if item.ambito == 'PACIENTE' %}om-ambito-paciente{% endif %} mb-2">
+  <div class="card os-seccion {% if item.ambito == 'PACIENTE' %}os-ambito-paciente{% endif %} mb-2">
     <div class="card-header py-2">{{ item.nombre }}
       {% if es_autor and consulta.estado == 'CERRADA' %}<a href="{% url 'clinica:consulta_enmendar' consulta.pk item.seccion_id %}" class="ms-auto small fw-normal">Enmendar</a>{% endif %}</div>
     <div class="card-body py-2 small">

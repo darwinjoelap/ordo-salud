@@ -13,8 +13,8 @@ INDICADORES = {
     'pc': {'titulo': 'Perímetro cefálico para la edad', 'unidad': 'cm', 'campo': 'pc_cm'},
     'imc': {'titulo': 'IMC para la edad', 'unidad': 'kg/m²', 'campo': 'imc'},
 }
-ESTILO = {3: ('#C8B39C', 1.2, '4 3'), 15: ('#5D9680', 1.2, ''), 50: ('#2F625B', 2.2, ''),
-          85: ('#5D9680', 1.2, ''), 97: ('#C8B39C', 1.2, '4 3')}
+ESTILO = {3: ('#9FB4C4', 1.2, '4 3'), 15: ('#1C8577', 1.2, ''), 50: ('#145F8F', 2.2, ''),
+          85: ('#1C8577', 1.2, ''), 97: ('#9FB4C4', 1.2, '4 3')}
 ANCHO, ALTO = 760, 400
 M_IZQ, M_DER, M_SUP, M_INF = 52, 44, 18, 40
 
@@ -104,31 +104,31 @@ def svg(g):
     if g is None:
         return ''
     x0, y0, w, h = g['area']
-    partes = [f'<svg viewBox="0 0 {g["ancho"]} {g["alto"]}" class="om-curva" role="img" '
+    partes = [f'<svg viewBox="0 0 {g["ancho"]} {g["alto"]}" class="os-curva" role="img" '
               f'aria-label="{escape(g["titulo"])}" xmlns="http://www.w3.org/2000/svg">',
-              f'<rect x="{x0}" y="{y0}" width="{w}" height="{h}" fill="#FFFFFF" stroke="#E6E1D6"/>']
+              f'<rect x="{x0}" y="{y0}" width="{w}" height="{h}" fill="#FFFFFF" stroke="#DCE4EB"/>']
     for yy, texto in g['marcas_y']:
-        partes.append(f'<line x1="{x0}" y1="{yy:.1f}" x2="{x0 + w}" y2="{yy:.1f}" stroke="#EEEAE1"/>'
-                      f'<text x="{x0 - 6}" y="{yy + 4:.1f}" text-anchor="end" class="om-curva-eje">{texto}</text>')
+        partes.append(f'<line x1="{x0}" y1="{yy:.1f}" x2="{x0 + w}" y2="{yy:.1f}" stroke="#E8EEF3"/>'
+                      f'<text x="{x0 - 6}" y="{yy + 4:.1f}" text-anchor="end" class="os-curva-eje">{texto}</text>')
     for xx, texto in g['marcas_x']:
         partes.append(f'<line x1="{xx:.1f}" y1="{y0}" x2="{xx:.1f}" y2="{y0 + h}" stroke="#F3F0EA"/>'
-                      f'<text x="{xx:.1f}" y="{y0 + h + 16}" text-anchor="middle" class="om-curva-eje">{texto}</text>')
+                      f'<text x="{xx:.1f}" y="{y0 + h + 16}" text-anchor="middle" class="os-curva-eje">{texto}</text>')
     for p, pts in g['lineas'].items():
         color, grosor, raya = ESTILO[p]
         camino = ' '.join(f'{a:.1f},{b:.1f}' for a, b in pts)
         partes.append(f'<polyline points="{camino}" fill="none" stroke="{color}" stroke-width="{grosor}"'
                       + (f' stroke-dasharray="{raya}"' if raya else '') + '/>')
         ex, ey = g['etiquetas_p'][p]
-        partes.append(f'<text x="{ex + 4:.1f}" y="{ey + 4:.1f}" class="om-curva-p" fill="{color}">P{p}</text>')
+        partes.append(f'<text x="{ex + 4:.1f}" y="{ey + 4:.1f}" class="os-curva-p" fill="{color}">P{p}</text>')
     if len(g['puntos']) > 1:
         camino = ' '.join(f'{a:.1f},{b:.1f}' for a, b, _, _ in g['puntos'])
-        partes.append(f'<polyline points="{camino}" fill="none" stroke="#1F403D" stroke-width="1.5"/>')
+        partes.append(f'<polyline points="{camino}" fill="none" stroke="#0C385B" stroke-width="1.5"/>')
     for a, b, url, titulo in g['puntos']:
-        punto = (f'<circle cx="{a:.1f}" cy="{b:.1f}" r="5" fill="#1F403D" stroke="#FFFFFF" stroke-width="1.5">'
+        punto = (f'<circle cx="{a:.1f}" cy="{b:.1f}" r="5" fill="#0C385B" stroke="#FFFFFF" stroke-width="1.5">'
                  f'<title>{escape(titulo)}</title></circle>')
         partes.append(f'<a href="{escape(url)}">{punto}</a>' if url else punto)
-    partes.append(f'<text x="{x0}" y="{g["alto"] - 4}" class="om-curva-eje">Edad</text>'
-                  f'<text x="12" y="{y0 + 4}" class="om-curva-eje">{escape(g["unidad"])}</text></svg>')
+    partes.append(f'<text x="{x0}" y="{g["alto"] - 4}" class="os-curva-eje">Edad</text>'
+                  f'<text x="12" y="{y0 + 4}" class="os-curva-eje">{escape(g["unidad"])}</text></svg>')
     return ''.join(partes)
 
 
@@ -144,13 +144,13 @@ def dibujo_pdf(g, escala=0.7):
         return alto - yy
 
     x0, y0, w, h = g['area']
-    d.add(Rect(x0, inv(y0 + h), w, h, fillColor=colors.white, strokeColor=colors.HexColor('#E6E1D6')))
+    d.add(Rect(x0, inv(y0 + h), w, h, fillColor=colors.white, strokeColor=colors.HexColor('#DCE4EB')))
     for yy, texto in g['marcas_y']:
-        d.add(Line(x0, inv(yy), x0 + w, inv(yy), strokeColor=colors.HexColor('#EEEAE1')))
-        d.add(String(x0 - 6, inv(yy) - 3, texto, fontSize=8, textAnchor='end', fillColor=colors.HexColor('#55625F')))
+        d.add(Line(x0, inv(yy), x0 + w, inv(yy), strokeColor=colors.HexColor('#E8EEF3')))
+        d.add(String(x0 - 6, inv(yy) - 3, texto, fontSize=8, textAnchor='end', fillColor=colors.HexColor('#4B5E6D')))
     for xx, texto in g['marcas_x']:
         d.add(String(xx, inv(y0 + h) - 14, texto, fontSize=8, textAnchor='middle',
-                     fillColor=colors.HexColor('#55625F')))
+                     fillColor=colors.HexColor('#4B5E6D')))
     for p, pts in g['lineas'].items():
         color, grosor, raya = ESTILO[p]
         linea = PolyLine([c for a, b in pts for c in (a, inv(b))], strokeColor=colors.HexColor(color),
@@ -162,8 +162,8 @@ def dibujo_pdf(g, escala=0.7):
         d.add(String(ex + 4, inv(ey) - 3, f'P{p}', fontSize=8, fillColor=colors.HexColor(color)))
     if len(g['puntos']) > 1:
         d.add(PolyLine([c for a, b, _, _ in g['puntos'] for c in (a, inv(b))],
-                       strokeColor=colors.HexColor('#1F403D'), strokeWidth=1.5))
+                       strokeColor=colors.HexColor('#0C385B'), strokeWidth=1.5))
     for a, b, _, _ in g['puntos']:
-        d.add(Circle(a, inv(b), 4.5, fillColor=colors.HexColor('#1F403D'), strokeColor=colors.white))
-    d.add(String(12, inv(y0) - 4, g['unidad'], fontSize=8, fillColor=colors.HexColor('#55625F')))
+        d.add(Circle(a, inv(b), 4.5, fillColor=colors.HexColor('#0C385B'), strokeColor=colors.white))
+    d.add(String(12, inv(y0) - 4, g['unidad'], fontSize=8, fillColor=colors.HexColor('#4B5E6D')))
     return d

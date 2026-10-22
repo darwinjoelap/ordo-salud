@@ -1,7 +1,7 @@
 """
 Medicina general + especialidades «básicas».
 
-Las básicas existen desde el día 1 con las secciones generales para que cualquier especialista pueda usar Omnis
+Las básicas existen desde el día 1 con las secciones generales para que cualquier especialista pueda usar Ordo Salud
 mientras su módulo no existe. Cuando se instala el módulo real (pediatría, ginecología, cardiología…), éste
 reemplaza a la básica con el mismo código y aporta sus secciones y plantillas (docs/05_GUIA_ESPECIALIDADES.md).
 """
@@ -27,7 +27,7 @@ registrar(EspecialidadDef(
 
 # (código, nombre, ícono, color)
 BASICAS = [
-    ('medicina_interna', 'Medicina interna', 'bi-clipboard2-pulse', '#2F625B'),
+    ('medicina_interna', 'Medicina interna', 'bi-clipboard2-pulse', '#145F8F'),
     ('pediatria', 'Pediatría', 'bi-balloon-heart', '#2AACA8'),
     ('ginecologia', 'Ginecología y obstetricia', 'bi-gender-female', '#B04A86'),
     ('cardiologia', 'Cardiología', 'bi-heart-pulse-fill', '#C0392B'),

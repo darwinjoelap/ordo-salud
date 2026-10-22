@@ -10,7 +10,7 @@
   </div>
   {% if nueva %}<span class="badge text-bg-info">Nueva{% if cita %} · cita {{ cita.hora_inicio|hora12 }}{% endif %}</span>{% else %}<span class="badge text-bg-warning">En curso</span>{% endif %}
 </div>
-{% if antecedentes.tiene_alergias %}<div class="om-alerta-alergia p-2 px-3 mb-2 small"><i class="bi bi-exclamation-triangle-fill me-1"></i><b>Alergias:</b> {{ antecedentes.alergias }}</div>{% endif %}
+{% if antecedentes.tiene_alergias %}<div class="os-alerta-alergia p-2 px-3 mb-2 small"><i class="bi bi-exclamation-triangle-fill me-1"></i><b>Alergias:</b> {{ antecedentes.alergias }}</div>{% endif %}
 {% if previas %}
 <details class="mb-3 small"><summary class="text-muted">Consultas anteriores ({{ previas|length }})</summary>
   <ul class="list-unstyled mt-1 mb-0">{% for c in previas %}<li><a href="{% url 'clinica:consulta' c.pk %}" target="_blank">{{ c.fecha_hora|date:"d/m/Y" }}</a> · {{ c.profesional }} · {{ c.motivo|truncatechars:60|default:"—" }}{% if c.diagnostico %} · <b>{{ c.diagnostico|truncatechars:60 }}</b>{% endif %}</li>{% endfor %}</ul>
@@ -20,17 +20,17 @@
 <form method="post" id="form-consulta" autocomplete="off" data-offline-titulo="Consulta · {{ consulta.paciente.nombre_completo }}">{% csrf_token %}
   {% if nueva %}
     <input type="hidden" name="completa" value="1">
-    <input type="hidden" name="inicio" value="" data-om-inicio>
+    <input type="hidden" name="inicio" value="" data-os-inicio>
     <input type="hidden" name="plantilla" value="{{ consulta.plantilla_id }}">
     <input type="hidden" name="tipo" value="{{ consulta.tipo }}">
     {% if consulta.lugar_id %}<input type="hidden" name="lugar" value="{{ consulta.lugar_id }}">{% endif %}
     {% if cita %}<input type="hidden" name="cita" value="{{ cita.pk }}">{% endif %}
   {% endif %}
   {% for item, form in formularios %}
-    <div class="card om-seccion {% if item.ambito == 'PACIENTE' %}om-ambito-paciente{% endif %} mb-3" data-seccion data-codigo="{{ item.codigo }}">
+    <div class="card os-seccion {% if item.ambito == 'PACIENTE' %}os-ambito-paciente{% endif %} mb-3" data-seccion data-codigo="{{ item.codigo }}">
       <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#s{{ item.seccion_id }}">
         <i class="bi bi-chevron-down small"></i>{{ item.nombre }}{% if item.obligatoria %} <span class="text-danger">*</span>{% endif %}
-        {% if item.ambito == 'PACIENTE' %}<span class="om-chip ms-auto">se conserva entre consultas</span>{% endif %}
+        {% if item.ambito == 'PACIENTE' %}<span class="os-chip ms-auto">se conserva entre consultas</span>{% endif %}
         {% if form.errors %}<i class="bi bi-exclamation-circle-fill text-danger ms-auto"></i>{% endif %}
       </div>
       <div class="collapse {% if not item.colapsada or form.errors %}show{% endif %}" id="s{{ item.seccion_id }}">
@@ -42,7 +42,7 @@
     </div>
   {% endfor %}
   <datalist id="cie10-opciones"></datalist>
-  <div class="om-barra-acciones d-flex gap-2 justify-content-end flex-wrap">
+  <div class="os-barra-acciones d-flex gap-2 justify-content-end flex-wrap">
     {% if faltan %}<span class="small text-muted me-auto align-self-center">Para cerrar falta: {{ faltan|join:", " }}</span>{% endif %}
     <button name="accion" value="guardar" class="btn btn-outline-primary"><i class="bi bi-save me-1"></i>Guardar</button>
     <button name="accion" value="cerrar" class="btn btn-primary" onclick="return confirm('Al cerrar, la consulta ya no se edita (solo con enmiendas). ¿Cerrar?')"><i class="bi bi-lock me-1"></i>Guardar y cerrar</button>
@@ -62,7 +62,7 @@
 <script src="{% static 'js/secciones.js' %}"></script>
 <script>
 // Hora real de la consulta: cuándo se abrió el formulario (aunque se envíe más tarde desde la cola sin conexión)
-document.querySelectorAll('[data-om-inicio]').forEach(function (el) { if (!el.value) el.value = new Date().toISOString(); });
+document.querySelectorAll('[data-os-inicio]').forEach(function (el) { if (!el.value) el.value = new Date().toISOString(); });
 (function () {   // la copia sin conexión puede venir de otra cita del mismo paciente: manda la cita de la URL
   var f = document.getElementById('form-consulta'), cita = new URLSearchParams(location.search).get('cita');
   if (!f || !f.querySelector('[name=completa]') || !cita || !/^\d+$/.test(cita)) return;

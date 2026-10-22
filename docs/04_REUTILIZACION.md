@@ -3,15 +3,15 @@
 > Revisado el 2026-10-19 sobre las copias locales en `C:\proyectos`.
 > Acción: **Copiar** (casi tal cual, renombrar empresa→tenant) · **Adaptar** (la lógica sirve,
 > el modelo cambia) · **Referencia** (leer para no olvidar casos, reescribir) · **No portar**.
-> Los proyectos de origen **no se modifican** desde Omnis.
+> Los proyectos de origen **no se modifican** desde Ordo Salud.
 
 ## 1. Desde Ordo (`C:\proyectos\ordo`) — esqueleto y plataforma
 
 | Origen | Destino | Acción | Nota |
 |---|---|---|---|
-| `config/settings/{base,dev,prod}.py` | `config/settings/` | Adaptar | Quitar apps de ventas; agregar apps de Omnis |
+| `config/settings/{base,dev,prod}.py` | `config/settings/` | Adaptar | Quitar apps de ventas; agregar apps de Ordo Salud |
 | `Dockerfile`, `railway.json`, `railway.cron.json`, `.dockerignore` | raíz | Copiar | Cambiar nombre de módulo si aplica |
-| `docs/DESPLIEGUE_RAILWAY.md` | `docs/` | Adaptar | Variables y servicios de Omnis |
+| `docs/DESPLIEGUE_RAILWAY.md` | `docs/` | Adaptar | Variables y servicios de Ordo Salud |
 | `apps/core/tenancy.py` | `apps/core/tenancy.py` | Copiar | `empresa` → `tenant`, `EmpresaModel` → `TenantModel` |
 | `apps/core/middleware.py` | `apps/core/middleware.py` | Adaptar | Membresía virtual de soporte incluida |
 | `apps/core/permisos.py` | `apps/core/permisos.py` | Adaptar | Nueva tabla de roles y permisos clínicos |

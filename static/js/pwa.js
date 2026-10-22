@@ -1,7 +1,7 @@
-// Omnis PWA: registro del service worker, aviso de instalación y estado de conexión.
+// Ordo Salud PWA: registro del service worker, aviso de instalación y estado de conexión.
 (function () {
   'use strict';
-  const CLAVE = 'omnis.instalar.descartado';
+  const CLAVE = 'ordo.instalar.descartado';
   const DIAS = 30;
 
   if ('serviceWorker' in navigator) {
@@ -11,7 +11,7 @@
   }
 
   const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  if (standalone) document.documentElement.classList.add('om-instalada');
+  if (standalone) document.documentElement.classList.add('os-instalada');
 
   // PDF dentro de la app instalada: abrirlos directo saca de la app y "atrás" la cierra.
   // Los enlaces/formularios con data-pdf se muestran en el visor interno (/visor/), que sí vuelve con "atrás".
@@ -37,7 +37,7 @@
   document.addEventListener('submit', function (e) {
     if (e.target.matches && e.target.matches('form[action$="/cuenta/salir/"]') && window.caches) {
       caches.keys().then(function (claves) {
-        claves.filter(function (k) { return k.indexOf('omnis-paginas') === 0; }).forEach(function (k) { caches.delete(k); });
+        claves.filter(function (k) { return k.indexOf('ordo-paginas') === 0; }).forEach(function (k) { caches.delete(k); });
       });
     }
   });
@@ -50,11 +50,11 @@
   }
   function descartar() {
     try { localStorage.setItem(CLAVE, String(Date.now())); } catch (e) {}
-    const b = document.getElementById('om-instalar'); if (b) b.hidden = true;
+    const b = document.getElementById('os-instalar'); if (b) b.hidden = true;
   }
 
   function mostrar(modo) {
-    const b = document.getElementById('om-instalar');
+    const b = document.getElementById('os-instalar');
     if (!b || standalone || descartadoReciente()) return;
     b.querySelectorAll('[data-modo]').forEach(function (el) { el.hidden = el.dataset.modo !== modo; });
     b.hidden = false;
@@ -70,11 +70,11 @@
   window.addEventListener('appinstalled', descartar);
 
   document.addEventListener('click', function (e) {
-    if (e.target.closest('[data-om-instalar]') && evento) {
+    if (e.target.closest('[data-os-instalar]') && evento) {
       evento.prompt();
       evento.userChoice.finally(function () { evento = null; descartar(); });
     }
-    if (e.target.closest('[data-om-descartar]')) descartar();
+    if (e.target.closest('[data-os-descartar]')) descartar();
   });
 
   // iPhone / iPad (Safari): no hay prompt, se explica cómo hacerlo
@@ -85,7 +85,7 @@
 
   // Estado de conexión
   function conexion() {
-    const a = document.getElementById('om-sin-conexion');
+    const a = document.getElementById('os-sin-conexion');
     if (a) a.hidden = navigator.onLine;
   }
   window.addEventListener('online', conexion);

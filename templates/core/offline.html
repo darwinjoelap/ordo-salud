@@ -3,11 +3,11 @@
 {% block titulo %}Sin conexión{% endblock %}
 {# Se muestra sin conexión y también cuando la red tarda demasiado (señal débil). El texto lo decide el navegador. #}
 {% block cuerpo %}
-<div class="om-pantalla-suelta">
+<div class="os-pantalla-suelta">
   <div class="card shadow-sm"><div class="card-body p-4 p-sm-5 text-center">
-    <img src="{% static 'img/marca/omnis-logo.png' %}" alt="Omnis" class="om-logo-login">
+    <img src="{% static 'img/marca/ordo-salud-logo.svg' %}" alt="Ordo Salud" class="os-logo-login">
     <h1 class="h4 mt-3" id="of-titulo">Sin conexión</h1>
-    <p class="text-muted" id="of-texto">Omnis necesita internet para esta pantalla.</p>
+    <p class="text-muted" id="of-texto">Ordo Salud necesita internet para esta pantalla.</p>
     <div class="d-grid gap-2">
       
       <button class="btn btn-outline-primary" id="of-reintentar"><i class="bi bi-arrow-clockwise me-1"></i>Reintentar</button>

@@ -1,4 +1,4 @@
-"""WSGI de Omnis. En Railway se usa config.settings.prod."""
+"""WSGI de Ordo Salud. En Railway se usa config.settings.prod."""
 import os
 
 from django.core.wsgi import get_wsgi_application

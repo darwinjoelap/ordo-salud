@@ -1,5 +1,5 @@
 """
-Omnis — settings base (comunes a desarrollo y producción).
+Ordo Salud — settings base (comunes a desarrollo y producción).
 Todo lo sensible viene de variables de entorno (.env en local, Railway en la nube).
 """
 from pathlib import Path
@@ -14,9 +14,9 @@ DEBUG = False
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv(), default='localhost,127.0.0.1')
 CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', cast=Csv(), default='')
 
-PRODUCTO = 'Omnis'
+PRODUCTO = 'Ordo Salud'
 # Versión visible y usada para invalidar la caché de la PWA en cada despliegue
-OMNIS_VERSION = config('RAILWAY_GIT_COMMIT_SHA', default='dev')[:7]
+ORDO_VERSION = config('RAILWAY_GIT_COMMIT_SHA', default='dev')[:7]
 
 # ── Aplicaciones ──────────────────────────────────────────────────────────────
 DJANGO_APPS = [
@@ -31,7 +31,7 @@ DJANGO_APPS = [
     'cloudinary',
 ]
 
-OMNIS_APPS = [
+ORDO_APPS = [
     'apps.core',
     'apps.usuarios',
     'apps.plataforma',
@@ -51,7 +51,7 @@ OMNIS_APPS = [
 ]
 
 # apps.usuarios primero para que su `createsuperuser` reemplace al de Django
-INSTALLED_APPS = ['apps.usuarios'] + DJANGO_APPS + [a for a in OMNIS_APPS if a != 'apps.usuarios']
+INSTALLED_APPS = ['apps.usuarios'] + DJANGO_APPS + [a for a in ORDO_APPS if a != 'apps.usuarios']
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -81,9 +81,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'apps.core.context_processors.omnis',
+                'apps.core.context_processors.marca',
             ],
-            'builtins': ['apps.core.templatetags.omnis'],
+            'builtins': ['apps.core.templatetags.ordo'],
         },
     },
 ]
@@ -149,7 +149,7 @@ EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Omnis <no-responder@omnis.app>')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='Ordo Salud <no-responder@ordosalud.app>')
 
 # ── Mensajes con clases de Bootstrap ──────────────────────────────────────────
 from django.contrib.messages import constants as messages  # noqa: E402

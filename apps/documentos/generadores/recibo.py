@@ -5,7 +5,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Spacer, Table, TableStyle
 
 from apps.core.pdf import ESTILO_CELDA, Paragraph
-from apps.core.templatetags.omnis import bs, usd
+from apps.core.templatetags.ordo import bs, usd
 
 from .base import ANCHO, CUERPO, FONDO, LINEA, construir, datos_paciente, lugar_y_fecha, seccion, titulo
 

@@ -1,5 +1,5 @@
 /* =====================================================================
-   offline.js — Omnis · modo sin conexión de consulta (portado de Pediae/Ginea)
+   offline.js — Ordo Salud · modo sin conexión de consulta (portado de Pediae/Ginea)
    ---------------------------------------------------------------------
    1. Borradores: lo que se escribe en un formulario se guarda en el dispositivo
       (localStorage) mientras se escribe; si se cae la red, se cierra la app o se
@@ -14,7 +14,7 @@
       pacientes citados para que el service worker las tenga sin datos.
 
    Lo incluye base.html solo para usuarios con consultorio (no soporte):
-     window.OFFLINE_CFG = {app:'omnis', tenant:'<slug>', user:'<pk>', loginUrl:'/cuenta/entrar/'}
+     window.OFFLINE_CFG = {app:'ordo-salud', tenant:'<slug>', user:'<pk>', loginUrl:'/cuenta/entrar/'}
    Excluir un formulario:            <form ... data-offline="off">
    Destino alternativo sin conexión: <form ... data-offline-alt="/ruta/">  (p. ej. «Atender» → consulta nueva)
    ===================================================================== */
@@ -25,7 +25,7 @@
   if (!CFG.user || window.__offlineJsCargado) return;
   window.__offlineJsCargado = true;
 
-  var APP = CFG.app || 'omnis';
+  var APP = CFG.app || 'ordo-salud';
   var TENANT = String(CFG.tenant || '-');
   var USER = String(CFG.user);
   var LOGIN_URL = CFG.loginUrl || '/cuenta/entrar/';
@@ -43,7 +43,7 @@
   var EXCLUIR_ACTION = /(salir|entrar|pdf|documentos|imprimir|anular|adjuntar|eliminar|clave)/i;
   var SALIR_ACTION = /\/salir\/?$/i;
 
-  var CACHE_PAGINAS = 'omnis-paginas-v1';   // mismo nombre que en el service worker (apps/core/pwa.py)
+  var CACHE_PAGINAS = 'ordo-paginas-v1';   // mismo nombre que en el service worker (apps/core/pwa.py)
   var PRECARGA_CADA = 20 * 60 * 1000;     // refrescar copias como máximo cada 20 min (en la agenda: cada 3 min)
 
   var NS = 'ofl:' + APP + ':' + TENANT + ':' + USER + ':';
@@ -690,26 +690,26 @@
     if (document.getElementById('ofl-css')) return;
     var css = '' +
       '.ofl-pill{position:fixed;z-index:1080;left:50%;transform:translateX(-50%);' +
-      'bottom:calc(var(--om-tabbar-alto,64px) + env(safe-area-inset-bottom) + 12px);display:none;' +
+      'bottom:calc(var(--os-tabbar-alto,64px) + env(safe-area-inset-bottom) + 12px);display:none;' +
       'align-items:center;gap:.4rem;padding:.45rem .9rem;border-radius:999px;border:0;color:#fff;font-size:.82rem;' +
       'font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer;max-width:92vw;white-space:nowrap}' +
-      '@media (min-width:992px){.ofl-pill{bottom:18px;left:calc(50% + var(--om-sidebar-ancho,240px) / 2)}}' +
-      'body:has(.om-barra-acciones) .ofl-pill{margin-bottom:64px}body:has(.om-barra-acciones) .ofl-panel{margin-bottom:64px}' +
+      '@media (min-width:992px){.ofl-pill{bottom:18px;left:calc(50% + var(--os-sidebar-ancho,240px) / 2)}}' +
+      'body:has(.os-barra-acciones) .ofl-pill{margin-bottom:64px}body:has(.os-barra-acciones) .ofl-panel{margin-bottom:64px}' +
       '.ofl-pill{font-family:inherit}.ofl-pill.on{display:inline-flex}.ofl-pill.offline{background:#A23B32}' +
-      '.ofl-pill.lento{background:#A86A1C}.ofl-pill.cola{background:#2F625B}.ofl-pill.login{background:#5E4A33}' +
-      '.ofl-pill.ok{background:#5D9680}' +
+      '.ofl-pill.lento{background:#A15C07}.ofl-pill.cola{background:#145F8F}.ofl-pill.login{background:#3E5161}' +
+      '.ofl-pill.ok{background:#1C8577}' +
       '.ofl-dot{width:8px;height:8px;border-radius:50%;background:#fff;opacity:.9}' +
       '.ofl-panel{position:fixed;z-index:1081;left:50%;transform:translateX(-50%);' +
-      'bottom:calc(var(--om-tabbar-alto,64px) + env(safe-area-inset-bottom) + 58px);width:min(420px,94vw);' +
-      'max-height:55vh;overflow:auto;background:#fff;border:1px solid #E6E1D6;border-radius:16px;' +
+      'bottom:calc(var(--os-tabbar-alto,64px) + env(safe-area-inset-bottom) + 58px);width:min(420px,94vw);' +
+      'max-height:55vh;overflow:auto;background:#fff;border:1px solid #DCE4EB;border-radius:16px;' +
       'box-shadow:0 8px 28px rgba(31,64,61,.18);display:none;font-size:.85rem}' +
-      '@media (min-width:992px){.ofl-panel{bottom:64px;left:calc(50% + var(--om-sidebar-ancho,240px) / 2)}}' +
-      '.ofl-panel.on{display:block}.ofl-panel .ofl-row{padding:.6rem .9rem;border-bottom:1px solid #EEEAE1}' +
+      '@media (min-width:992px){.ofl-panel{bottom:64px;left:calc(50% + var(--os-sidebar-ancho,240px) / 2)}}' +
+      '.ofl-panel.on{display:block}.ofl-panel .ofl-row{padding:.6rem .9rem;border-bottom:1px solid #E8EEF3}' +
       '.ofl-toasts{position:fixed;z-index:1090;top:12px;left:50%;transform:translateX(-50%);width:min(440px,94vw);display:flex;flex-direction:column;gap:.4rem;pointer-events:none}' +
       '.ofl-toast{pointer-events:auto;padding:.6rem .9rem;border-radius:.5rem;color:#fff;font-size:.85rem;box-shadow:0 4px 14px rgba(0,0,0,.2);line-height:1.35}' +
-      '.ofl-toast.success{background:#3F7A63}.ofl-toast.danger{background:#A23B32}.ofl-toast.warning{background:#A86A1C}' +
-      '.ofl-toast.info{background:#2F625B}' +
-      '.ofl-nota{font-size:.75rem;color:#55625F;margin-top:.5rem;text-align:right}' +
+      '.ofl-toast.success{background:#3F7A63}.ofl-toast.danger{background:#A23B32}.ofl-toast.warning{background:#A15C07}' +
+      '.ofl-toast.info{background:#145F8F}' +
+      '.ofl-nota{font-size:.75rem;color:#4B5E6D;margin-top:.5rem;text-align:right}' +
       '.ofl-nota .bi{margin-right:.2rem}';
     var st = document.createElement('style');
     st.id = 'ofl-css';
@@ -775,7 +775,7 @@
 
   function pintarPanel() {
     var cola = pendientes().sort(function (a, b) { return a.creado - b.creado; });
-    var html = '<div class="ofl-row d-flex align-items-center gap-2" style="background:#FBF9F4">' +
+    var html = '<div class="ofl-row d-flex align-items-center gap-2" style="background:#F4F7FA">' +
       '<strong class="flex-grow-1">' + (estado.red === 'offline' ? '<i class="bi bi-wifi-off text-danger me-1"></i>Sin conexión'
         : estado.red === 'lento' ? '<i class="bi bi-reception-1 text-warning me-1"></i>Conexión lenta'
         : '<i class="bi bi-wifi text-success me-1"></i>Conectado') + '</strong>' +
@@ -880,7 +880,7 @@
     if (!c) return;
     // Los mensajes de Django de la copia son viejos: no mostrarlos
     Array.prototype.forEach.call(document.querySelectorAll('main .alert-dismissible'), function (a) { a.remove(); });
-    var cont = document.querySelector('main.om-main') || document.querySelector('main') || document.body;
+    var cont = document.querySelector('main.os-main') || document.querySelector('main') || document.body;
     var div = document.createElement('div');
     div.className = 'alert alert-secondary py-2 px-3 small d-flex align-items-center gap-2 ofl-copia';
     div.innerHTML = '<i class="bi bi-phone"></i><span class="flex-grow-1"><strong>Copia guardada en este dispositivo</strong>' +
@@ -897,7 +897,7 @@
   /* ───────────────────────── arranque ───────────────────────── */
 
   function iniciar() {
-    var chipViejo = document.getElementById('om-sin-conexion');   // la píldora de este archivo lo reemplaza
+    var chipViejo = document.getElementById('os-sin-conexion');   // la píldora de este archivo lo reemplaza
     if (chipViejo) chipViejo.remove();
     crearUi();
     purgarBorradoresViejos();
@@ -932,7 +932,7 @@
     programarSync(2000);
 
     // API mínima para depurar desde la consola
-    window.OfflineOmnis = { estado: estado, cola: pendientes, sincronizar: function () { sincronizar(true); },
+    window.OfflineOrdo = { estado: estado, cola: pendientes, sincronizar: function () { sincronizar(true); },
                             precargar: function () { precargar(true); } };
   }
 

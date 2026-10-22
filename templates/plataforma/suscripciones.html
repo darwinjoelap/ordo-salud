@@ -2,14 +2,14 @@
 {% load l10n %}
 {% block contenido %}
 {% include 'plataforma/_nav.html' %}
-<div class="mb-3"><div class="om-eyebrow">Plataforma</div><h1 class="h3 mb-0">Suscripciones</h1></div>
+<div class="mb-3"><div class="os-eyebrow">Plataforma</div><h1 class="h3 mb-0">Suscripciones</h1></div>
 
 <div class="row g-3 mb-3">
-  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="om-cifra-etiqueta">Activos</div><div class="om-cifra">{{ por_estado.ACTIVO|length }}</div><div class="small text-muted">{{ vencen|length }} vencen en 30 días</div></div></div></div>
-  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="om-cifra-etiqueta">En gracia</div><div class="om-cifra {% if por_estado.GRACIA %}text-warning-emphasis{% endif %}">{{ por_estado.GRACIA|length }}</div><div class="small text-muted">vencidos, aún entran</div></div></div></div>
-  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="om-cifra-etiqueta">Vencidos / suspendidos</div><div class="om-cifra">{{ por_estado.VENCIDO|length }} / {{ por_estado.SUSPENDIDO|length }}</div><div class="small text-muted">sin acceso del equipo</div></div></div></div>
-  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="om-cifra-etiqueta">Ingreso mensual estimado</div><div class="om-cifra">{{ mrr|usd }}</div><div class="small text-muted">precio mensual de los planes vigentes</div></div></div></div>
-  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="om-cifra-etiqueta">Cobrado este mes</div><div class="om-cifra">{{ cobrado_mes|usd }}</div><div class="small text-muted">{{ cobrado_anio|usd }} en el año</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Activos</div><div class="os-cifra">{{ por_estado.ACTIVO|length }}</div><div class="small text-muted">{{ vencen|length }} vencen en 30 días</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">En gracia</div><div class="os-cifra {% if por_estado.GRACIA %}text-warning-emphasis{% endif %}">{{ por_estado.GRACIA|length }}</div><div class="small text-muted">vencidos, aún entran</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Vencidos / suspendidos</div><div class="os-cifra">{{ por_estado.VENCIDO|length }} / {{ por_estado.SUSPENDIDO|length }}</div><div class="small text-muted">sin acceso del equipo</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Ingreso mensual estimado</div><div class="os-cifra">{{ mrr|usd }}</div><div class="small text-muted">precio mensual de los planes vigentes</div></div></div></div>
+  <div class="col-6 col-lg"><div class="card h-100"><div class="card-body"><div class="os-cifra-etiqueta">Cobrado este mes</div><div class="os-cifra">{{ cobrado_mes|usd }}</div><div class="small text-muted">{{ cobrado_anio|usd }} en el año</div></div></div></div>
 </div>
 
 <div class="row g-3">
@@ -25,12 +25,12 @@
   </div>
   <div class="col-lg-6">
     <div class="card h-100"><div class="card-header">Cobrado por mes (USD, últimos 12)</div><div class="card-body">
-      <div class="om-columnas om-columnas-compactas" role="img" aria-label="Cobrado por mes">
+      <div class="os-columnas os-columnas-compactas" role="img" aria-label="Cobrado por mes">
         {% for m in mensual %}
-        <div class="om-columna" title="{{ m.titulo }}: {{ m.total|usd }}">
-          <div class="om-columna-valor">{% if m.total %}{{ m.total|floatformat:0 }}{% endif %}</div>
-          <div class="om-columna-pista"><div class="om-columna-barra" style="height: {{ m.pct|unlocalize }}%"></div></div>
-          <div class="om-columna-etiqueta">{{ m.mes }}</div>
+        <div class="os-columna" title="{{ m.titulo }}: {{ m.total|usd }}">
+          <div class="os-columna-valor">{% if m.total %}{{ m.total|floatformat:0 }}{% endif %}</div>
+          <div class="os-columna-pista"><div class="os-columna-barra" style="height: {{ m.pct|unlocalize }}%"></div></div>
+          <div class="os-columna-etiqueta">{{ m.mes }}</div>
         </div>
         {% endfor %}
       </div>
@@ -38,7 +38,7 @@
   </div>
   <div class="col-12">
     <div class="card"><div class="card-header">Últimas renovaciones</div>
-      <div class="table-responsive"><table class="table align-middle mb-0 om-tabla small">
+      <div class="table-responsive"><table class="table align-middle mb-0 os-tabla small">
         <thead class="table-light"><tr><th>Fecha</th><th>Consultorio</th><th>Período</th><th>Plan</th><th>Referencia</th><th>Por</th><th class="text-end">Monto</th></tr></thead>
         <tbody>{% for r in ultimas %}
           <tr class="{% if r.anulada %}text-muted{% endif %}">

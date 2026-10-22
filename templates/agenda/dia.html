@@ -17,7 +17,7 @@
 <div class="mb-3">{% include 'agenda/_selector_profesional.html' %}</div>
 {% for b in bloqueos %}<div class="alert alert-secondary py-1 small"><i class="bi bi-slash-circle me-1"></i>Bloqueo{% if b.profesional %} de {{ b.profesional }}{% else %} de todo el consultorio{% endif %}: {{ b.motivo }} ({{ b.desde|date:"d/m" }} {{ b.desde|hora12 }} – {{ b.hasta|date:"d/m" }} {{ b.hasta|hora12 }})</div>{% endfor %}
 {% if cumpleanos %}
-<div class="card mb-3 om-cumpleanos"><div class="card-body py-2">
+<div class="card mb-3 os-cumpleanos"><div class="card-body py-2">
   <div class="small fw-semibold mb-1"><i class="bi bi-cake2 me-1"></i>Cumpleaños {% if fecha == hoy %}de hoy{% else %}del día{% endif %}</div>
   <div class="d-flex flex-wrap gap-2">{% for c in cumpleanos %}
     <div class="d-flex align-items-center gap-2 border rounded-3 px-2 py-1 bg-white">
@@ -33,7 +33,7 @@
   <div class="{% if columnas|length > 1 %}col-lg-6 col-xxl-4{% else %}col-lg-8{% endif %}">
     <div class="card h-100">
       <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <span class="fw-semibold"><span class="om-color-punto me-1" style="background:{{ col.profesional.color_agenda }}"></span>{{ col.profesional.nombre_con_titulo }} <span class="small text-muted fw-normal">· {{ col.profesional.especialidad }}</span></span>
+        <span class="fw-semibold"><span class="os-color-punto me-1" style="background:{{ col.profesional.color_agenda }}"></span>{{ col.profesional.nombre_con_titulo }} <span class="small text-muted fw-normal">· {{ col.profesional.especialidad }}</span></span>
         <span class="small text-muted">{{ col.activas }} pendiente{{ col.activas|pluralize }}</span>
       </div>
       <div class="list-group list-group-flush">
@@ -42,7 +42,7 @@
       {% if col.libres and 'agenda.gestionar' in permisos %}
       <div class="card-body pt-2">
         <div class="small text-muted mb-1">Turnos libres</div>
-        <div class="d-flex flex-wrap gap-1">{% for hora, lugar in col.libres %}<a href="{% url 'agenda:cita_nueva' %}?fecha={{ fecha|date:'Y-m-d' }}&hora={{ hora|time:'H:i' }}&p={{ col.profesional.pk }}{% if lugar %}&lugar={{ lugar.pk }}{% endif %}" class="om-chip text-decoration-none">{{ hora|hora12 }}</a>{% endfor %}</div>
+        <div class="d-flex flex-wrap gap-1">{% for hora, lugar in col.libres %}<a href="{% url 'agenda:cita_nueva' %}?fecha={{ fecha|date:'Y-m-d' }}&hora={{ hora|time:'H:i' }}&p={{ col.profesional.pk }}{% if lugar %}&lugar={{ lugar.pk }}{% endif %}" class="os-chip text-decoration-none">{{ hora|hora12 }}</a>{% endfor %}</div>
       </div>
       {% endif %}
     </div>

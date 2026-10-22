@@ -1,4 +1,4 @@
-# Omnis
+# Ordo Salud
 
 SaaS multi-tenant para gestión de consultas médicas de múltiples especialidades:
 historia clínica configurable por el médico, agenda multi-profesional, récipes e informes en PDF,

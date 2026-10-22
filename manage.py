@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Utilidad de línea de comandos de Django para Omnis."""
+"""Utilidad de línea de comandos de Django para Ordo Salud."""
 import os
 import sys
 

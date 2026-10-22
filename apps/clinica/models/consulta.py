@@ -191,7 +191,7 @@ class Enmienda(TenantModel, Auditable):
 
 
 def _ruta_adjunto(instancia, archivo):
-    return f'omnis/{instancia.tenant.slug}/pacientes/{instancia.paciente_id}/{archivo}'
+    return f'ordo-salud/{instancia.tenant.slug}/pacientes/{instancia.paciente_id}/{archivo}'
 
 
 class Adjunto(TenantModel, Auditable):

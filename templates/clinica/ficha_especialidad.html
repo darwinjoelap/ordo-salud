@@ -4,14 +4,14 @@
 <a href="{% url 'pacientes:detalle' paciente.pk %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> {{ paciente.nombre_completo }}</a>
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mt-1 mb-3">
   <div>
-    <div class="om-eyebrow">Ficha de {{ especialidad.nombre|lower }}</div>
+    <div class="os-eyebrow">Ficha de {{ especialidad.nombre|lower }}</div>
     <h1 class="h4 mb-0">{{ paciente.nombre_completo }} <span class="small text-muted fw-normal">{{ paciente.edad_texto }}{% if paciente.sexo %} · {{ paciente.get_sexo_display }}{% endif %}</span></h1>
     <div class="small text-muted">Se conserva entre consultas; cada cambio queda en el historial. También se puede completar dentro de una consulta.</div>
   </div>
 </div>
 <form method="post" autocomplete="off" data-offline-titulo="Ficha · {{ paciente.nombre_completo }}">{% csrf_token %}
   {% for item, form in formularios %}
-    <div class="card om-seccion om-ambito-paciente mb-3" data-seccion>
+    <div class="card os-seccion os-ambito-paciente mb-3" data-seccion>
       <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#s{{ item.seccion_id }}">
         <i class="bi bi-chevron-down small"></i>{{ item.nombre }}
         {% if form.errors %}<i class="bi bi-exclamation-circle-fill text-danger ms-auto"></i>{% endif %}
@@ -22,7 +22,7 @@
     </div>
   {% endfor %}
   {% if puede_editar %}
-  <div class="om-barra-acciones d-flex gap-2 justify-content-end">
+  <div class="os-barra-acciones d-flex gap-2 justify-content-end">
     <a href="{% url 'pacientes:detalle' paciente.pk %}" class="btn btn-outline-secondary">Cancelar</a>
     <button class="btn btn-primary"><i class="bi bi-save me-1"></i>Guardar ficha</button>
   </div>

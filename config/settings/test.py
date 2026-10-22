@@ -4,7 +4,7 @@ import tempfile
 from .dev import *  # noqa: F401,F403
 
 PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
-MEDIA_ROOT = tempfile.mkdtemp(prefix='omnis-media-')
+MEDIA_ROOT = tempfile.mkdtemp(prefix='ordo-media-')
 STORAGES = {**STORAGES, 'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'}}  # noqa: F405
 DEBUG_TOOLBAR = False
 

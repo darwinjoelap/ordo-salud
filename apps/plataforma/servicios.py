@@ -16,13 +16,13 @@ from apps.core.permisos import Rol
 
 from .models import AccesoSoporte, Suscripcion, Tenant
 
-# Primeros segmentos de URL que usa Omnis: no pueden ser enlaces de un tenant
+# Primeros segmentos de URL que usa Ordo Salud: no pueden ser enlaces de un tenant
 RESERVADOS = {
     'admin', 'api', 'cuenta', 'equipo', 'configuracion', 'tasa', 'servicios', 'cobros', 'pacientes', 'agenda',
     'consultas', 'clinica', 'historia', 'plantillas', 'secciones', 'documentos', 'reportes', 'plataforma',
     'salud', 'offline', 'instalar', 'visor', 'static', 'media', 'favicon.ico', 'manifest.webmanifest', 'sw.js',
-    '__debug__', 'omnis', 'www', 'app', 'soporte', 'ayuda', 'login', 'entrar', 'dictado', 'cie10', 'adjuntos', 'citas',
-    'esp',
+    '__debug__', 'ordo', 'ordo-salud', 'www', 'app', 'soporte', 'ayuda', 'login', 'entrar', 'dictado', 'cie10',
+    'adjuntos', 'citas', 'esp',
 }
 PATRON = re.compile(r'^[a-z0-9]+(?:-[a-z0-9]+)*$')
 
@@ -32,7 +32,7 @@ def validar_enlace(slug, excluir_pk=None):
     if not 3 <= len(slug) <= 40 or not PATRON.match(slug):
         raise ValidationError('Usa de 3 a 40 letras minúsculas, números o guiones (ej. dra-perez).')
     if slug in RESERVADOS:
-        raise ValidationError(f'"{slug}" está reservado por Omnis. Elige otro.')
+        raise ValidationError(f'"{slug}" está reservado por Ordo Salud. Elige otro.')
     if Tenant.objects.filter(slug=slug).exclude(pk=excluir_pk).exists():
         raise ValidationError('Ese enlace ya lo usa otro consultorio.')
     return slug
@@ -153,7 +153,7 @@ def entrar_soporte(tenant, usuario, motivo=''):
     from apps.core.models import Auditoria
     from apps.core.tenancy import usando_tenant
     acceso = AccesoSoporte.objects.create(usuario=usuario, tenant=tenant, motivo=(motivo or '')[:200])
-    detalle = 'Entrada de soporte de Omnis' + (f': {motivo}' if motivo else '')
+    detalle = 'Entrada de soporte de Ordo Salud' + (f': {motivo}' if motivo else '')
     with usando_tenant(tenant):
         Auditoria.objects.create(usuario=usuario, accion=Auditoria.Accion.SOPORTE, objeto_tipo='plataforma.Tenant',
                                  objeto_id=str(tenant.pk), detalle=detalle[:300])

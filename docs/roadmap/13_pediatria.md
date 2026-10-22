@@ -9,7 +9,7 @@
 migraciones `pacientes/0017` (esquema de vacunas) y `0018` (pesquisas)
 
 ## Objetivo
-Una pediatra que hoy usa Pediae puede trabajar en Omnis sin perder nada de lo que usa a diario: ficha pediátrica,
+Una pediatra que hoy usa Pediae puede trabajar en Ordo Salud sin perder nada de lo que usa a diario: ficha pediátrica,
 antropometría con percentiles y curvas OMS, vacunas, pesquisas, calculadora de dosis, constancias y reportes
 pediátricos; y con los ajustes que se hicieron sobre la marcha en Pediae.
 
@@ -95,7 +95,7 @@ pagos pendientes.
 
 ---
 
-## 2. Lo que Omnis ya tiene (no se rehace)
+## 2. Lo que Ordo Salud ya tiene (no se rehace)
 - [x] Cita sin hora = TENTATIVA; turnos libres al agendar; aviso fuera de horario (Fase 08).
 - [x] WhatsApp al representante del menor con saludo a él, hora en 12 h, sin hora si es tentativa, texto
       automático primero y mensaje del consultorio después (verificado en `agenda/servicios.url_whatsapp`).
@@ -110,7 +110,7 @@ pagos pendientes.
    (−0,3521) y S desactualizado para talla > 24 m. Comparado con las tablas oficiales OMS:
    niño de 24 m y 10,0 kg → Pediae **P1,6 (desnutrición severa)**, OMS **P4,4 (desnutrición)**;
    la talla a los 48 m usa S = 0,029 cuando el oficial es 0,040 (percentiles demasiado extremos).
-   → Omnis usa las **tablas LMS oficiales OMS completas, mes a mes** (0–60 m) incluidas en el código.
+   → Ordo Salud usa las **tablas LMS oficiales OMS completas, mes a mes** (0–60 m) incluidas en el código.
 2. Edad en meses para las curvas con `días / 30,44` y en percentiles con `relativedelta`: se unifica (meses
    cumplidos exactos; para < 3 meses la OMS da tablas por día — se evalúa).
 3. Constancia de niño sano con «Normopeso (Eutrófico)» **fijo** aunque el niño no lo esté → se toma de la
@@ -193,4 +193,4 @@ Ver decisión D2 (núcleo o solo pediatría). Modelo `Medicamento` como el de Pe
       constancia de niño sano) se hace de punta a punta en escritorio y en el teléfono, también sin conexión.
 - [ ] Percentiles iguales a la OMS (tolerancia 0,1 percentil) en los casos de prueba.
 - [ ] La pediatra revisa y aprueba textos de constancias y la ficha.
-- [ ] 100 % de lo listado en §1 está en Omnis o anotado como pendiente con su motivo.
+- [ ] 100 % de lo listado en §1 está en Ordo Salud o anotado como pendiente con su motivo.

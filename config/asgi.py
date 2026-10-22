@@ -1,4 +1,4 @@
-"""ASGI de Omnis (no se usa en Railway; gunicorn sirve WSGI)."""
+"""ASGI de Ordo Salud (no se usa en Railway; gunicorn sirve WSGI)."""
 import os
 
 from django.core.asgi import get_asgi_application

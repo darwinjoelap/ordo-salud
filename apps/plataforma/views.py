@@ -19,7 +19,7 @@ from . import servicios
 from .forms import EditarTenantForm, NuevoTenantForm, PlanForm, RenovarForm
 from .models import Plan, Suscripcion, Tenant
 
-SESION_ACCESO = 'omnis_soporte_acceso'
+SESION_ACCESO = 'ordo_soporte_acceso'
 
 log = logging.getLogger('apps.plataforma')
 

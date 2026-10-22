@@ -1,4 +1,4 @@
-# Omnis — documentación
+# Ordo Salud — documentación
 
 Sistema SaaS de consultas médicas multiespecialidad. Esta carpeta es la **fuente de verdad**
 del proyecto: si algo no está escrito aquí, no está acordado.
@@ -53,6 +53,6 @@ Si la fase cerró, pásala a docs/HISTORIAL.md.
 Recarga: `Lee CLAUDE.md y docs/ESTADO.md. Reinicia desde ahí.`
 
 ## Sugerencia de organización en Claude
-- Un **proyecto propio** "Omnis" (no mezclarlo con Ginea/Pediae/Ordo: comparten vocabulario
+- Un **proyecto propio** "Ordo Salud" (no mezclarlo con Ginea/Pediae/Ordo: comparten vocabulario
   y el modelo confunde convenciones).
 - Instrucciones del proyecto: 5–10 líneas que apunten a `CLAUDE.md`; no duplicarlo.

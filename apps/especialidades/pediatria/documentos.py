@@ -1,5 +1,5 @@
 """
-Documentos de pediatría (textos de Pediae `pacientes/constancias_pdf.py`, con el diseño de Omnis: encabezado del
+Documentos de pediatría (textos de Pediae `pacientes/constancias_pdf.py`, con el diseño de Ordo Salud: encabezado del
 médico, logo tenue y firma/sello fijos al pie). Mejoras: el diagnóstico nutricional y el estado de vacunas salen de
 los datos reales (en Pediae la constancia de niño sano decía «Eutrófico» siempre) y la médica puede corregirlos.
 """

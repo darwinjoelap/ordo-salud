@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block cuerpo %}
-<div class="om-pantalla-suelta">
+<div class="os-pantalla-suelta">
   <div class="card shadow-sm">
     <div class="card-body p-4 text-center">
-      <img src="{% static 'img/marca/omnis-logo.png' %}" alt="Omnis" class="om-logo-login">
+      <img src="{% static 'img/marca/ordo-salud-logo.svg' %}" alt="Ordo Salud" class="os-logo-login">
       {% if suspendidos %}
         <h1 class="h5 mt-3">Acceso suspendido</h1>
-        <p class="text-muted">El acceso a {% for e in suspendidos %}<b>{{ e.nombre }}</b>{% if not forloop.last %}, {% endif %}{% endfor %} está suspendido o vencido. Contacta a soporte de Omnis.</p>
+        <p class="text-muted">El acceso a {% for e in suspendidos %}<b>{{ e.nombre }}</b>{% if not forloop.last %}, {% endif %}{% endfor %} está suspendido o vencido. Contacta a soporte de Ordo Salud.</p>
       {% else %}
         <h1 class="h5 mt-3">Tu usuario no tiene un consultorio asignado</h1>
-        <p class="text-muted">Pide al administrador de tu consultorio que te agregue, o escribe a soporte de Omnis.</p>
+        <p class="text-muted">Pide al administrador de tu consultorio que te agregue, o escribe a soporte de Ordo Salud.</p>
       {% endif %}
       {% if user.is_superuser %}
         <a href="{% url 'plataforma:lista' %}" class="btn btn-outline-primary mb-2 w-100">

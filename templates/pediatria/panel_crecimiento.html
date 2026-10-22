@@ -1,5 +1,5 @@
 {# Panel de pediatría en la ficha del paciente: curvas OMS con los puntos del paciente #}
-<div class="card mb-3 om-panel-crecimiento">
+<div class="card mb-3 os-panel-crecimiento">
   <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center flex-wrap gap-2">
     <span><i class="bi bi-graph-up me-1"></i>Crecimiento (OMS)</span>
     {% if panel.graficos %}<a href="{% url 'documentos:emitir' 'ped_curvas' %}?paciente={{ paciente.pk }}" class="small"><i class="bi bi-file-earmark-pdf me-1"></i>PDF de las curvas</a>{% endif %}
@@ -9,10 +9,10 @@
     {% if panel.ultima %}
     <div class="d-flex flex-wrap gap-2 mb-3 small">
       <span class="text-muted align-self-center">Última medición ({{ panel.ultima.fecha|date:"d/m/Y" }}):</span>
-      {% if panel.ultima.peso_kg %}<span class="om-chip">Peso {{ panel.ultima.peso_kg|floatformat:"-2" }} kg{% if panel.ultima.p_peso is not None %} · P{{ panel.ultima.p_peso|floatformat:"-1" }}{% endif %}</span>{% endif %}
-      {% if panel.ultima.talla_cm %}<span class="om-chip">Talla {{ panel.ultima.talla_cm|floatformat:"-1" }} cm{% if panel.ultima.p_talla is not None %} · P{{ panel.ultima.p_talla|floatformat:"-1" }}{% endif %}</span>{% endif %}
-      {% if panel.ultima.pc_cm %}<span class="om-chip">PC {{ panel.ultima.pc_cm|floatformat:"-1" }} cm{% if panel.ultima.p_pc is not None %} · P{{ panel.ultima.p_pc|floatformat:"-1" }}{% endif %}</span>{% endif %}
-      {% if panel.ultima.estado_nutricional %}<span class="om-chip om-chip-estado">{{ panel.ultima.estado_nutricional }}</span>{% endif %}
+      {% if panel.ultima.peso_kg %}<span class="os-chip">Peso {{ panel.ultima.peso_kg|floatformat:"-2" }} kg{% if panel.ultima.p_peso is not None %} · P{{ panel.ultima.p_peso|floatformat:"-1" }}{% endif %}</span>{% endif %}
+      {% if panel.ultima.talla_cm %}<span class="os-chip">Talla {{ panel.ultima.talla_cm|floatformat:"-1" }} cm{% if panel.ultima.p_talla is not None %} · P{{ panel.ultima.p_talla|floatformat:"-1" }}{% endif %}</span>{% endif %}
+      {% if panel.ultima.pc_cm %}<span class="os-chip">PC {{ panel.ultima.pc_cm|floatformat:"-1" }} cm{% if panel.ultima.p_pc is not None %} · P{{ panel.ultima.p_pc|floatformat:"-1" }}{% endif %}</span>{% endif %}
+      {% if panel.ultima.estado_nutricional %}<span class="os-chip os-chip-estado">{{ panel.ultima.estado_nutricional }}</span>{% endif %}
     </div>
     {% endif %}
     {% if panel.graficos %}

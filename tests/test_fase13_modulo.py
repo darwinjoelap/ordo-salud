@@ -47,7 +47,7 @@ class ModuloPediatriaTest(BaseTest):
     def test_ficha_del_paciente_muestra_paneles_y_ficha_pediatrica(self):
         self.consulta_con_medidas()
         r = self.cliente.get(f'/pacientes/{self.nino.pk}/')
-        self.assertContains(r, 'om-curva')                       # SVG de crecimiento
+        self.assertContains(r, 'os-curva')                       # SVG de crecimiento
         self.assertContains(r, 'Vacunas')
         self.assertContains(r, reverse('clinica:ficha_especialidad', args=[self.nino.pk, 'pediatria']))
 

@@ -1,9 +1,9 @@
 {% load l10n %}{% if barras %}
 <ul class="list-unstyled mb-0 d-flex flex-column gap-2">
   {% for b in barras %}
-  <li class="om-fila-barra">
+  <li class="os-fila-barra">
     <div class="d-flex justify-content-between gap-2 small"><span class="text-truncate" title="{{ b.etiqueta }}">{{ b.etiqueta }}</span><span class="fw-semibold text-nowrap">{% if dinero %}{{ b.valor|usd }}{% else %}{{ b.valor }}{% endif %}</span></div>
-    <div class="om-barra-pista mt-1"><div class="om-barra" style="width: {{ b.pct|unlocalize }}%"></div></div>
+    <div class="os-barra-pista mt-1"><div class="os-barra" style="width: {{ b.pct|unlocalize }}%"></div></div>
   </li>
   {% endfor %}
 </ul>

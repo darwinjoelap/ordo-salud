@@ -1,5 +1,5 @@
 """
-Tareas periódicas de Omnis. En Railway: servicio Cron con este comando (railway.cron.json).
+Tareas periódicas de Ordo Salud. En Railway: servicio Cron con este comando (railway.cron.json).
   python manage.py tareas_programadas              → todo
   python manage.py tareas_programadas --solo tasa
 """

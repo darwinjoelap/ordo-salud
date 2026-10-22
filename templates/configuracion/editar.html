@@ -11,7 +11,7 @@
   {% csrf_token %}
   <input type="hidden" name="tab" id="tab-activa" value="{{ tab }}">
   {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
-  <ul class="nav nav-tabs om-tabs mb-3" role="tablist">
+  <ul class="nav nav-tabs os-tabs mb-3" role="tablist">
     {% for clave, titulo, campos in form.grupos %}
       <li class="nav-item" role="presentation">
         <button class="nav-link {% if clave == tab %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#tab-{{ clave }}" data-tab="{{ clave }}" type="button" role="tab">
@@ -28,10 +28,10 @@
             {% for campo in campos %}
               <div class="{% if campo.name in 'direccion mensaje_whatsapp pie_documentos visibilidad_historia membrete' %}col-12{% else %}col-md-6{% endif %}">
                 {% if campo.name == 'logo' and form.instance.logo %}
-                  <div class="d-flex align-items-center gap-3 mb-2"><img src="{{ form.instance.logo.url }}" alt="Logo actual" class="om-logo-actual">{% include 'partials/campo.html' with campo=form.quitar_logo %}</div>
+                  <div class="d-flex align-items-center gap-3 mb-2"><img src="{{ form.instance.logo.url }}" alt="Logo actual" class="os-logo-actual">{% include 'partials/campo.html' with campo=form.quitar_logo %}</div>
                 {% endif %}
                 {% if campo.name == 'membrete' and form.instance.membrete %}
-                  <div class="d-flex align-items-center gap-3 mb-2"><img src="{{ form.instance.membrete.url }}" alt="Membrete actual" class="om-logo-actual" style="max-width:320px">{% include 'partials/campo.html' with campo=form.quitar_membrete %}</div>
+                  <div class="d-flex align-items-center gap-3 mb-2"><img src="{{ form.instance.membrete.url }}" alt="Membrete actual" class="os-logo-actual" style="max-width:320px">{% include 'partials/campo.html' with campo=form.quitar_membrete %}</div>
                 {% endif %}
                 {% include 'partials/campo.html' with campo=campo %}
               </div>

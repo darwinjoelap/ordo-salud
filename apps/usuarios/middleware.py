@@ -1,4 +1,4 @@
-"""Obliga a cambiar la contraseña temporal antes de usar Omnis."""
+"""Obliga a cambiar la contraseña temporal antes de usar Ordo Salud."""
 from django.shortcuts import redirect
 
 LIBRES = ('/cuenta/', '/static/', '/media/', '/salud/', '/manifest.webmanifest', '/sw.js', '/offline/', '/favicon.ico')

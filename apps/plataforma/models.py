@@ -38,7 +38,7 @@ class Especialidad(models.Model):
     """Catálogo global. Las filas las crea/actualiza `sincronizar_especialidades` desde los módulos instalados."""
     codigo = models.SlugField('Código', max_length=40, unique=True)
     nombre = models.CharField('Nombre', max_length=100)
-    color = models.CharField('Color', max_length=7, default='#2F625B')
+    color = models.CharField('Color', max_length=7, default='#145F8F')
     icono = models.CharField('Ícono (Bootstrap Icons)', max_length=40, default='bi-heart-pulse')
     modulo = models.CharField('Módulo', max_length=120, blank=True,
                               help_text='App que la implementa. Vacío = sin módulo (solo secciones generales).')
@@ -55,7 +55,7 @@ class Especialidad(models.Model):
 
 
 class Tenant(models.Model):
-    """Un consultorio o una clínica cliente de Omnis."""
+    """Un consultorio o una clínica cliente de Ordo Salud."""
 
     class Estado(models.TextChoices):
         ACTIVO = 'ACTIVO', 'Activo'
@@ -183,7 +183,7 @@ class Suscripcion(models.Model):
 
 
 class AccesoSoporte(models.Model):
-    """Cada vez que un administrador de Omnis entra a un consultorio como soporte (trazabilidad)."""
+    """Cada vez que un administrador de Ordo Salud entra a un consultorio como soporte (trazabilidad)."""
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='accesos_soporte')
     inicio = models.DateTimeField(auto_now_add=True)

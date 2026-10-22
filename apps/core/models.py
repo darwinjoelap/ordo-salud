@@ -32,7 +32,7 @@ class Auditoria(TenantModel):
         IMPRIMIR = 'IMPRIMIR', 'Imprimir'
         EXPORTAR = 'EXPORTAR', 'Exportar'
         ACCESO_EXCEPCIONAL = 'EXCEPCION', 'Acceso excepcional'
-        SOPORTE = 'SOPORTE', 'Soporte de Omnis'
+        SOPORTE = 'SOPORTE', 'Soporte de Ordo Salud'
 
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
     accion = models.CharField('Acción', max_length=10, choices=Accion.choices)

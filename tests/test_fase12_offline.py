@@ -49,7 +49,7 @@ class OfflineTest(BaseTest):
     def test_get_muestra_formulario_sin_crear_nada(self):
         r = self.cliente.get(f'{self.url_nueva}?cita={self.cita.pk}')
         self.assertContains(r, 'name="completa"')
-        self.assertContains(r, 'data-om-inicio')
+        self.assertContains(r, 'data-os-inicio')
         self.assertEqual(r.context['consulta'].plantilla.nombre, 'Control')
         with self.en_tenant():
             self.assertFalse(Consulta.objects.exists())
@@ -131,7 +131,7 @@ class OfflineTest(BaseTest):
 
     def test_service_worker_y_script(self):
         sw = self.cliente.get('/sw.js').content.decode()
-        self.assertIn('omnis-paginas-v1', sw)
+        self.assertIn('ordo-paginas-v1', sw)
         self.assertIn("const LOGIN = '/cuenta/entrar/'", sw)
         r = self.cliente.get('/agenda/')
         self.assertContains(r, 'window.OFFLINE_CFG')

@@ -173,7 +173,7 @@ def generar(doc, con_firma=True):
         canvas.setDash()
         canvas.setFont('Helvetica', 6.5)
         canvas.setFillColor(GRIS)
-        canvas.drawRightString(ANCHO_PAG - MARGEN, MARGEN - 7 * mm, f'{doc.numero} · Omnis')
+        canvas.drawRightString(ANCHO_PAG - MARGEN, MARGEN - 7 * mm, f'{doc.numero} · Ordo Salud')
         canvas.restoreState()
 
     tabla = Table([[izquierda, '', derecha]], colWidths=[COLUMNA, SEPARACION, COLUMNA])

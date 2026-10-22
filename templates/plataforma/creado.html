@@ -10,7 +10,7 @@
     <dt class="col-4">Contraseña</dt><dd class="col-8"><code class="fs-5">{{ clave }}</code></dd>
   </dl>
   <div class="d-flex gap-2">
-    <button type="button" class="btn btn-outline-primary btn-sm" onclick="navigator.clipboard.writeText('{{ tenant.nombre|escapejs }} en Omnis\nEnlace: {{ enlace|escapejs }}\nUsuario: {{ titular.username|escapejs }}\nContraseña temporal: {{ clave|escapejs }}').then(()=>{this.textContent='Copiado'})"><i class="bi bi-clipboard me-1"></i>Copiar todo</button>
+    <button type="button" class="btn btn-outline-primary btn-sm" onclick="navigator.clipboard.writeText('{{ tenant.nombre|escapejs }} en Ordo Salud\nEnlace: {{ enlace|escapejs }}\nUsuario: {{ titular.username|escapejs }}\nContraseña temporal: {{ clave|escapejs }}').then(()=>{this.textContent='Copiado'})"><i class="bi bi-clipboard me-1"></i>Copiar todo</button>
     <a href="{% url 'plataforma:editar' tenant.pk %}" class="btn btn-primary btn-sm">Ver consultorio</a>
   </div>
 </div>

@@ -47,7 +47,7 @@
   <div class="col-lg-7 order-lg-1">
     <div class="card mb-3">
       <div class="card-header bg-white fw-semibold">Cargos <span class="text-muted small fw-normal">· total {{ total_cargos|usd }}</span></div>
-      <div class="table-responsive"><table class="table align-middle mb-0 om-tabla">
+      <div class="table-responsive"><table class="table align-middle mb-0 os-tabla">
         <thead class="table-light"><tr><th>Fecha</th><th>Concepto</th><th class="text-end">Monto</th><th class="text-end">Saldo</th><th></th></tr></thead>
         <tbody>{% for c in cargos %}
           <tr class="{% if c.estado == 'ANULADO' %}text-muted text-decoration-line-through{% endif %}">
@@ -64,7 +64,7 @@
     </div>
     <div class="card">
       <div class="card-header bg-white fw-semibold">Pagos <span class="text-muted small fw-normal">· total {{ total_pagos|usd }}</span></div>
-      <div class="table-responsive"><table class="table align-middle mb-0 om-tabla">
+      <div class="table-responsive"><table class="table align-middle mb-0 os-tabla">
         <thead class="table-light"><tr><th>Fecha</th><th>Método</th><th class="text-end">Monto</th><th class="text-end">USD</th><th></th></tr></thead>
         <tbody>{% for p in pagos %}
           <tr class="{% if p.anulado %}text-muted text-decoration-line-through{% endif %}">

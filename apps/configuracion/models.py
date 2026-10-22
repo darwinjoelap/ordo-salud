@@ -8,7 +8,7 @@ color_hex = RegexValidator(r'^#[0-9A-Fa-f]{6}$', 'Usa un color en formato #RRGGB
 
 
 def _ruta(instancia, archivo):
-    return f'omnis/{instancia.tenant.slug}/marca/{archivo}'
+    return f'ordo-salud/{instancia.tenant.slug}/marca/{archivo}'
 
 
 class ConfiguracionTenant(models.Model):
@@ -24,7 +24,7 @@ class ConfiguracionTenant(models.Model):
     rif = models.CharField('RIF', max_length=20, blank=True)
     logo = models.ImageField('Logo', upload_to=_ruta, blank=True, help_text='PNG o JPG de hasta 2 MB.')
     logo_pdf = models.ImageField('Logo para PDF', upload_to=_ruta, blank=True, editable=False)
-    color_primario = models.CharField('Color principal', max_length=7, default='#2F625B', validators=[color_hex])
+    color_primario = models.CharField('Color principal', max_length=7, default='#145F8F', validators=[color_hex])
     # Contacto
     direccion = models.TextField('Dirección', blank=True)
     telefono = models.CharField('Teléfono', max_length=40, blank=True)

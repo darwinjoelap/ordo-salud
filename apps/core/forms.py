@@ -46,7 +46,7 @@ def aplicar_bootstrap(form):
 
 class FormBase:
     """
-    Mixin OBLIGATORIO para los formularios de Omnis:
+    Mixin OBLIGATORIO para los formularios de Ordo Salud:
       1. Rehace los querysets de campos FK hacia modelos de tenant (Django los arma al importar,
          sin tenant activo, y quedarían vacíos).
       2. Aplica las clases de Bootstrap.

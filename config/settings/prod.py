@@ -1,5 +1,5 @@
 """
-Omnis — settings de producción y staging (Railway).
+Ordo Salud — settings de producción y staging (Railway).
 """
 from decouple import config
 
@@ -26,7 +26,7 @@ if SENTRY_DSN:
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         environment=config('RAILWAY_ENVIRONMENT_NAME', default='production'),
-        release=OMNIS_VERSION,  # noqa: F405
+        release=ORDO_VERSION,  # noqa: F405
         traces_sample_rate=0.05,
         send_default_pii=False,
     )

@@ -56,7 +56,7 @@ def imagen_ajustada(archivo, ancho_max, alto_max):
 
 
 def _color(config):
-    return colors.HexColor(getattr(config, 'color_primario', '') or '#2F625B')
+    return colors.HexColor(getattr(config, 'color_primario', '') or '#145F8F')
 
 
 def archivo_bytes(archivo):
@@ -130,7 +130,7 @@ def dibujar_firma(canvas, profesional, cx, y, firma=None, sello=None, ancho_line
         if not texto:
             continue
         canvas.setFont(fuente, tamano)
-        canvas.setFillColor(colors.HexColor('#55625F') if fuente == 'Helvetica' else colors.HexColor('#1D2B2A'))
+        canvas.setFillColor(colors.HexColor('#4B5E6D') if fuente == 'Helvetica' else colors.HexColor('#10222F'))
         canvas.drawCentredString(cx, y, texto)
         y += tamano + 3
     y += 2
@@ -239,7 +239,7 @@ def pie_tenant(tenant):
         if config.pie_documentos:
             canvas.drawString(doc.leftMargin, 12 * mm, config.pie_documentos[:150])
         canvas.drawRightString(doc.pagesize[0] - doc.rightMargin, 12 * mm,
-                               f'Página {doc.page} · Omnis')
+                               f'Página {doc.page} · Ordo Salud')
         canvas.restoreState()
     return dibujar
 

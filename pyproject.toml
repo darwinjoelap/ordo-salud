@@ -1,7 +1,7 @@
 [tool.ruff]
 line-length = 125
 target-version = "py313"
-extend-exclude = ["*/migrations/*", "static", "staticfiles"]
+extend-exclude = ["*/migrations/*", "static", "staticfiles", "scripts/marca"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "DJ", "C4", "SIM"]

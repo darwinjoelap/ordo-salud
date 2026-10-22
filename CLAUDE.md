@@ -1,4 +1,4 @@
-# CLAUDE.md — Contexto permanente de Omnis
+# CLAUDE.md — Contexto permanente de Ordo Salud
 
 > Se lee al inicio de **cada** sesión. Mantenerlo corto (< 200 líneas).
 > Lo que cambia seguido va en `docs/ESTADO.md`; las decisiones, en `docs/DECISIONES.md`.
@@ -63,9 +63,9 @@ Detalle archivo por archivo: `docs/04_REUTILIZACION.md`.
 ## Comandos base (PowerShell)
 
 ```powershell
-cd C:\proyectos\omnis
+cd C:\proyectos\ordo-salud
 .\venv\Scripts\Activate.ps1
-python -c "import sys; print(sys.executable)"   # debe terminar en ...\omnis\venv\...
+python -c "import sys; print(sys.executable)"   # debe terminar en ...\ordo-salud\venv\...
 python manage.py check
 python manage.py makemigrations --check --dry-run
 python manage.py test tests

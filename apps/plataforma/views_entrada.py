@@ -15,7 +15,7 @@ from apps.usuarios.forms import LoginForm
 
 from .models import Tenant
 
-COOKIE_TENANT = 'omnis_tenant'
+COOKIE_TENANT = 'ordo_tenant'
 
 
 def _membresia(usuario, tenant):

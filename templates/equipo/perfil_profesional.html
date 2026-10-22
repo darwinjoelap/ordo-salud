@@ -23,18 +23,18 @@
       <h2 class="h6 mb-2">Firma y sello</h2>
       <div class="mb-3">
         {% include 'partials/campo.html' with campo=form.firma %}
-        {% if perfil.firma %}<div class="d-flex align-items-center gap-2 mt-1"><img src="{{ perfil.firma.url }}" alt="Firma actual" class="om-logo-actual">{% include 'partials/campo.html' with campo=form.quitar_firma %}</div>{% endif %}
+        {% if perfil.firma %}<div class="d-flex align-items-center gap-2 mt-1"><img src="{{ perfil.firma.url }}" alt="Firma actual" class="os-logo-actual">{% include 'partials/campo.html' with campo=form.quitar_firma %}</div>{% endif %}
       </div>
       <div>
         {% include 'partials/campo.html' with campo=form.sello %}
-        {% if perfil.sello %}<div class="d-flex align-items-center gap-2 mt-1"><img src="{{ perfil.sello.url }}" alt="Sello actual" class="om-logo-actual">{% include 'partials/campo.html' with campo=form.quitar_sello %}</div>{% endif %}
+        {% if perfil.sello %}<div class="d-flex align-items-center gap-2 mt-1"><img src="{{ perfil.sello.url }}" alt="Sello actual" class="os-logo-actual">{% include 'partials/campo.html' with campo=form.quitar_sello %}</div>{% endif %}
       </div>
     </div>
     <div class="card card-body">
       <h2 class="h6 mb-2">Logo y marca de agua</h2>
       <div class="mb-2">
         {% include 'partials/campo.html' with campo=form.logo %}
-        {% if perfil.logo %}<div class="d-flex align-items-center gap-2 mt-1"><img src="{{ perfil.logo.url }}" alt="Logo actual" class="om-logo-actual">{% include 'partials/campo.html' with campo=form.quitar_logo %}</div>{% endif %}
+        {% if perfil.logo %}<div class="d-flex align-items-center gap-2 mt-1"><img src="{{ perfil.logo.url }}" alt="Logo actual" class="os-logo-actual">{% include 'partials/campo.html' with campo=form.quitar_logo %}</div>{% endif %}
       </div>
       {% include 'partials/campo.html' with campo=form.marca_agua %}
     </div>

@@ -18,29 +18,29 @@
 <div class="row g-3 mb-3">
   {% if 'agenda.ver' in permisos %}
   <div class="col-6 col-xl-3"><div class="card h-100"><div class="card-body">
-    <div class="om-cifra-etiqueta">{% if citas_hoy_propias %}Mis citas de hoy{% else %}Citas de hoy{% endif %}</div>
-    <div class="om-cifra">{{ citas_activas|default:0 }}</div>
+    <div class="os-cifra-etiqueta">{% if citas_hoy_propias %}Mis citas de hoy{% else %}Citas de hoy{% endif %}</div>
+    <div class="os-cifra">{{ citas_activas|default:0 }}</div>
     <div class="small fw-semibold text-success">{% if citas_en_sala %}{{ citas_en_sala }} en sala{% else %}Nadie en sala{% endif %}</div>
   </div></div></div>
   {% endif %}
   {% if profesional %}
   <div class="col-6 col-xl-3"><div class="card h-100"><div class="card-body">
-    <div class="om-cifra-etiqueta">Consultas en curso</div>
-    <div class="om-cifra">{{ en_curso|length }}</div>
-    <div class="small {% if en_curso %}fw-semibold om-texto-aviso{% else %}text-muted{% endif %}">{% if en_curso %}Sin cerrar{% else %}Todo cerrado{% endif %}</div>
+    <div class="os-cifra-etiqueta">Consultas en curso</div>
+    <div class="os-cifra">{{ en_curso|length }}</div>
+    <div class="small {% if en_curso %}fw-semibold os-texto-aviso{% else %}text-muted{% endif %}">{% if en_curso %}Sin cerrar{% else %}Todo cerrado{% endif %}</div>
   </div></div></div>
   {% endif %}
   {% if 'cobros.gestionar' in permisos %}
   <div class="col-6 col-xl-3"><a href="{% url 'cobros:caja' %}" class="card h-100 text-decoration-none"><div class="card-body">
-    <div class="om-cifra-etiqueta">Cobrado hoy</div>
-    <div class="om-cifra">{{ cobrado_hoy|usd }}</div>
+    <div class="os-cifra-etiqueta">Cobrado hoy</div>
+    <div class="os-cifra">{{ cobrado_hoy|usd }}</div>
     <div class="small text-muted">{{ pagos_hoy }} pago{{ pagos_hoy|pluralize }}</div>
   </div></a></div>
   {% endif %}
   {% if 'pacientes.ver' in permisos %}
   <div class="col-6 col-xl-3"><a href="{% url 'pacientes:lista' %}" class="card h-100 text-decoration-none"><div class="card-body">
-    <div class="om-cifra-etiqueta">{% if pacientes_mios %}Mis pacientes{% else %}Pacientes{% endif %}</div>
-    <div class="om-cifra">{{ total_pacientes|default:0|miles }}</div>
+    <div class="os-cifra-etiqueta">{% if pacientes_mios %}Mis pacientes{% else %}Pacientes{% endif %}</div>
+    <div class="os-cifra">{{ total_pacientes|default:0|miles }}</div>
     <div class="small text-muted">activos</div>
   </div></a></div>
   {% endif %}
@@ -81,7 +81,7 @@
   </div>
   {% if 'tenant.configurar' in permisos %}
   <div class="col-12">
-    <div class="card om-panel-arena"><div class="card-body small">
+    <div class="card os-panel-azul"><div class="card-body small">
       <div class="h6 mb-2">Para empezar</div>
       <ul class="mb-0 ps-3">
         <li><a href="{% url 'configuracion:editar' %}">Configuración</a>: logo, datos y color del consultorio.</li>

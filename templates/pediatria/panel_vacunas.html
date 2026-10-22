@@ -20,7 +20,7 @@
     {% endif %}
     {% endwith %}
     <div class="d-flex flex-wrap gap-1">
-      {% for p in panel.pesquisas %}<span class="om-chip {% if p.realizada %}om-chip-ok{% endif %}" title="{% if p.realizada %}{{ p.realizada.fecha|date:'d/m/Y' }} {{ p.realizada.resultado }}{% else %}Pendiente{% endif %}"><i class="bi {% if p.realizada %}bi-check2{% else %}bi-circle{% endif %} me-1"></i>{{ p.pesquisa.nombre }}</span>{% endfor %}
+      {% for p in panel.pesquisas %}<span class="os-chip {% if p.realizada %}os-chip-ok{% endif %}" title="{% if p.realizada %}{{ p.realizada.fecha|date:'d/m/Y' }} {{ p.realizada.resultado }}{% else %}Pendiente{% endif %}"><i class="bi {% if p.realizada %}bi-check2{% else %}bi-circle{% endif %} me-1"></i>{{ p.pesquisa.nombre }}</span>{% endfor %}
     </div>
   </div>
 </div>

@@ -62,7 +62,7 @@ class Bloqueo(TenantModel, Auditable):
 class TipoCita(TenantModel):
     nombre = models.CharField('Nombre', max_length=80)
     duracion_min = models.PositiveSmallIntegerField('Duración (min)', default=30)
-    color = models.CharField('Color', max_length=7, default='#5D9680')
+    color = models.CharField('Color', max_length=7, default='#1C8577')
     especialidad = models.ForeignKey('plataforma.Especialidad', on_delete=models.PROTECT, null=True, blank=True,
                                      related_name='+', help_text='Vacío = para cualquier especialidad.')
     tipo_consulta = models.CharField('Tipo de consulta', max_length=10, default='PRIMERA',
@@ -94,8 +94,8 @@ class Cita(TenantModel, Auditable):
         CANCELADA = 'CANCELADA', 'Cancelada'
         NO_ASISTIO = 'NO_ASISTIO', 'No asistió'
 
-    # Clase de la insignia (text-bg-<color>, paleta en static/css/omnis.css)
-    COLORES = {'TENTATIVA': 'warning', 'PROGRAMADA': 'secondary', 'CONFIRMADA': 'info', 'EN_SALA': 'arena',
+    # Clase de la insignia (text-bg-<color>, paleta en static/css/ordo-salud.css)
+    COLORES = {'TENTATIVA': 'warning', 'PROGRAMADA': 'secondary', 'CONFIRMADA': 'info', 'EN_SALA': 'sala',
                'ATENDIDA': 'success', 'CANCELADA': 'danger', 'NO_ASISTIO': 'dark'}
     ACTIVAS = ('TENTATIVA', 'PROGRAMADA', 'CONFIRMADA', 'EN_SALA')
 

@@ -7,7 +7,7 @@
   {{ form.paciente }}
   <label class="form-label">Paciente <span class="text-danger">*</span></label>
   <div id="paciente-elegido" class="mb-2 {% if not paciente %}d-none{% endif %}">
-    <span class="om-chip fs-6"><i class="bi bi-person"></i> <span id="paciente-nombre">{{ paciente.nombre_completo }}</span></span>
+    <span class="os-chip fs-6"><i class="bi bi-person"></i> <span id="paciente-nombre">{{ paciente.nombre_completo }}</span></span>
     {% if not cita %}<button type="button" class="btn btn-link btn-sm" id="cambiar-paciente">Cambiar</button>{% endif %}
   </div>
   <div id="buscar-paciente" class="mb-3 {% if paciente %}d-none{% endif %}">
@@ -52,7 +52,7 @@
     document.getElementById('id_hora_inicio').value = b.dataset.hora;
     const lugar = document.getElementById('id_lugar');
     if (b.dataset.lugar && lugar && !lugar.value) lugar.value = b.dataset.lugar;
-    document.querySelectorAll('#panel-horas .om-hora-libre.activa').forEach(function (x) { x.classList.remove('activa'); });
+    document.querySelectorAll('#panel-horas .os-hora-libre.activa').forEach(function (x) { x.classList.remove('activa'); });
     b.classList.add('activa');
   });
   const cambiar = document.getElementById('cambiar-paciente');

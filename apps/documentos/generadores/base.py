@@ -46,7 +46,7 @@ def fecha_larga(fecha):
 
 
 def color_tenant(tenant):
-    return colors.HexColor(tenant.configuracion.color_primario or '#2F625B')
+    return colors.HexColor(tenant.configuracion.color_primario or '#145F8F')
 
 
 def lineas(texto, estilo=CUERPO):
@@ -143,11 +143,11 @@ def construir(doc, cuerpo, *, con_firma=True, titulo_pdf=''):
         dibujar_marca_agua(canvas, marca, ancho_pag / 2, alto_pag * 0.45, 110 * mm)
         dibujar_firma(canvas, profesional, ancho_pag / 2, 24 * mm, firma=firma, sello=sello)
         canvas.setFont('Helvetica', 7.5)
-        canvas.setFillColor(colors.HexColor('#55625F'))
+        canvas.setFillColor(colors.HexColor('#4B5E6D'))
         if config.pie_documentos:
             canvas.drawString(margen, 11 * mm, config.pie_documentos[:150])
         canvas.drawRightString(ancho_pag - margen, 11 * mm,
-                               f'{doc.numero} · Página {plantilla.page} · Omnis')
+                               f'{doc.numero} · Página {plantilla.page} · Ordo Salud')
         canvas.restoreState()
 
     marco = Frame(margen, 16 * mm + alto_firma, ancho_pag - 2 * margen, alto_pag - 14 * mm - 16 * mm - alto_firma,

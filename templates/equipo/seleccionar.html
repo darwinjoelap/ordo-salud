@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block cuerpo %}
-<div class="om-pantalla-suelta">
+<div class="os-pantalla-suelta">
   <div class="card shadow-sm" style="max-width:480px">
     <div class="card-body p-4">
       <div class="text-center mb-3">
-        <img src="{% static 'img/marca/omnis-logo.png' %}" alt="Omnis" class="om-logo-login">
+        <img src="{% static 'img/marca/ordo-salud-logo.svg' %}" alt="Ordo Salud" class="os-logo-login">
         <h1 class="h5 mt-3 mb-1">¿En qué consultorio vas a trabajar?</h1>
         <p class="text-muted small mb-0">Puedes cambiarlo luego desde tu menú de cuenta.</p>
       </div>
@@ -19,7 +19,7 @@
               {% if m.tenant.configuracion.logo %}
                 <img src="{{ m.tenant.configuracion.logo.url }}" alt="" style="height:36px;width:56px;object-fit:contain">
               {% else %}
-                <span class="om-avatar">{{ m.tenant.nombre|slice:":1"|upper }}</span>
+                <span class="os-avatar">{{ m.tenant.nombre|slice:":1"|upper }}</span>
               {% endif %}
               <span class="flex-grow-1 text-start">
                 <span class="fw-semibold d-block">{{ m.tenant.configuracion.nombre_display }}</span>

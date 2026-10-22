@@ -2,7 +2,7 @@
 {% block contenido %}
 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
   <div><h1 class="h3 mb-0">Tasa del día</h1>
-    <div class="small text-muted">Omnis consulta el BCV cada mañana. Si no se actualizó, carga la tasa de hoy para tu consultorio.</div></div>
+    <div class="small text-muted">Ordo Salud consulta el BCV cada mañana. Si no se actualizó, carga la tasa de hoy para tu consultorio.</div></div>
   {% if vigente %}<div class="text-end"><div class="small text-muted">En uso</div>
     <div class="fs-4 fw-bold {% if vigente.fecha != hoy %}text-warning-emphasis{% endif %}">Bs {{ vigente.bs_por_usd|floatformat:"4g" }}</div>
     <div class="small text-muted">{{ vigente.fecha|date:"d/m/Y" }} · {% if vigente.fuente == 'TENANT' %}cargada por tu consultorio{% else %}{{ vigente.get_fuente_display }}{% endif %}</div></div>{% endif %}

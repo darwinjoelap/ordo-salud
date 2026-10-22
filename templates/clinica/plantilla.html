@@ -31,8 +31,8 @@
             <div class="flex-grow-1">
               <div class="fw-semibold">{{ item.seccion.nombre }}
                 {% if item.obligatoria %}<span class="badge text-bg-danger-subtle text-danger-emphasis">obligatoria</span>{% endif %}
-                {% if item.seccion.ambito == 'PACIENTE' %}<span class="om-chip" title="Se conserva entre consultas">del paciente</span>{% endif %}
-                {% if item.seccion.tipo == 'PERSONALIZADA' %}<span class="om-chip">personalizada</span>{% endif %}
+                {% if item.seccion.ambito == 'PACIENTE' %}<span class="os-chip" title="Se conserva entre consultas">del paciente</span>{% endif %}
+                {% if item.seccion.tipo == 'PERSONALIZADA' %}<span class="os-chip">personalizada</span>{% endif %}
               </div>
               <div class="small text-muted">{{ item.campos|length }} campo{{ item.campos|length|pluralize }}{% if item.ajustes.ocultos %} · {{ item.ajustes.ocultos|length }} oculto{{ item.ajustes.ocultos|length|pluralize }}{% endif %}{% if item.ajustes.por_defecto %} · con textos por defecto{% endif %}</div>
             </div>

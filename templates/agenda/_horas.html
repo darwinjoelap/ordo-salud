@@ -1,11 +1,11 @@
 {# Panel de horas del día al agendar (HTMX desde cita_form) #}
 {% if sin_profesional %}<div class="small text-muted">Elige el profesional para ver sus horas.</div>{% else %}
 <div class="small text-muted mb-1">Horas del {{ fecha|date:"l d/m"|lower }} · {{ profesional.nombre_con_titulo }}{% if sin_horario %} <span class="text-warning-emphasis">(sin horario cargado ese día: se muestran 7:00 a. m. – 6:00 p. m.)</span>{% endif %}</div>
-<div class="d-flex flex-wrap gap-1 om-horas">
+<div class="d-flex flex-wrap gap-1 os-horas">
   {% for t in turnos %}
-    {% if t.cita %}<span class="om-hora om-hora-ocupada" title="Ocupada: {{ t.cita.paciente.nombre_completo }}">{{ t.hora|hora12 }}<small class="d-block text-truncate">{{ t.cita.paciente.nombres|truncatechars:12 }}</small></span>
-    {% elif t.pasada %}<span class="om-hora om-hora-pasada" title="Ya pasó">{{ t.hora|hora12 }}</span>
-    {% else %}<button type="button" class="om-hora om-hora-libre" data-hora="{{ t.hora|time:'H:i' }}"{% if t.lugar %} data-lugar="{{ t.lugar.pk }}"{% endif %} title="Asignar esta hora">{{ t.hora|hora12 }}</button>{% endif %}
+    {% if t.cita %}<span class="os-hora os-hora-ocupada" title="Ocupada: {{ t.cita.paciente.nombre_completo }}">{{ t.hora|hora12 }}<small class="d-block text-truncate">{{ t.cita.paciente.nombres|truncatechars:12 }}</small></span>
+    {% elif t.pasada %}<span class="os-hora os-hora-pasada" title="Ya pasó">{{ t.hora|hora12 }}</span>
+    {% else %}<button type="button" class="os-hora os-hora-libre" data-hora="{{ t.hora|time:'H:i' }}"{% if t.lugar %} data-lugar="{{ t.lugar.pk }}"{% endif %} title="Asignar esta hora">{{ t.hora|hora12 }}</button>{% endif %}
   {% endfor %}
 </div>
 {% if tentativas %}<div class="small text-muted mt-2"><i class="bi bi-hourglass-split me-1"></i>Sin hora asignada ese día: {% for c in tentativas %}{{ c.paciente.nombre_completo }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}

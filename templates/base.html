@@ -3,21 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#FFFFFF">
-  <meta name="apple-mobile-web-app-title" content="Omnis">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#0B2E4C">
+  <meta name="apple-mobile-web-app-title" content="Ordo Salud">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>{% block titulo %}{{ titulo|default:"Omnis" }}{% endblock %} · Omnis</title>
+  <title>{% block titulo %}{{ titulo|default:"Ordo Salud" }}{% endblock %} · Ordo Salud</title>
 
   <link rel="icon" href="{% static 'img/marca/pwa/favicon.ico' %}" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/marca/pwa/favicon-32.png' %}">
   <link rel="apple-touch-icon" href="{% static 'img/marca/pwa/apple-touch-icon.png' %}">
   <link rel="manifest" href="/manifest.webmanifest">
+  <meta property="og:title" content="Ordo Salud">
+  <meta property="og:description" content="Historias clínicas, agenda y cobros de tu consultorio.">
+  <meta property="og:image" content="{% static 'img/marca/og-ordo-salud.png' %}">
 
   <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
   <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}">
-  <link rel="stylesheet" href="{% static 'css/omnis.css' %}">
+  <link rel="stylesheet" href="{% static 'css/ordo-salud.css' %}">
   {% if config.color_primario %}<style>:root { --marca: {{ config.color_primario }}; }</style>{% endif %}
   {% block extra_css %}{% endblock %}
 </head>
@@ -26,16 +29,15 @@
   {% url 'core:inicio' as url_inicio %}
 
   <!-- Barra superior -->
-  <header class="om-topbar d-flex align-items-center justify-content-between">
+  <header class="os-topbar d-flex align-items-center justify-content-between">
     <div class="d-flex align-items-center gap-3 min-w-0">
-      <a href="{{ url_inicio }}" class="d-flex align-items-center gap-2 text-decoration-none" aria-label="Omnis — inicio">
-        <img src="{% static 'img/marca/omnis-simbolo.png' %}" alt="" class="om-logo">
-        <img src="{% static 'img/marca/omnis-palabra.png' %}" alt="Omnis" class="om-palabra d-none d-sm-inline">
+      <a href="{{ url_inicio }}" class="os-marca-movil d-flex align-items-center text-decoration-none" aria-label="Ordo Salud — inicio">
+        <img src="{% static 'img/marca/ordo-salud-icono-blanco.svg' %}" alt="" class="os-logo">
       </a>
       {% if tenant %}
-        <span class="om-separador d-none d-md-block"></span>
-        <div class="d-flex align-items-center gap-2 om-empresa-actual">
-          {% if config.logo %}<img src="{{ config.logo.url }}" alt="" class="om-logo-empresa">{% endif %}
+        <span class="os-separador os-marca-movil d-none d-md-block"></span>
+        <div class="d-flex align-items-center gap-2 os-empresa-actual">
+          {% if config.logo %}<img src="{{ config.logo.url }}" alt="" class="os-logo-empresa">{% endif %}
           <span class="fw-semibold text-truncate {% if config.logo %}d-none d-md-inline{% endif %}">{{ config.nombre_display }}</span>
         </div>
       {% endif %}
@@ -44,26 +46,26 @@
     {% if tenant %}
       {% if 'tasa.cargar' in permisos %}<a href="{% url 'tasas:tasa' %}" class="text-decoration-none">{% endif %}
       {% if tasa %}
-        <span class="om-tasa {% if tasa_desactualizada %}om-tasa-alerta{% endif %}" title="{% if tasa.fuente == 'TENANT' %}Tasa cargada por el consultorio{% else %}Tasa BCV{% endif %} del {{ tasa.fecha|date:'d/m/Y' }}{% if tasa_desactualizada %} (no es de hoy){% endif %}">
+        <span class="os-tasa {% if tasa_desactualizada %}os-tasa-alerta{% endif %}" title="{% if tasa.fuente == 'TENANT' %}Tasa cargada por el consultorio{% else %}Tasa BCV{% endif %} del {{ tasa.fecha|date:'d/m/Y' }}{% if tasa_desactualizada %} (no es de hoy){% endif %}">
           <i class="bi bi-currency-exchange me-1"></i>{{ tasa.bs_por_usd|floatformat:"2g" }}<span class="d-none d-sm-inline"> Bs/USD</span>{% if tasa.fuente == 'TENANT' %} <i class="bi bi-pencil-square" aria-label="manual"></i>{% endif %}{% if tasa_desactualizada %} <i class="bi bi-exclamation-triangle"></i>{% endif %}</span>
       {% else %}
-        <span class="om-tasa om-tasa-alerta" title="No hay tasa registrada"><i class="bi bi-currency-exchange me-1"></i>Sin tasa</span>
+        <span class="os-tasa os-tasa-alerta" title="No hay tasa registrada"><i class="bi bi-currency-exchange me-1"></i>Sin tasa</span>
       {% endif %}
       {% if 'tasa.cargar' in permisos %}</a>{% endif %}
     {% endif %}
     <div class="dropdown">
       <button class="btn p-0 border-0" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menú de cuenta">
-        <span class="om-avatar">{{ user.iniciales }}</span>
+        <span class="os-avatar">{{ user.iniciales }}</span>
       </button>
       <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-        <li><h6 class="dropdown-header">{% if profesional %}{{ profesional.nombre_con_titulo }}{% else %}{{ user }}{% endif %}{% if membresia %}<br><small class="text-muted">{% if membresia.soporte %}Soporte Omnis{% else %}{{ membresia.get_rol_display }}{% if profesional %} · {{ profesional.especialidad }}{% endif %}{% endif %} · {{ tenant }}</small>{% endif %}</h6></li>
+        <li><h6 class="dropdown-header">{% if profesional %}{{ profesional.nombre_con_titulo }}{% else %}{{ user }}{% endif %}{% if membresia %}<br><small class="text-muted">{% if membresia.soporte %}Soporte Ordo Salud{% else %}{{ membresia.get_rol_display }}{% if profesional %} · {{ profesional.especialidad }}{% endif %}{% endif %} · {{ tenant }}</small>{% endif %}</h6></li>
         {% if membresias|length > 1 %}
           <li><a class="dropdown-item" href="{% url 'equipo:seleccionar' %}"><i class="bi bi-arrow-left-right me-2"></i>Cambiar de consultorio</a></li>
         {% endif %}
         {% if profesional %}<li><a class="dropdown-item" href="{% url 'equipo:mi_perfil_profesional' %}"><i class="bi bi-person-vcard me-2"></i>Mi perfil profesional</a></li>{% endif %}
         {% if user.is_superuser %}<li><a class="dropdown-item" href="{% url 'plataforma:lista' %}"><i class="bi bi-buildings me-2"></i>Plataforma</a></li>{% endif %}
         <li><a class="dropdown-item" href="{% url 'usuarios:perfil' %}"><i class="bi bi-person me-2"></i>Mi cuenta</a></li>
-        <li><a class="dropdown-item om-solo-navegador" href="{% url 'core:instalar' %}"><i class="bi bi-phone me-2"></i>Instalar la app</a></li>
+        <li><a class="dropdown-item os-solo-navegador" href="{% url 'core:instalar' %}"><i class="bi bi-phone me-2"></i>Instalar la app</a></li>
         <li><hr class="dropdown-divider"></li>
         <li>
           <form method="post" action="{% url 'usuarios:logout' %}">
@@ -77,13 +79,14 @@
   </header>
 
   <!-- Menú lateral: escritorio -->
-  <nav class="om-sidebar d-none d-lg-block" aria-label="Menú principal">
+  <nav class="os-sidebar d-none d-lg-flex" aria-label="Menú principal">
+    <a href="{{ url_inicio }}" class="os-sidebar-marca" aria-label="Ordo Salud — inicio"><img src="{% static 'img/marca/ordo-salud-logo-blanco.svg' %}" alt="Ordo Salud"></a>
     {% include '_menu.html' %}
-    <div class="om-version">Omnis · {{ OMNIS_VERSION }}</div>
+    <div class="os-version">Ordo Salud · {{ ORDO_VERSION }}</div>
   </nav>
 
   <!-- Contenido -->
-  <main class="om-main">
+  <main class="os-main">
     {% if membresia.soporte %}
       <div class="alert alert-info py-2 d-flex justify-content-between align-items-center gap-2 flex-wrap">
         <span><i class="bi bi-headset me-1"></i>Modo soporte: estás dentro de <b>{{ config.nombre_display|default:tenant.nombre }}</b>. No apareces en su equipo y no ves historias clínicas.{% if not tenant.esta_activo %} <b>Consultorio suspendido o vencido.</b>{% endif %}</span>
@@ -106,42 +109,42 @@
   </main>
 
   <!-- Barra inferior: móvil / app instalada -->
-  <nav class="om-tabbar d-lg-none" aria-label="Navegación inferior">
+  <nav class="os-tabbar d-lg-none" aria-label="Navegación inferior">
     <a href="{{ url_inicio }}" class="{% if request.path == url_inicio %}active{% endif %}"><i class="bi bi-house"></i>Inicio</a>
     {% if 'pacientes.ver' in permisos %}<a href="{% url 'pacientes:lista' %}" class="{% if request.resolver_match.app_name == 'pacientes' %}active{% endif %}"><i class="bi bi-people"></i>Pacientes</a>
     {% endif %}
     {% if 'agenda.ver' in permisos %}<a href="{% url 'agenda:dia' %}" class="{% if request.resolver_match.app_name == 'agenda' %}active{% endif %}"><i class="bi bi-calendar-week"></i>Agenda</a>{% endif %}
-    {% if tenant or user.is_superuser %}<a href="#om-mas" data-bs-toggle="offcanvas" role="button" aria-controls="om-mas" class="{% if request.resolver_match.app_name in 'clinica configuracion equipo cobros tasas plataforma' %}active{% endif %}"><i class="bi bi-list"></i>Más</a>{% endif %}
+    {% if tenant or user.is_superuser %}<a href="#os-mas" data-bs-toggle="offcanvas" role="button" aria-controls="os-mas" class="{% if request.resolver_match.app_name in 'clinica configuracion equipo cobros tasas plataforma' %}active{% endif %}"><i class="bi bi-list"></i>Más</a>{% endif %}
   </nav>
 
-  <div class="offcanvas offcanvas-bottom d-lg-none" tabindex="-1" id="om-mas" aria-labelledby="om-mas-titulo" style="height:auto;max-height:85vh">
+  <div class="offcanvas offcanvas-bottom d-lg-none" tabindex="-1" id="os-mas" aria-labelledby="os-mas-titulo" style="height:auto;max-height:85vh">
     <div class="offcanvas-header pb-0">
-      <h2 class="offcanvas-title h6" id="om-mas-titulo">Menú</h2>
+      <h2 class="offcanvas-title h6" id="os-mas-titulo">Menú</h2>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
     </div>
     <div class="offcanvas-body pt-2">
-      <nav class="om-menu-movil" aria-label="Menú completo">{% include '_menu.html' %}</nav>
+      <nav class="os-menu-movil" aria-label="Menú completo">{% include '_menu.html' %}</nav>
     </div>
   </div>
 {% endblock %}
 
   <!-- Aviso de instalación (PWA) -->
-  <div id="om-instalar" class="om-instalar shadow" role="dialog" aria-label="Instalar Omnis" hidden>
+  <div id="os-instalar" class="os-instalar shadow" role="dialog" aria-label="Instalar Ordo Salud" hidden>
     <img src="{% static 'img/marca/pwa/icon-192.png' %}" alt="" width="40" height="40" class="rounded-3">
     <div class="flex-grow-1 small">
-      <div class="fw-semibold">Instala Omnis</div>
+      <div class="fw-semibold">Instala Ordo Salud</div>
       <div data-modo="nativo">Ábrela como una app, a pantalla completa.</div>
       <div data-modo="ios" hidden>Toca <i class="bi bi-box-arrow-up"></i> <b>Compartir</b> y luego <b>Agregar a inicio</b>.</div>
     </div>
-    <button type="button" class="btn btn-primary btn-sm" data-modo="nativo" data-om-instalar>Instalar</button>
-    <button type="button" class="btn-close" data-om-descartar aria-label="Cerrar"></button>
+    <button type="button" class="btn btn-primary btn-sm" data-modo="nativo" data-os-instalar>Instalar</button>
+    <button type="button" class="btn-close" data-os-descartar aria-label="Cerrar"></button>
   </div>
-  <div id="om-sin-conexion" class="om-sin-conexion" role="status" hidden><i class="bi bi-wifi-off me-1"></i>Sin conexión</div>
+  <div id="os-sin-conexion" class="os-sin-conexion" role="status" hidden><i class="bi bi-wifi-off me-1"></i>Sin conexión</div>
 
   <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
   <script src="{% static 'js/pwa.js' %}" defer></script>
   {% if user.is_authenticated and tenant and membresia and not membresia.soporte %}
-  <script>window.OFFLINE_CFG = {app: 'omnis', tenant: '{{ tenant.slug|escapejs }}', user: '{{ user.pk }}', loginUrl: '{% url 'usuarios:login' %}'};</script>
+  <script>window.OFFLINE_CFG = {app: 'ordo-salud', tenant: '{{ tenant.slug|escapejs }}', user: '{{ user.pk }}', loginUrl: '{% url 'usuarios:login' %}'};</script>
   <script src="{% static 'js/offline.js' %}" defer></script>
   {% endif %}
   <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>

@@ -3,7 +3,7 @@
 <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="Profesional">
   <a href="?fecha={{ fecha|date:'Y-m-d' }}&p=todos" class="btn btn-outline-secondary {% if not elegido %}active{% endif %}">Todos</a>
   {% for p in profesionales %}
-    <a href="?fecha={{ fecha|date:'Y-m-d' }}&p={{ p.pk }}" class="btn btn-outline-secondary {% if elegido.pk == p.pk %}active{% endif %}"><span class="om-color-punto me-1" style="background:{{ p.color_agenda }}"></span>{{ p.nombre_con_titulo }}</a>
+    <a href="?fecha={{ fecha|date:'Y-m-d' }}&p={{ p.pk }}" class="btn btn-outline-secondary {% if elegido.pk == p.pk %}active{% endif %}"><span class="os-color-punto me-1" style="background:{{ p.color_agenda }}"></span>{{ p.nombre_con_titulo }}</a>
   {% endfor %}
 </div>
 {% endif %}

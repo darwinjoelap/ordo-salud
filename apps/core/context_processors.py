@@ -4,7 +4,7 @@ from django.utils import timezone
 from .permisos import permisos_de
 
 
-def omnis(request):
+def marca(request):
     """Datos globales para todas las plantillas."""
     membresia = getattr(request, 'membresia', None)
     tenant = getattr(request, 'tenant', None)
@@ -22,7 +22,7 @@ def omnis(request):
         gracia = tenant.dias_de_gracia_restantes      # lo ve todo el equipo: mañana pueden quedar sin acceso
     return {
         'PRODUCTO': settings.PRODUCTO,
-        'OMNIS_VERSION': settings.OMNIS_VERSION,
+        'ORDO_VERSION': settings.ORDO_VERSION,
         'aviso_vencimiento': aviso,
         'aviso_gracia': gracia,
         'tasa': tasa,

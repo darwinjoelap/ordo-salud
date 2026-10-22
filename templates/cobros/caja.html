@@ -17,7 +17,7 @@
       {% empty %}<li class="list-group-item text-muted">Sin pagos este día.</li>{% endfor %}</ul></div>
   </div>
   <div class="col-lg-8">
-    <div class="card"><div class="table-responsive"><table class="table align-middle mb-0 om-tabla">
+    <div class="card"><div class="table-responsive"><table class="table align-middle mb-0 os-tabla">
       <thead class="table-light"><tr><th>Paciente</th><th>Método</th><th class="text-end">Monto</th><th>Registró</th></tr></thead>
       <tbody>{% for p in pagos %}
         <tr onclick="location.href='{% url 'cobros:cuenta' p.paciente_id %}'" role="button">

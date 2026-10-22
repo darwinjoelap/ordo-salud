@@ -6,18 +6,18 @@ from reportlab.lib.units import mm
 from reportlab.platypus import KeepTogether, Spacer, Table, TableStyle
 
 from apps.core.pdf import ESTILO_CELDA, ESTILOS, Paragraph, documento, encabezado_tenant, pie_tenant
-from apps.core.templatetags.omnis import usd
+from apps.core.templatetags.ordo import usd
 
-PETROLEO = colors.HexColor('#2F625B')
+PRIMARIO = colors.HexColor('#145F8F')
 ARENA = colors.HexColor('#F8F4EE')
-BORDE = colors.HexColor('#E6E1D6')
+BORDE = colors.HexColor('#DCE4EB')
 ANCHO = 186 * mm
 
 
 def _titulo(texto):
     from reportlab.lib.styles import ParagraphStyle
     estilo = ParagraphStyle('s', parent=ESTILOS['Normal'], fontName='Helvetica-Bold', fontSize=10.5, leading=13,
-                            textColor=PETROLEO, spaceBefore=8, spaceAfter=3)
+                            textColor=PRIMARIO, spaceBefore=8, spaceAfter=3)
     return Paragraph(texto, estilo)
 
 
@@ -38,9 +38,9 @@ def _kpis(pares):
     """Fila de cifras: [(etiqueta, valor)] en cajas."""
     from reportlab.lib.styles import ParagraphStyle
     cifra = ParagraphStyle('cifra', parent=ESTILO_CELDA, fontName='Helvetica-Bold', fontSize=15, leading=19,
-                           textColor=colors.HexColor('#1F403D'))
+                           textColor=colors.HexColor('#0C385B'))
     etiqueta_estilo = ParagraphStyle('etq', parent=ESTILO_CELDA, fontSize=8, leading=10,
-                                     textColor=colors.HexColor('#55625F'))
+                                     textColor=colors.HexColor('#4B5E6D'))
     celdas = [[Paragraph(str(valor), cifra), Paragraph(etiqueta, etiqueta_estilo)] for etiqueta, valor in pares]
     t = Table([celdas], colWidths=[ANCHO / len(pares)] * len(pares))
     t.setStyle(TableStyle([('BOX', (0, 0), (-1, -1), 0.5, BORDE), ('INNERGRID', (0, 0), (-1, -1), 0.5, BORDE),
@@ -103,7 +103,7 @@ def pdf(tenant, d):
             [66 * mm, 28 * mm, 28 * mm, 32 * mm, 32 * mm], (1, 2, 3, 4))])
     for b in bloques:
         h.append(KeepTogether(b))
-    h += [Spacer(1, 4 * mm), Paragraph('<font size="7" color="#55625F">Cobrado = pagos aplicados a cargos del período. '
+    h += [Spacer(1, 4 * mm), Paragraph('<font size="7" color="#4B5E6D">Cobrado = pagos aplicados a cargos del período. '
                                        'Consultas anuladas excluidas. Pacientes nuevos = primera consulta en el período.'
                                        '</font>', ESTILOS['Normal'])]
     pie = pie_tenant(tenant)
@@ -118,15 +118,15 @@ def excel(tenant, d, consultas):
 
     f = d['filtros']
     libro = Workbook()
-    negrita = Font(bold=True, color='1F403D')
-    relleno = PatternFill('solid', fgColor='F1EADF')
+    negrita = Font(bold=True, color='0C385B')
+    relleno = PatternFill('solid', fgColor='E3EEF7')
 
     def hoja(nombre, encabezado, filas, primera=False):
         h = libro.active if primera else libro.create_sheet(nombre)
         h.title = nombre
         h.append([tenant.configuracion.nombre_display])
         h.append([f'Período: {f.periodo_texto} · {_quien(f)}'])
-        h['A1'].font = Font(bold=True, size=13, color='2F625B')
+        h['A1'].font = Font(bold=True, size=13, color='145F8F')
         h.append([])
         h.append(encabezado)
         for celda in h[4]:

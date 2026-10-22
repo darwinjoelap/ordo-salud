@@ -5,7 +5,7 @@
   <div class="text-end"><div class="small text-muted">Total pendiente</div><div class="h4 mb-0">{{ total|usd }}</div>
     {% if tasa %}<div class="small text-muted">{{ total|bs:tasa.bs_por_usd }}</div>{% endif %}</div>
 </div>
-<div class="card"><div class="table-responsive"><table class="table align-middle mb-0 om-tabla">
+<div class="card"><div class="table-responsive"><table class="table align-middle mb-0 os-tabla">
   <thead class="table-light"><tr><th>Paciente</th><th>Cargos pendientes</th><th class="text-end">Saldo</th><th></th></tr></thead>
   <tbody>{% for paciente, saldo, cargos in filas %}
     <tr onclick="location.href='{% url 'cobros:cuenta' paciente.pk %}'" role="button">

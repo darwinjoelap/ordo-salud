@@ -1,4 +1,4 @@
-// Omnis: comportamiento de las secciones de historia (visible_si, filas de tabla, editor de secciones).
+// Ordo Salud: comportamiento de las secciones de historia (visible_si, filas de tabla, editor de secciones).
 (function () {
   'use strict';
 

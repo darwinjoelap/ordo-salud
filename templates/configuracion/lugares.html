@@ -4,7 +4,7 @@
 <p class="text-muted">Clínicas o consultorios donde se atiende. Se usan en la agenda y en los recordatorios.</p>
 <div class="row g-3">
   <div class="col-lg-7">
-    <div class="card"><div class="table-responsive"><table class="table align-middle mb-0 om-tabla">
+    <div class="card"><div class="table-responsive"><table class="table align-middle mb-0 os-tabla">
       <thead class="table-light"><tr><th>Lugar</th><th>Ciudad</th><th>Teléfono</th><th></th></tr></thead>
       <tbody>{% for l in lugares %}
         <tr class="{% if not l.activo %}text-muted{% endif %}" onclick="location.href='{% url 'configuracion:lugar_editar' l.pk %}'" role="button">

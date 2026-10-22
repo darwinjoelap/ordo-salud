@@ -9,7 +9,7 @@
       <div class="{% if campo.field.widget.input_type == 'date' or campo.field.widget.input_type == 'time' or campo.name == 'dias' or campo.name == 'ciudad' or campo.name == 'prioridad' %}col-md-4 col-6{% else %}col-12{% endif %}">{% include 'partials/campo.html' with campo=campo %}</div>
     {% endfor %}
   </div>
-  <div class="om-barra-acciones mt-3 d-flex gap-2">
+  <div class="os-barra-acciones mt-3 d-flex gap-2">
     <button class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Emitir</button>
     <a href="{% if consulta %}{% url 'clinica:consulta' consulta.pk %}{% else %}{% url 'pacientes:detalle' paciente.pk %}{% endif %}" class="btn btn-outline-secondary">Cancelar</a>
   </div>

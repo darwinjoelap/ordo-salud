@@ -1,5 +1,5 @@
 """
-Usuario de Omnis.
+Usuario de Ordo Salud.
 
 - Se inicia sesión con NOMBRE DE USUARIO (no con correo; el correo es opcional).
 - Cada tenant (consultorio o clínica) tiene sus propios usuarios: `tenant_cuenta` + `username` es único.
@@ -55,7 +55,7 @@ class Usuario(AbstractUser):
         help_text='Letras, números y . _ - @ (sin espacios). Se guarda en minúsculas.')
     tenant_cuenta = models.ForeignKey(
         'plataforma.Tenant', on_delete=models.PROTECT, null=True, blank=True, related_name='cuentas',
-        verbose_name='Consultorio de la cuenta', help_text='Vacío = cuenta de plataforma (administración de Omnis).')
+        verbose_name='Consultorio de la cuenta', help_text='Vacío = cuenta de plataforma (administración de Ordo Salud).')
     email = models.EmailField('Correo (opcional)', blank=True)
     telefono = models.CharField('Teléfono', max_length=30, blank=True)
     debe_cambiar_clave = models.BooleanField(

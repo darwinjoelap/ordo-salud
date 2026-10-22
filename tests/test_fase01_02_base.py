@@ -25,8 +25,8 @@ class EsqueletoTest(TestCase):
 
     def test_manifest_y_service_worker(self):
         c = Client(HTTP_HOST='localhost')
-        self.assertEqual(c.get('/manifest.webmanifest').json()['short_name'], 'Omnis')
-        self.assertIn('omnis-', c.get('/sw.js').content.decode())
+        self.assertEqual(c.get('/manifest.webmanifest').json()['short_name'], 'Ordo Salud')
+        self.assertIn('ordo-', c.get('/sw.js').content.decode())
 
     def test_hora12(self):
         self.assertEqual(fechas.hora12(time(13, 5)), '1:05 p. m.')
@@ -139,7 +139,7 @@ class EquipoTest(BaseTest):
         esp = Especialidad.objects.get(codigo='medicina_general')
         r = self.cliente.post('/equipo/agregar/', {'username': 'drlopez', 'nombre': 'Juan', 'apellido': 'López',
                                                    'rol': 'MEDICO', 'especialidad': esp.pk, 'titulo': 'Dr.'})
-        self.assertContains(r, 'Omnis-')
+        self.assertContains(r, 'Ordo-')
         m = Membresia.objects.get(usuario__username='drlopez')
         self.assertTrue(m.es_profesional)
         self.assertEqual(m.perfil.nombre_con_titulo, 'Dr. Juan López')

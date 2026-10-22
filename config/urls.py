@@ -22,8 +22,8 @@ def urls_de_especialidades():
     return rutas
 
 
-admin.site.site_header = 'Omnis — administración'
-admin.site.site_title = 'Omnis'
+admin.site.site_header = 'Ordo Salud — administración'
+admin.site.site_title = 'Ordo Salud'
 
 urlpatterns = [
     path('admin/', admin.site.urls),

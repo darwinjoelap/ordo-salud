@@ -1,4 +1,4 @@
-"""Filtros comunes. Están en `builtins`: no hace falta {% load omnis %}."""
+"""Filtros comunes. Están en `builtins`: no hace falta {% load ordo %}."""
 from decimal import Decimal, InvalidOperation
 
 from django import template

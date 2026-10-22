@@ -8,11 +8,11 @@
 </div>
 <form method="post" data-offline="off">{% csrf_token %}
   {% for item in items %}
-    <div class="card om-seccion {% if item.seccion.ambito == 'PACIENTE' %}om-ambito-paciente{% endif %} mb-3" data-seccion>
+    <div class="card os-seccion {% if item.seccion.ambito == 'PACIENTE' %}os-ambito-paciente{% endif %} mb-3" data-seccion>
       <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#s{{ item.pk }}">
         <i class="bi bi-chevron-down small"></i>{{ item.seccion.nombre }}
         {% if item.obligatoria %}<span class="text-danger">*</span>{% endif %}
-        {% if item.seccion.ambito == 'PACIENTE' %}<span class="om-chip ms-auto">se conserva entre consultas</span>{% endif %}
+        {% if item.seccion.ambito == 'PACIENTE' %}<span class="os-chip ms-auto">se conserva entre consultas</span>{% endif %}
         {% if probado %}{% if item.valido %}<i class="bi bi-check-circle-fill text-success ms-auto"></i>{% else %}<i class="bi bi-exclamation-circle-fill text-danger ms-auto"></i>{% endif %}{% endif %}
       </div>
       <div class="collapse {% if not item.colapsada or probado %}show{% endif %}" id="s{{ item.pk }}">

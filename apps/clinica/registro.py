@@ -61,7 +61,7 @@ class EspecialidadDef:
     codigo: str
     nombre: str
     modulo: str = ''
-    color: str = '#2F625B'
+    color: str = '#145F8F'
     icono: str = 'bi-heart-pulse'
     orden: int = 100
     secciones: list = field(default_factory=list)

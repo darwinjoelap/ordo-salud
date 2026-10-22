@@ -1,4 +1,4 @@
-# 00 — Arquitectura de Omnis
+# 00 — Arquitectura de Ordo Salud
 
 > Decisiones estructurales. Cada una tiene su ADR en `DECISIONES.md`.
 > Leer antes de empezar cualquier fase nueva.
@@ -11,7 +11,7 @@ los campos de la especialidad viven como columnas fijas en `Paciente` y `Consult
 modelo). Agregar Cardiología así significaría un tercer repositorio y un tercer conjunto de
 arreglos duplicados (hoy ya se replican a mano los cambios entre Ginea y Pediae).
 
-Omnis separa **lo común** (paciente, agenda, consulta, récipe, cobro, reportes, PWA)
+Ordo Salud separa **lo común** (paciente, agenda, consulta, récipe, cobro, reportes, PWA)
 de **lo específico** (secciones clínicas, cálculos, documentos y reportes de cada
 especialidad), para que una especialidad nueva sea un **módulo**, no un sistema.
 
@@ -44,7 +44,7 @@ especialidad), para que una especialidad nueva sea un **módulo**, no un sistema
   `objects` (filtra por tenant activo, **vacío si no hay**) y `todos` (sin filtro).
 - `TenantActivoMiddleware` fija `request.tenant` y `request.membresia` desde la sesión.
 - Entrada por enlace propio `/<slug>/` → login con usuario único **por tenant**
-  (`usuarios/backends.py` de Ordo). Subdominios (`dra-x.omnis.com.ve`) quedan para cuando
+  (`usuarios/backends.py` de Ordo). Subdominios (`dra-x.ordosalud.com.ve`) quedan para cuando
   exista el dominio; el diseño no cambia, solo cómo se resuelve el tenant.
 - Un usuario puede pertenecer a **varios tenants** (médico que atiende en dos clínicas):
   la `Membresia` lleva el rol; el selector de tenant ya existe en Ordo.
@@ -57,7 +57,7 @@ plataforma simples y es lo que ya está probado en Ordo. El aislamiento se garan
 manager que falla cerrado **más** tests de aislamiento obligatorios (Fase 02).
 
 > Lección de Ginea/Pediae: sus FK `tenant` son `null=True` y el filtro se escribe a mano en
-> cada vista. En Omnis el FK es obligatorio y `editable=False`, y el filtro es automático.
+> cada vista. En Ordo Salud el FK es obligatorio y `editable=False`, y el filtro es automático.
 
 ## 4. Capas y módulos
 

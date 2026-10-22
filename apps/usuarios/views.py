@@ -32,7 +32,7 @@ def perfil(request):
 
 class EntrarPrincipal(auth_views.LoginView):
     """
-    Login de la dirección principal: es para cuentas de plataforma (administración de Omnis).
+    Login de la dirección principal: es para cuentas de plataforma (administración de Ordo Salud).
     Si este equipo ya entró antes por el enlace de un consultorio, se le lleva a ese login.
     """
     template_name = 'registration/login.html'
