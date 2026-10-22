@@ -91,7 +91,7 @@ class ReportesTest(BaseTest):
         self.assertIn('spreadsheetml', r['Content-Type'])
         from openpyxl import load_workbook
         libro = load_workbook(BytesIO(r.content))
-        self.assertEqual(libro.sheetnames[:3], ['Resumen', 'Por mes', 'Morbilidad'])
+        self.assertEqual(libro.sheetnames[:3], ['Resumen', 'Por mes', 'Enfermedades'])
         self.assertEqual(libro['Consultas'].max_row, 4 + 3)
 
     def test_documento_de_muestra_del_medico(self):

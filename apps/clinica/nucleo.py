@@ -91,7 +91,7 @@ SECCIONES = [
     SeccionDef('nucleo.diagnosticos', 'Diagnósticos', orden=60, esquema={'campos': [
         {'clave': 'diagnosticos', 'tipo': 'tabla', 'etiqueta': 'Diagnósticos', 'requerido': True, 'filas': 2,
          'subcampos': [
-             {'clave': 'codigo', 'tipo': 'texto', 'etiqueta': 'CIE-10', 'ancho': 2},
+             {'clave': 'codigo', 'tipo': 'texto', 'etiqueta': 'Código', 'ancho': 2},
              {'clave': 'descripcion', 'tipo': 'texto', 'etiqueta': 'Diagnóstico', 'ancho': 7},
              {'clave': 'certeza', 'tipo': 'opcion', 'etiqueta': 'Certeza', 'ancho': 3,
               'opciones': [['PRESUNTIVO', 'Presuntivo'], ['DEFINITIVO', 'Definitivo']]},

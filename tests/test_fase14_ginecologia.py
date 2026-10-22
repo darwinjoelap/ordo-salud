@@ -170,6 +170,29 @@ class GinecologiaTest(BaseTest):
         self.assertFalse(general.context['mostrar_sexo'])            # en GO el reporte por sexo no tiene sentido
         self.assertContains(r, 'Enfermedades e infecciones')
         self.assertContains(r, 'Vacuna contra el VPH')
+        self.assertTrue(r.context['prenatales_mes'])                 # controles prenatales por mes
+        pdf = self.cliente.get('/esp/ginecologia/reportes/?formato=pdf')
+        self.assertEqual(pdf['Content-Type'], 'application/pdf')
+        self.assertTrue(pdf.content.startswith(b'%PDF'))
+
+    def test_filtro_por_diagnostico(self):
+        from apps.clinica.models import DiagnosticoConsulta
+        c1, c2 = self.abrir(), self.abrir()
+        with self.en_tenant():
+            DiagnosticoConsulta.objects.create(consulta=c1, paciente=self.p, codigo='N76.0', descripcion='Vaginitis aguda')
+            DiagnosticoConsulta.objects.create(consulta=c2, paciente=self.p, codigo='', descripcion='Control sano')
+        r = self.cliente.get('/reportes/')
+        self.assertEqual(r.context['consultas'], 2)
+        self.assertEqual({b['filtro'] for b in r.context['morbilidad']}, {'N76.0', 'Control sano'})
+        self.assertContains(r, 'diagnostico=N76.0')                   # cada enfermedad filtra al tocarla
+        self.assertNotContains(r, 'CIE-10')
+        for consulta in ('n76.0', 'vagini'):                          # código exacto o parte del nombre
+            r = self.cliente.get(f'/reportes/?diagnostico={consulta}')
+            self.assertEqual(r.context['consultas'], 1)
+            self.assertContains(r, 'Quitar filtro')
+        go = self.cliente.get('/esp/ginecologia/reportes/?diagnostico=sano')
+        self.assertEqual(go.context['consultas'], 1)
+        self.assertIn('diagnostico=sano', go.context['pestanas'][0]['url'])   # se conserva al cambiar de pestaña
 
     def test_paciente_nueva_sale_femenina_y_editar_funciona(self):
         r = self.cliente.get('/pacientes/nuevo/')

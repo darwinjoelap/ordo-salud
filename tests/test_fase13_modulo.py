@@ -152,6 +152,8 @@ class ModuloPediatriaTest(BaseTest):
         self.assertEqual(x['Content-Type'].split(';')[0],
                          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         self.assertContains(self.cliente.get('/reportes/'), '/esp/pediatria/reportes/')  # pestaña Pediatría
+        pdf = self.cliente.get('/esp/pediatria/reportes/?formato=pdf')
+        self.assertTrue(pdf.content.startswith(b'%PDF'))
 
     # ---- plantillas de módulo ----
     def test_actualizar_plantillas_respeta_la_elegida_por_el_medico(self):

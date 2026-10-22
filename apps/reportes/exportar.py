@@ -52,6 +52,8 @@ def _quien(f):
     partes = [f.profesional.nombre_con_titulo if f.profesional else 'Todo el consultorio']
     if f.especialidad:
         partes.append(f.especialidad.nombre)
+    if f.diagnostico:
+        partes.append(f'Diagnóstico: {f.diagnostico}')
     return ' · '.join(partes)
 
 
@@ -76,7 +78,7 @@ def pdf(tenant, d):
                                           for m in d['mensual']], [60 * mm, 40 * mm, 43 * mm, 43 * mm], (1, 2, 3))]
     bloques = []
     if d['morbilidad']:
-        bloques.append([_titulo('Diagnósticos más frecuentes (CIE-10)'),
+        bloques.append([_titulo('Enfermedades más frecuentes (por diagnóstico)'),
                         _tabla(['Diagnóstico', 'Casos'], [[x['etiqueta'], x['valor']] for x in d['morbilidad']],
                                [156 * mm, 30 * mm], (1,))])
     bloques.append([_titulo('Agenda'), _tabla(
@@ -151,7 +153,7 @@ def excel(tenant, d, consultas):
         ('Por cobrar (USD)', float(fi['por_cobrar'])), ('Cargos exonerados', fi['exonerados'])], primera=True)
     hoja('Por mes', ['Mes', 'Consultas', 'Citas atendidas', 'Cobrado (USD)'],
          [(m['mes'], m['consultas'], m['citas_atendidas'], float(m['cobrado'])) for m in d['mensual']])
-    hoja('Morbilidad', ['Diagnóstico (CIE-10)', 'Casos'], [(x['etiqueta'], x['valor']) for x in d['morbilidad']])
+    hoja('Enfermedades', ['Diagnóstico', 'Casos'], [(x['etiqueta'], x['valor']) for x in d['morbilidad']])
     hoja('Pacientes', ['Grupo', 'Pacientes'], [(x['etiqueta'], x['valor']) for x in d['edades']]
          + [(x['etiqueta'], x['valor']) for x in d['sexos']])
     hoja('Cobros por método', ['Método', 'USD'], [(x['etiqueta'], float(x['valor'])) for x in fi['por_metodo']])
@@ -173,3 +175,93 @@ def excel(tenant, d, consultas):
     salida = BytesIO()
     libro.save(salida)
     return salida.getvalue()
+
+
+# --- Reportes por especialidad: el módulo describe cifras y bloques; aquí se arman el PDF y el Excel ---------------
+# kpis    = [(etiqueta, valor)]
+# bloques = [(grupo, [(titulo, barras)])]          barras = [{'etiqueta', 'valor', ...}] (rs._barras)
+# tablas  = [(titulo, encabezado, filas)]          tablas libres (p. ej. controles prenatales por mes)
+
+def pdf_especialidad(tenant, f, titulo, kpis, bloques, tablas=(), nota=''):
+    buffer = BytesIO()
+    plantilla = documento(buffer, titulo_pdf=titulo)
+    h = encabezado_tenant(tenant, titulo=titulo.upper(), subtitulo=f'{f.periodo_texto}<br/>{_quien(f)}',
+                          profesional=f.profesional if not f.todo_el_consultorio or f.profesional else None)
+    for i in range(0, len(kpis), 5):
+        h.append(_kpis(kpis[i:i + 5]))
+        h.append(Spacer(1, 2 * mm))
+    for grupo, items in bloques:
+        con_datos = [(t, b) for t, b in items if any(x['valor'] for x in b)]
+        if not con_datos:
+            continue
+        from reportlab.lib.styles import ParagraphStyle
+        h.append(Paragraph(grupo.upper(), ParagraphStyle('g', parent=ESTILOS['Normal'], fontName='Helvetica-Bold',
+                                                         fontSize=8, textColor=colors.HexColor('#4B5E6D'),
+                                                         spaceBefore=10)))
+        for t, barras in con_datos:
+            h.append(KeepTogether([_titulo(t), _tabla(['', 'Pacientes / casos'],
+                                                      [[x['etiqueta'], x['valor']] for x in barras],
+                                                      [146 * mm, 40 * mm], (1,))]))
+    for t, encabezado, filas in tablas:
+        if filas:
+            ancho = ANCHO / len(encabezado)
+            h.append(KeepTogether([_titulo(t), _tabla(encabezado, filas, [ancho] * len(encabezado),
+                                                      range(1, len(encabezado)))]))
+    if nota:
+        h += [Spacer(1, 4 * mm), Paragraph(f'<font size="7" color="#4B5E6D">{nota}</font>', ESTILOS['Normal'])]
+    pie = pie_tenant(tenant)
+    plantilla.build(h, onFirstPage=pie, onLaterPages=pie)
+    return buffer.getvalue()
+
+
+def excel_especialidad(tenant, f, titulo, kpis, bloques, tablas=()):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    libro = Workbook()
+    hoja = libro.active
+    hoja.title = titulo[:31]
+    hoja.append([tenant.configuracion.nombre_display])
+    hoja.append([f'{titulo} · {f.periodo_texto} · {_quien(f)}'])
+    hoja['A1'].font = Font(bold=True, size=13, color='145F8F')
+    negrita, relleno = Font(bold=True, color='0C385B'), PatternFill('solid', fgColor='E3EEF7')
+    hoja.append([])
+    for etiqueta, valor in kpis:
+        hoja.append([etiqueta, valor])
+    for grupo, items in bloques:
+        hoja.append([])
+        hoja.append([grupo.upper()])
+        hoja.cell(hoja.max_row, 1).font = Font(bold=True, size=9, color='4B5E6D')
+        for t, barras in items:
+            hoja.append([t])
+            hoja.cell(hoja.max_row, 1).font, hoja.cell(hoja.max_row, 1).fill = negrita, relleno
+            for b in barras:
+                hoja.append([b['etiqueta'], b['valor']])
+    for t, encabezado, filas in tablas:
+        hoja.append([])
+        hoja.append([t])
+        hoja.cell(hoja.max_row, 1).font = negrita
+        hoja.append(list(encabezado))
+        for fila in filas:
+            hoja.append(list(fila))
+    hoja.column_dimensions['A'].width = 48
+    hoja.column_dimensions['B'].width = 16
+    hoja.column_dimensions['C'].width = 16
+    salida = BytesIO()
+    libro.save(salida)
+    return salida.getvalue()
+
+
+def responder_especialidad(request, f, formato, nombre, titulo, kpis, bloques, tablas=(), nota=''):
+    """Respuesta PDF o Excel de un reporte por especialidad (auditada)."""
+    from django.http import HttpResponse
+
+    from apps.core import auditoria
+    from apps.core.pdf import nombre_archivo, respuesta_pdf
+    auditoria.registrar(request, 'EXPORTAR', 'reportes', detalle=f'{titulo} ({formato}) {f.periodo_texto}')
+    if formato == 'pdf':
+        return respuesta_pdf(pdf_especialidad(request.tenant, f, titulo, kpis, bloques, tablas, nota),
+                             nombre, f.desde, f.hasta)
+    r = HttpResponse(excel_especialidad(request.tenant, f, titulo, kpis, bloques, tablas),
+                     content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    r['Content-Disposition'] = f'attachment; filename="{nombre_archivo(nombre, f.desde, f.hasta, extension="xlsx")}"'
+    return r

@@ -25,6 +25,8 @@ def _query(f):
         datos['profesional'] = f.profesional.pk
     if f.especialidad is not None:
         datos['especialidad'] = f.especialidad.pk
+    if f.diagnostico:
+        datos['diagnostico'] = f.diagnostico
     return urlencode(datos)
 
 
@@ -38,7 +40,8 @@ def tablero(request):
         've_finanzas': gestion or tiene_permiso(request, 'cobros.gestionar') or not f.todo_el_consultorio,
         'profesionales': PerfilProfesional.objects.select_related('membresia__usuario') if gestion else [],
         'especialidades': request.tenant.especialidades.all() if gestion else [],
-        'rangos': selectors.rangos_rapidos(), 'pestanas': selectors.pestanas(request, 'general')})
+        'rangos': selectors.rangos_rapidos(), 'pestanas': selectors.pestanas(request, 'general'),
+        'query_sin_dx': selectors.query_sin(request, 'diagnostico')})
 
 
 @login_required

@@ -20,8 +20,8 @@ class Cie10(models.Model):
     busqueda = models.CharField(max_length=320, editable=False, db_index=True, default='')
 
     class Meta:
-        verbose_name = 'Diagnóstico CIE-10'
-        verbose_name_plural = 'Catálogo CIE-10'
+        verbose_name = 'Diagnóstico del catálogo'
+        verbose_name_plural = 'Catálogo de diagnósticos'
         ordering = ['codigo']
 
     def __str__(self):

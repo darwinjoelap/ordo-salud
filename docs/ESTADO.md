@@ -15,8 +15,8 @@
 1. Darwin: probar en su PC «Armar historia» (menú Historia clínica), la agenda nueva y «Procedimiento» (ficha y agenda).
    Si sigue sin ver secciones: `sincronizar_especialidades` + `refrescar_plantillas <esp> --consultorio <enlace>` y
    Ctrl+F5; si la plantilla es del consultorio y su usuario no la puede editar, usar «Hacer mi copia».
-2. Darwin: revisar «Reportes» → pestañas General y Ginecología y obstetricia (ADR-042) con pacientes reales; decir qué
-   otra estadística de interés falta (p. ej. por diagnóstico CIE-10 específico, prenatales por mes).
+2. Darwin: revisar «Reportes» (ADR-042): pestañas, filtro por diagnóstico, PDF/Excel de cada especialidad.
+3. Siguiente: tercera especialidad (definir cuál y su sistema de origen).
 
 ## Completado (código + tests; falta prueba manual de Darwin)
 - [x] 01 Esqueleto (settings por entorno, Dockerfile, railway.json, cron, `/salud/`)

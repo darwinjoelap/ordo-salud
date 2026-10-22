@@ -1,0 +1,9 @@
+{# Filtros comunes de los reportes por especialidad: fechas, diagnóstico y rangos rápidos. #}
+<form method="get" class="card card-body mb-3"><div class="row g-2 align-items-end">
+  <div class="col-6 col-md-3"><label class="form-label" for="r-desde">Desde</label><input id="r-desde" type="date" name="desde" value="{{ filtros.desde|date:'Y-m-d' }}" class="form-control"></div>
+  <div class="col-6 col-md-3"><label class="form-label" for="r-hasta">Hasta</label><input id="r-hasta" type="date" name="hasta" value="{{ filtros.hasta|date:'Y-m-d' }}" class="form-control"></div>
+  {% include 'reportes/_filtro_diagnostico.html' %}
+  <div class="col-md-2"><button class="btn btn-primary w-100"><i class="bi bi-funnel me-1"></i>Filtrar</button></div></div>
+  <div class="d-flex flex-wrap gap-2 mt-2">{% for nombre, d, h in rangos %}<a class="btn btn-sm {% if d == filtros.desde and h == filtros.hasta %}btn-success{% else %}btn-outline-secondary{% endif %}" href="?desde={{ d|date:'Y-m-d' }}&hasta={{ h|date:'Y-m-d' }}{% if filtros.diagnostico %}&diagnostico={{ filtros.diagnostico|urlencode }}{% endif %}">{{ nombre }}</a>{% endfor %}</div>
+</form>
+{% include 'reportes/_filtro_activo.html' %}

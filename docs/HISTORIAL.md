@@ -18,7 +18,8 @@
 
 ### Reportes fijos y por especialidad (2026-10-22)
 - Hecho: pestañas General + una por especialidad; sexo solo si es relevante; reporte GO con enfermedades, VIH, VPH (diagnóstico y vacuna), ITS, citología alterada, condiciones y hábitos (también en Excel); morbilidad en pediatría.
-- Verificado: 189 tests en verde (SQLite + PostgreSQL), ruff limpio, capturas de ambas pestañas; falta prueba manual de Darwin con datos reales
+- Ampliado: «CIE-10» → «Código»; filtro por diagnóstico (tocar una enfermedad filtra); PDF de los reportes de GO y pediatría; controles prenatales por mes con EG promedio.
+- Verificado: 190 tests en verde (SQLite + PostgreSQL), ruff limpio, capturas y PDF revisados con datos de prueba; falta prueba manual de Darwin con datos reales
 - ADR: 042
 
 ### Procedimientos, agenda y «Armar historia» (2026-10-22)

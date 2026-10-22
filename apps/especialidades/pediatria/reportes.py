@@ -5,15 +5,13 @@ vacunas, lactancia materna, pesquisas y citas por día de la semana. Usa los mis
 (el médico ve lo suyo; titular/administración, todo el consultorio).
 """
 from collections import Counter
-from io import BytesIO
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse
 from django.shortcuts import render
 
-from apps.core import auditoria
 from apps.core.fechas import edad_partes
+from apps.reportes import exportar
 from apps.reportes import selectors as rs
 
 from . import vacunas
@@ -109,46 +107,28 @@ def tablero(request):
         raise PermissionDenied
     f = rs.filtros_de(request)
     datos = datos_reporte(f)
-    if request.GET.get('formato') == 'excel':
-        auditoria.registrar(request, 'EXPORTAR', 'reportes', detalle=f'Reporte pediátrico {f.periodo_texto}')
-        return _excel(datos, f)
-    query = request.GET.urlencode()
+    formato = request.GET.get('formato')
+    if formato in ('pdf', 'excel'):
+        return exportar.responder_especialidad(request, f, formato, 'reporte_pediatrico', 'Reporte pediátrico',
+                                               *_exportable(datos))
     return render(request, 'pediatria/reporte.html', {
         'titulo': 'Reporte pediátrico', 'filtros': f, **datos, 'rangos': rs.rangos_rapidos(),
         'pestanas': rs.pestanas(request, 'ped_reporte'),
-        'query': query})
+        'query_sin_formato': rs.query_sin(request), 'query_sin_dx': rs.query_sin(request, 'diagnostico')})
 
 
-def _excel(datos, f):
-    from openpyxl import Workbook
-    from openpyxl.styles import Font
-    libro = Workbook()
-    hoja = libro.active
-    hoja.title = 'Pediatría'
-    hoja.append([f'Reporte pediátrico · {f.periodo_texto}'])
-    hoja['A1'].font = Font(bold=True, size=13)
-    hoja.append(['Consultas', datos['consultas']])
-    hoja.append(['Pacientes atendidos', datos['pacientes']])
-    for titulo, clave in [('Enfermedades más frecuentes', 'morbilidad'), ('Tipo de consulta', 'por_tipo'),
-                          ('Estado nutricional (peso/edad)', 'nutricion'),
-                          ('Clasificación OMS (IMC/edad)', 'imc'), ('Talla para la edad', 'talla'),
-                          ('Grupos de edad', 'edades'), ('Antecedentes familiares', 'familiares'),
-                          ('Pesquisas realizadas', 'pesquisas'), ('Citas por día', 'por_dia')]:
-        hoja.append([])
-        hoja.append([titulo])
-        hoja.cell(hoja.max_row, 1).font = Font(bold=True)
-        for b in datos[clave]:
-            hoja.append([b['etiqueta'], b['valor']])
-    v, lac = datos['vacunas'], datos['lactancia']
-    hoja.append([])
-    hoja.append(['Vacunas: menores atendidos', v['menores']])
-    hoja.append(['Con esquema al día', v['al_dia']])
-    hoja.append(['Con dosis atrasadas', v['atrasados']])
-    hoja.append(['Lactancia materna exclusiva: sí / no', lac['si'], lac['no']])
-    hoja.column_dimensions['A'].width = 42
-    salida = BytesIO()
-    libro.save(salida)
-    r = HttpResponse(salida.getvalue(),
-                     content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    r['Content-Disposition'] = f'attachment; filename="reporte_pediatrico_{f.desde}_{f.hasta}.xlsx"'
-    return r
+def _exportable(d):
+    v, lac = d['vacunas'], d['lactancia']
+    kpis = [('Consultas', d['consultas']), ('Pacientes atendidos', d['pacientes']),
+            ('Con antropometría', d['con_medicion']), ('Menores con vacunas al día', f"{v['al_dia']} de {v['menores']}"),
+            ('Con dosis atrasadas', v['atrasados']),
+            ('Lactancia materna exclusiva', f"{lac['pct']}%" if lac['pct'] is not None else '—')]
+    bloques = [
+        ('Enfermedades', [('Enfermedades más frecuentes', d['morbilidad'])]),
+        ('Crecimiento y nutrición', [('Estado nutricional (peso/edad)', d['nutricion']),
+                                     ('Clasificación OMS (IMC/edad)', d['imc']), ('Talla para la edad', d['talla'])]),
+        ('Pacientes', [('Grupos de edad', d['edades']), ('Antecedentes familiares', d['familiares']),
+                       ('Pesquisas realizadas', d['pesquisas'])]),
+        ('Actividad', [('Tipo de consulta', d['por_tipo']), ('Citas por día de la semana', d['por_dia'])]),
+    ]
+    return kpis, bloques, ()

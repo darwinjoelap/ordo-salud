@@ -7,15 +7,13 @@ cuentan: el reporte no muestra nombres salvo en la lista de partos esperados (ag
 """
 from collections import Counter
 from datetime import timedelta
-from io import BytesIO
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 
-from apps.core import auditoria
+from apps.reportes import exportar
 from apps.reportes import selectors as rs
 
 from . import obstetricia as ob
@@ -40,6 +38,14 @@ def datos_reporte(f):
         consulta_id__in=ids, seccion__codigo='go.tipo'))
     controles = list(ControlPrenatal.objects.filter(consulta_id__in=ids))
     eg = [c.eg_dias for c in controles if c.eg_dias is not None]
+    por_mes = {}
+    for c in controles:
+        por_mes.setdefault(c.fecha.replace(day=1), []).append(c.eg_dias)
+    prenatales_mes = []
+    for m in rs._meses(f.desde, f.hasta):
+        semanas = [d for d in por_mes.get(m, []) if d is not None]
+        prenatales_mes.append({'mes': rs._etiqueta_mes(m), 'controles': len(por_mes.get(m, [])),
+                               'eg_promedio': ob.texto_eg(round(sum(semanas) / len(semanas))) if semanas else '—'})
 
     edades = Counter()
     for p in pacientes.values():
@@ -107,6 +113,7 @@ def datos_reporte(f):
     return {
         'consultas': len(ids), 'pacientes': len(pacientes), 'prenatales': len(controles),
         'eg_promedio': ob.texto_eg(round(sum(eg) / len(eg))) if eg else '',
+        'prenatales_mes': prenatales_mes if any(x['controles'] for x in prenatales_mes) else [],
         'en_curso': len(en_curso), 'proximos': proximos,
         'por_tipo': rs._barras([(n, tipos.get(k, 0)) for k, n in TIPOS_CONSULTA if tipos.get(k)]),
         'trimestres': rs._barras([(f'{t}.er trimestre' if t in (1, 3) else f'{t}.º trimestre', trimestres.get(t, 0))
@@ -137,51 +144,41 @@ def tablero(request):
         raise PermissionDenied
     f = rs.filtros_de(request)
     datos = datos_reporte(f)
-    if request.GET.get('formato') == 'excel':
-        auditoria.registrar(request, 'EXPORTAR', 'reportes', detalle=f'Reporte de ginecología {f.periodo_texto}')
-        return _excel(datos, f)
+    formato = request.GET.get('formato')
+    if formato in ('pdf', 'excel'):
+        return exportar.responder_especialidad(request, f, formato, 'reporte_ginecologia', TITULO, *_exportable(datos),
+                                               nota=NOTA)
     return render(request, 'ginecologia/reporte.html', {
         'titulo': 'Reporte de ginecología', 'filtros': f, **datos, 'rangos': rs.rangos_rapidos(),
         'pestanas': rs.pestanas(request, 'go_reporte'),
-        'query': request.GET.urlencode()})
+        'query_sin_formato': rs.query_sin(request), 'query_sin_dx': rs.query_sin(request, 'diagnostico')})
 
 
-def _excel(datos, f):
-    from openpyxl import Workbook
-    from openpyxl.styles import Font
-    libro = Workbook()
-    hoja = libro.active
-    hoja.title = 'Ginecología'
-    hoja.append([f'Reporte de ginecología y obstetricia · {f.periodo_texto}'])
-    hoja['A1'].font = Font(bold=True, size=13)
-    for etiqueta, valor in (('Consultas', datos['consultas']), ('Pacientes atendidas', datos['pacientes']),
-                            ('Controles prenatales', datos['prenatales']), ('EG promedio', datos['eg_promedio']),
-                            ('Embarazos en curso', datos['en_curso']),
-                            ('Vacunadas contra VPH', datos['vph']['vacunadas']),
-                            ('Con diagnóstico de VPH', datos['vph']['diagnostico'])):
-        hoja.append([etiqueta, valor])
-    for titulo, clave in [('Enfermedades más frecuentes', 'morbilidad'), ('Infecciones y hallazgos', 'infecciones'),
-                          ('Vacuna contra el VPH', 'vph_barras'), ('Condiciones gineco-obstétricas', 'condiciones'),
-                          ('Hábitos', 'habitos'),
-                          ('Tipo de consulta', 'por_tipo'), ('Embarazos por trimestre', 'trimestres'),
-                          ('Grupos de edad', 'edades'), ('Métodos anticonceptivos', 'metodos'),
-                          ('Citología', 'citologia'), ('Prueba de VIH', 'vih'),
-                          ('Antecedentes familiares', 'familiares'), ('Citas por día', 'por_dia')]:
-        hoja.append([])
-        hoja.append([titulo])
-        hoja.cell(hoja.max_row, 1).font = Font(bold=True)
-        for b in datos[clave]:
-            hoja.append([b['etiqueta'], b['valor']])
-    if datos['proximos']:
-        hoja.append([])
-        hoja.append(['Partos esperados (próximos 30 días)'])
-        hoja.cell(hoja.max_row, 1).font = Font(bold=True)
-        for c in datos['proximos']:
-            hoja.append([c.paciente.nombre_completo, c.fpp.strftime('%d/%m/%Y')])
-    hoja.column_dimensions['A'].width = 42
-    salida = BytesIO()
-    libro.save(salida)
-    r = HttpResponse(salida.getvalue(),
-                     content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    r['Content-Disposition'] = f'attachment; filename="reporte_ginecologia_{f.desde}_{f.hasta}.xlsx"'
-    return r
+TITULO = 'Reporte de ginecología y obstetricia'
+NOTA = ('Fichas (métodos, citología, VIH, VPH, antecedentes) = pacientes atendidas en el período. Citología al día = '
+        'hecha en el último año. Embarazos en curso = último control con FPP vigente. Solo conteos, sin nombres.')
+
+
+def _exportable(d):
+    """Cifras, bloques y tablas del reporte GO (mismo orden que la pantalla) para el PDF y el Excel."""
+    kpis = [('Consultas', d['consultas']), ('Pacientes atendidas', d['pacientes']),
+            ('Controles prenatales', d['prenatales']), ('EG promedio', d['eg_promedio'] or '—'),
+            ('Embarazos en curso', d['en_curso']), ('Vacunadas contra VPH', d['vph']['vacunadas']),
+            ('Con diagnóstico de VPH', d['vph']['diagnostico'])]
+    bloques = [
+        ('Enfermedades e infecciones', [('Enfermedades más frecuentes', d['morbilidad']),
+                                        ('Infecciones y hallazgos', d['infecciones']), ('Prueba de VIH', d['vih']),
+                                        ('Vacuna contra el VPH', d['vph_barras']), ('Citología', d['citologia'])]),
+        ('Salud gineco-obstétrica y embarazo', [('Condiciones', d['condiciones']),
+                                                ('Métodos anticonceptivos', d['metodos']),
+                                                ('Embarazos en curso por trimestre', d['trimestres']),
+                                                ('Antecedentes familiares', d['familiares']), ('Hábitos', d['habitos']),
+                                                ('Grupos de edad', d['edades'])]),
+        ('Actividad', [('Tipo de consulta', d['por_tipo']), ('Citas por día de la semana', d['por_dia'])]),
+    ]
+    tablas = [('Controles prenatales por mes', ['Mes', 'Controles', 'EG promedio'],
+               [[x['mes'], x['controles'], x['eg_promedio']] for x in d['prenatales_mes']]),
+              ('Partos esperados (próximos 30 días)', ['Paciente', 'FPP', 'EG hoy'],
+               [[c.paciente.nombre_completo, c.fpp.strftime('%d/%m/%Y'), ob.texto_eg(c.eg_dias_en(timezone.localdate()))]
+                for c in d['proximos']])]
+    return kpis, bloques, tablas

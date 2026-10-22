@@ -27,6 +27,7 @@ class Filtros:
     profesional: object = None          # PerfilProfesional o None (= todos)
     especialidad: object = None         # Especialidad o None
     todo_el_consultorio: bool = True    # False = el médico ve solo lo suyo
+    diagnostico: str = ''               # código exacto o parte del nombre del diagnóstico ('' = todos)
 
     @property
     def periodo_texto(self):
@@ -59,13 +60,15 @@ def filtros_de(request):
     hasta = _fecha(request.GET.get('hasta'), hoy)
     if hasta < desde:
         desde, hasta = hasta, desde
+    diagnostico = (request.GET.get('diagnostico') or '').strip()[:100]
     if tiene_permiso(request, 'reportes.ver'):
         pk = request.GET.get('profesional')
         profesional = PerfilProfesional.objects.filter(pk=pk).first() if pk and pk.isdigit() else None
         esp = request.GET.get('especialidad')
         especialidad = request.tenant.especialidades.filter(pk=esp).first() if esp and esp.isdigit() else None
-        return Filtros(desde, hasta, profesional, especialidad, todo_el_consultorio=True)
-    return Filtros(desde, hasta, request.membresia.perfil_activo, None, todo_el_consultorio=False)
+        return Filtros(desde, hasta, profesional, especialidad, todo_el_consultorio=True, diagnostico=diagnostico)
+    return Filtros(desde, hasta, request.membresia.perfil_activo, None, todo_el_consultorio=False,
+                   diagnostico=diagnostico)
 
 
 def _aplicar(qs, f, campo_prof='profesional', campo_esp='especialidad'):
@@ -79,7 +82,18 @@ def _aplicar(qs, f, campo_prof='profesional', campo_esp='especialidad'):
 def consultas_de(f):
     from apps.clinica.models import Consulta
     qs = Consulta.objects.filter(fecha_hora__date__range=(f.desde, f.hasta)).exclude(estado=Consulta.Estado.ANULADA)
-    return _aplicar(qs, f)
+    return filtrar_diagnostico(_aplicar(qs, f), f.diagnostico)
+
+
+def filtrar_diagnostico(consultas, texto):
+    """Consultas con un diagnóstico de ese código (exacto) o cuyo nombre contenga el texto."""
+    if not texto:
+        return consultas
+    from django.db.models import Q
+
+    from apps.clinica.models import DiagnosticoConsulta
+    ids = DiagnosticoConsulta.objects.filter(Q(codigo__iexact=texto) | Q(descripcion__icontains=texto))
+    return consultas.filter(pk__in=ids.values('consulta_id'))
 
 
 def _meses(desde, hasta):
@@ -111,6 +125,8 @@ def resumen(f):
     # Pacientes nuevos: su PRIMERA consulta (con este profesional/especialidad, si hay filtro) cae en el período
     base = _aplicar(Consulta.objects.exclude(estado=Consulta.Estado.ANULADA), f)
     primeras = base.values('paciente_id').annotate(primera=Min('fecha_hora'))
+    if f.diagnostico:
+        primeras = primeras.filter(paciente_id__in=pacientes_ids)
     nuevos = sum(1 for p in primeras if f.desde <= timezone.localtime(p['primera']).date() <= f.hasta)
 
     por_tipo = Counter(dict(consultas.values_list('tipo').annotate(n=Count('id'))))
@@ -130,7 +146,7 @@ def resumen(f):
         'estados': _barras([(Cita.Estado(e).label, n) for e, n in estados.most_common()]),
     }
 
-    # Morbilidad (CIE-10)
+    # Enfermedades más frecuentes (por diagnóstico)
     morbilidad = morbilidad_de(consultas)
 
     # Pacientes atendidos: sexo y edad
@@ -180,11 +196,15 @@ def resumen(f):
 
 
 def morbilidad_de(consultas, limite=15):
-    """Diagnósticos más frecuentes (CIE-10 o texto) de esas consultas, como barras."""
+    """Diagnósticos más frecuentes (por código o, si no tiene, por nombre) de esas consultas, como barras.
+    Cada barra lleva `filtro` (lo que se pone en «Diagnóstico» para ver solo esos pacientes)."""
     from apps.clinica.models import DiagnosticoConsulta
     diagnosticos = (DiagnosticoConsulta.objects.filter(consulta__in=consultas)
                     .values('codigo', 'descripcion').annotate(n=Count('id')).order_by('-n', 'codigo')[:limite])
-    return _barras([(f"{d['codigo']} · {d['descripcion']}".strip(' ·'), d['n']) for d in diagnosticos])
+    barras = _barras([(f"{d['codigo']} · {d['descripcion']}".strip(' ·'), d['n']) for d in diagnosticos])
+    for b, d in zip(barras, diagnosticos, strict=True):
+        b['filtro'] = d['codigo'] or d['descripcion']
+    return barras
 
 
 def _sexo_relevante(sexos):
@@ -195,10 +215,12 @@ def _sexo_relevante(sexos):
 
 def pestanas(request, activa):
     """Reportes fijos («General») + uno por cada especialidad del consultorio con reporte propio."""
+    from urllib.parse import urlencode
+
     from django.urls import reverse
 
     from apps.clinica import registro
-    query = '&'.join(f'{k}={request.GET[k]}' for k in ('desde', 'hasta', 'profesional') if request.GET.get(k))
+    query = urlencode({k: request.GET[k] for k in ('desde', 'hasta', 'profesional', 'diagnostico') if request.GET.get(k)})
     sufijo = f'?{query}' if query else ''
     salida = [{'codigo': 'general', 'titulo': 'General', 'icono': 'bi-bar-chart-line',
                'url': reverse('reportes:tablero') + sufijo, 'activa': activa == 'general',
@@ -211,6 +233,14 @@ def pestanas(request, activa):
             salida.append({'codigo': r.codigo, 'titulo': titulo, 'icono': r.icono, 'url': reverse(r.url) + sufijo,
                            'activa': activa == r.codigo, 'descripcion': r.descripcion or r.titulo})
     return salida
+
+
+def query_sin(request, *claves):
+    """Query string actual sin esas claves (para armar enlaces que cambian un solo filtro)."""
+    datos = request.GET.copy()
+    for clave in claves + ('formato',):
+        datos.pop(clave, None)
+    return datos.urlencode()
 
 
 def finanzas_de(f):

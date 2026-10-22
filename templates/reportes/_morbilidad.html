@@ -1,0 +1,12 @@
+{# Enfermedades más frecuentes: cada una es un enlace que filtra el reporte por ese diagnóstico. #}
+{% load l10n %}{% if barras %}
+<ul class="list-unstyled mb-0 d-flex flex-column gap-2">
+  {% for b in barras %}
+  <li class="os-fila-barra">
+    <a class="d-flex justify-content-between gap-2 small text-decoration-none text-body" href="?{{ query_sin_dx }}{% if query_sin_dx %}&{% endif %}diagnostico={{ b.filtro|urlencode }}" title="Ver solo los pacientes con {{ b.etiqueta }}"><span class="text-truncate">{{ b.etiqueta }}</span><span class="fw-semibold text-nowrap">{{ b.valor }}</span></a>
+    <div class="os-barra-pista mt-1"><div class="os-barra" style="width: {{ b.pct|unlocalize }}%"></div></div>
+  </li>
+  {% endfor %}
+</ul>
+<p class="small text-muted mt-2 mb-0"><i class="bi bi-hand-index me-1"></i>Toca una enfermedad para ver solo esos pacientes.</p>
+{% else %}<p class="small text-muted mb-0">{{ vacio }}</p>{% endif %}
