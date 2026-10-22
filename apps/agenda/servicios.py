@@ -16,7 +16,7 @@ from apps.core.tenancy import tenant_actual
 from .models import Bloqueo, Cita, HorarioAtencion
 
 TRANSICIONES = {
-    'TENTATIVA': {'PROGRAMADA', 'CONFIRMADA', 'CANCELADA'},
+    'TENTATIVA': {'PROGRAMADA', 'CONFIRMADA', 'ATENDIDA', 'CANCELADA'},
     'PROGRAMADA': {'CONFIRMADA', 'EN_SALA', 'ATENDIDA', 'CANCELADA', 'NO_ASISTIO', 'TENTATIVA'},
     'CONFIRMADA': {'EN_SALA', 'ATENDIDA', 'CANCELADA', 'NO_ASISTIO', 'PROGRAMADA'},
     'EN_SALA': {'ATENDIDA', 'CONFIRMADA', 'NO_ASISTIO'},

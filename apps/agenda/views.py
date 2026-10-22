@@ -38,19 +38,45 @@ def _citas(fecha_desde, fecha_hasta, profesional=None):
 @login_required
 @requiere('agenda.ver')
 def dia(request):
+    """Agenda del día como en Pediae: contadores, citas con hora, sin hora, atendidos sin cita y turnos libres."""
+    from django.db.models import Prefetch
+
+    from apps.clinica.models import Consulta, Procedimiento
+    from apps.cobros.models import Cargo
     fecha = srv.fecha_de(request.GET.get('fecha'))
     profesionales = list(profesionales_activos())
     elegido = _profesional_elegido(request, profesionales)
-    citas = list(_citas(fecha, fecha, elegido))
-    columnas = []
-    for p in ([elegido] if elegido else profesionales):
-        propias = [c for c in citas if c.profesional_id == p.pk]
-        columnas.append({'profesional': p, 'citas': propias,
-                         'libres': srv.turnos_libres(p, fecha) if fecha >= srv.hoy() else [],
-                         'activas': sum(1 for c in propias if c.activa)})
+    citas = list(_citas(fecha, fecha, elegido).prefetch_related(
+        Prefetch('cargos', queryset=Cargo.objects.exclude(estado=Cargo.Estado.ANULADO)),
+        Prefetch('procedimientos', queryset=Procedimiento.objects.filter(anulado=False))))
+    for c in citas:
+        cargos = list(c.cargos.all())
+        c.cobro = None if not cargos else ('pagado' if all(x.estado == Cargo.Estado.PAGADO or x.exonerado
+                                                           for x in cargos) else 'pendiente')
+    consultas_sin_cita = (Consulta.objects.filter(fecha_hora__date=fecha, cita__isnull=True)
+                          .exclude(estado=Consulta.Estado.ANULADA).select_related('paciente', 'profesional'))
+    procedimientos_sin_cita = (Procedimiento.objects.filter(fecha=fecha, cita__isnull=True, anulado=False)
+                               .select_related('paciente', 'profesional').prefetch_related('cargos'))
+    if elegido:
+        consultas_sin_cita = consultas_sin_cita.filter(profesional=elegido)
+        procedimientos_sin_cita = procedimientos_sin_cita.filter(profesional=elegido)
+    libres = []
+    if fecha >= srv.hoy():
+        for p in ([elegido] if elegido else profesionales):
+            horas_libres = srv.turnos_libres(p, fecha)
+            if horas_libres:
+                libres.append({'profesional': p, 'horas': horas_libres})
     return render(request, 'agenda/dia.html', {
         'titulo': 'Agenda', 'fecha': fecha, 'anterior': fecha - timedelta(days=1), 'siguiente': fecha + timedelta(days=1),
-        'hoy': srv.hoy(), 'profesionales': profesionales, 'elegido': elegido, 'columnas': columnas,
+        'hoy': srv.hoy(), 'profesionales': profesionales, 'elegido': elegido,
+        'con_hora': [c for c in citas if c.hora_inicio], 'sin_hora': [c for c in citas if not c.hora_inicio],
+        'resumen': {'total': sum(1 for c in citas if c.estado not in ('CANCELADA',)),
+                    'atendidas': sum(1 for c in citas if c.estado == 'ATENDIDA'),
+                    'pendientes': sum(1 for c in citas if c.activa)},
+        'consultas_sin_cita': list(consultas_sin_cita), 'procedimientos_sin_cita': list(procedimientos_sin_cita),
+        'libres': libres, 'mostrar_profesional': elegido is None and len(profesionales) > 1,
+        'perfil': request.membresia.perfil_activo,
+        'puede_procedimiento': tiene_permiso(request, 'consultas.crear') or tiene_permiso(request, 'cobros.gestionar'),
         'bloqueos': Bloqueo.objects.filter(desde__date__lte=fecha, hasta__date__gte=fecha),
         'cumpleanos': srv.cumpleanos(fecha, request.membresia)})
 

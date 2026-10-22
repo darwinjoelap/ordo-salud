@@ -49,6 +49,43 @@ def secciones_para(plantilla, tenant):
                                          ('personalizadas', 'Personalizadas del consultorio')) if grupos[k]]
 
 
+def catalogo_para(plantilla, tenant):
+    """
+    Todas las secciones que puede llevar la plantilla, marcadas si ya están (para «armar la historia» con casillas):
+    [{'titulo', 'ayuda', 'secciones': [{'seccion', 'incluida', 'item', 'campos'}]}].
+    """
+    items = {i.seccion_id: i for i in plantilla.items.all()}
+    habilitadas = set(tenant.especialidades.values_list('pk', flat=True))
+    qs = (SeccionClinica.objects.visibles(tenant).filter(activa=True).select_related('especialidad')
+          .order_by('orden', 'nombre'))
+    esp = plantilla.especialidad
+    grupos = {
+        'ficha': {'titulo': f'Ficha de {esp.nombre.lower()}', 'ayuda': 'Datos de la paciente que se conservan entre '
+                  'consultas: lo que escribas aquí actualiza su ficha.', 'secciones': []},
+        'consulta': {'titulo': f'Consulta de {esp.nombre.lower()}', 'ayuda': 'Se llenan en cada visita.',
+                     'secciones': []},
+        'nucleo': {'titulo': 'Generales (todas las especialidades)', 'ayuda': 'Motivo, signos vitales, examen '
+                   'físico, diagnóstico, plan, récipe, órdenes…', 'secciones': []},
+        'personalizadas': {'titulo': 'Creadas en el consultorio', 'ayuda': '', 'secciones': []},
+        'otras': {'titulo': 'De otras especialidades del consultorio', 'ayuda': '', 'secciones': []},
+    }
+    for s in qs:
+        if s.tipo == SeccionClinica.Tipo.NUCLEO or (s.tipo == SeccionClinica.Tipo.MODULO and not s.especialidad_id):
+            clave = 'nucleo'
+        elif s.tipo == SeccionClinica.Tipo.PERSONALIZADA:
+            clave = 'personalizadas'
+        elif s.especialidad_id == plantilla.especialidad_id:
+            clave = 'ficha' if s.ambito == SeccionClinica.Ambito.PACIENTE else 'consulta'
+        elif s.especialidad_id in habilitadas:
+            clave = 'otras'
+        else:
+            continue
+        campos = [c.get('etiqueta') for c in s.campos if c['tipo'] not in ('subtitulo',) and c.get('etiqueta')]
+        grupos[clave]['secciones'].append({'seccion': s, 'incluida': s.pk in items, 'item': items.get(s.pk),
+                                           'campos': campos})
+    return [g for g in grupos.values() if g['secciones']]
+
+
 def secciones_personalizadas(tenant):
     return SeccionClinica.objects.filter(tenant=tenant).select_related('especialidad').order_by('-activa', 'nombre')
 
@@ -83,6 +120,7 @@ def resumen_paciente(request, paciente):
                      and c.profesional_id == perfil.pk), None)
     return {
         'consultas': consultas,
+        'historial': historial(consultas, paciente),
         'signos': signos,
         'ultimo_signo': signos[0] if signos else None,
         'consulta_en_curso': en_curso,
@@ -126,3 +164,37 @@ def consultas_en_curso(perfil, limite=10):
     from .models import Consulta
     return (Consulta.objects.filter(profesional=perfil, estado=Consulta.Estado.BORRADOR)
             .select_related('paciente').order_by('-fecha_hora')[:limite])
+
+
+def historial(consultas, paciente):
+    """
+    Línea de tiempo de la ficha (como el «Historial de consultas» de Pediae): consultas y procedimientos, del más
+    reciente al más viejo, con lo esencial de cada consulta para leerlo sin abrirla.
+    """
+    from django.db.models import Prefetch
+
+    from .models import Procedimiento, RegistroSeccion
+    ids = [c.pk for c in consultas]
+    planes = {r.consulta_id: r.datos for r in RegistroSeccion.objects.filter(
+        consulta_id__in=ids, seccion__codigo='nucleo.plan')}
+    from .models import Consulta
+    detalle = {c.pk: c for c in Consulta.objects.filter(pk__in=ids).prefetch_related(
+        Prefetch('medicamentos'), 'diagnosticos').select_related('signos')}
+    salida = []
+    for c in consultas:
+        d = detalle.get(c.pk)
+        signos = getattr(d, 'signos', None) if d else None
+        plan = planes.get(c.pk) or {}
+        salida.append({'tipo': 'consulta', 'fecha': c.fecha_hora, 'consulta': c,
+                       'diagnosticos': list(d.diagnosticos.all()) if d else [],
+                       'medicamentos': list(d.medicamentos.all()) if d else [],
+                       'plan': plan.get('plan', ''), 'indicaciones': plan.get('indicaciones', ''),
+                       'proximo_control': plan.get('proximo_control', ''), 'signos': signos})
+    for p in (Procedimiento.objects.filter(paciente=paciente).select_related('profesional__membresia__usuario')
+              .prefetch_related('cargos')[:50]):
+        salida.append({'tipo': 'procedimiento', 'fecha': p.creado_en, 'procedimiento': p})
+    salida.sort(key=lambda e: e['fecha'], reverse=True)
+    primera = next((e for e in salida if e['tipo'] == 'consulta'), None)
+    if primera:
+        primera['abierta'] = True            # la última consulta se ve desplegada al entrar
+    return salida

@@ -4,7 +4,6 @@ Servicios del motor de historia: catálogo de secciones, plantillas y secciones 
 import logging
 
 from django.db import transaction
-from django.db.models import Max
 
 from apps.core.excepciones import ErrorDeNegocio
 from apps.core.tenancy import tenant_actual, usuario_actual
@@ -202,8 +201,18 @@ def agregar_seccion(plantilla, seccion):
     _validar_seccion_usable(seccion, plantilla.especialidad)
     if plantilla.items.filter(seccion=seccion).exists():
         raise ErrorDeNegocio(f'«{seccion}» ya está en la plantilla.')
-    ultimo = plantilla.items.aggregate(m=Max('orden'))['m'] or 0
-    return PlantillaSeccion.objects.create(plantilla=plantilla, seccion=seccion, orden=ultimo + 10)
+    # Entra en su lugar natural (según el orden del catálogo), no al final: así casi nunca hay que moverla.
+    items = list(plantilla.items.select_related('seccion').order_by('orden', 'id'))
+    pos = next((n for n, i in enumerate(items) if i.seccion.orden > seccion.orden), len(items))
+    nuevo = PlantillaSeccion(plantilla=plantilla, seccion=seccion)
+    items.insert(pos, nuevo)
+    for n, i in enumerate(items, 1):
+        i.orden = n * 10
+        if i is nuevo:
+            i.save()
+        else:
+            PlantillaSeccion.objects.filter(pk=i.pk).update(orden=i.orden)
+    return nuevo
 
 
 @transaction.atomic

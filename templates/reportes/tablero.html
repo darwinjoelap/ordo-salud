@@ -13,7 +13,7 @@
   </div>
 </div>
 
-{% if reportes_especialidad %}<div class="d-flex flex-wrap gap-2 mb-3">{% for r in reportes_especialidad %}<a href="{% url r.url %}" class="btn btn-outline-primary btn-sm" title="{{ r.descripcion }}"><i class="bi {{ r.icono }} me-1"></i>{{ r.titulo }}</a>{% endfor %}</div>{% endif %}
+{% include 'reportes/_pestanas.html' %}
 <form method="get" class="card card-body mb-3">
   <div class="row g-2 align-items-end">
     <div class="col-6 col-md-2"><label class="form-label" for="r-desde">Desde</label><input id="r-desde" type="date" name="desde" value="{{ filtros.desde|date:'Y-m-d' }}" class="form-control"></div>
@@ -75,13 +75,13 @@
   </div>
 
   <div class="col-lg-8">
-    <div class="card h-100"><div class="card-header">Diagnósticos más frecuentes (CIE-10)</div><div class="card-body">
+    <div class="card h-100"><div class="card-header">Enfermedades más frecuentes (diagnósticos CIE-10)</div><div class="card-body">
       {% include 'reportes/_barras.html' with barras=morbilidad vacio='Sin diagnósticos registrados en el período.' %}
     </div></div>
   </div>
   <div class="col-lg-4 d-flex flex-column gap-3">
     <div class="card"><div class="card-header">Tipo de consulta</div><div class="card-body">{% include 'reportes/_barras.html' with barras=tipos vacio='Sin consultas.' %}</div></div>
-    <div class="card"><div class="card-header">Pacientes por sexo</div><div class="card-body">{% include 'reportes/_barras.html' with barras=sexos vacio='Sin pacientes.' %}</div></div>
+    {% if mostrar_sexo %}<div class="card"><div class="card-header">Pacientes por sexo</div><div class="card-body">{% include 'reportes/_barras.html' with barras=sexos vacio='Sin pacientes.' %}</div></div>{% endif %}
   </div>
 
   <div class="col-lg-6">

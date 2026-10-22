@@ -3,10 +3,13 @@ from django.urls import path
 from . import views_consultas as vc
 from . import views_medicamentos as vm
 from . import views_plantillas as vp
+from . import views_procedimientos as vpr
 
 app_name = 'clinica'
 
 urlpatterns = [
+    path('pacientes/<int:paciente_pk>/procedimientos/nuevo/', vpr.nuevo, name='procedimiento_nuevo'),
+    path('procedimientos/<int:pk>/anular/', vpr.anular, name='procedimiento_anular'),
     path('medicamentos/', vm.lista, name='medicamentos'),
     path('medicamentos/nuevo/', vm.editar, name='medicamento_nuevo'),
     path('medicamentos/<int:pk>/', vm.editar, name='medicamento'),
@@ -16,6 +19,7 @@ urlpatterns = [
     path('plantillas/nueva/', vp.plantilla_nueva, name='plantilla_nueva'),
     path('plantillas/<int:pk>/', vp.plantilla, name='plantilla'),
     path('plantillas/<int:pk>/accion/', vp.plantilla_accion, name='plantilla_accion'),
+    path('plantillas/<int:pk>/copiar/', vp.plantilla_copiar, name='plantilla_copiar'),
     path('plantillas/<int:pk>/vista-previa/', vp.plantilla_vista_previa, name='plantilla_vista_previa'),
     path('plantillas/<int:pk>/secciones/<int:item_pk>/', vp.plantilla_item, name='plantilla_item'),
     path('secciones/', vp.secciones, name='secciones'),

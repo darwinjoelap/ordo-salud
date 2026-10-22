@@ -95,3 +95,31 @@ def registrar_pesquisa(paciente, pesquisa, *, fecha=None, resultado='', usuario=
             pr.resultado = resultado
         pr.save()
     return pr
+
+
+# ── Bloque en «Procedimiento» (vacunas aplicadas sin consulta) ────────────────
+
+ORDEN_ESTADO = {'atrasada': 0, 'pendiente': 1, 'futura': 2, 'aplicada': 3}
+
+
+def contexto_procedimiento(request, paciente):
+    """Vacunas para marcar: atrasadas y pendientes primero; las anuales aunque ya tengan dosis."""
+    if paciente.fecha_nacimiento is None or (paciente.edad_anios or 0) >= 19:
+        return None
+    filas = [f for f in esquema(paciente) if f['estado'] != 'aplicada' or f['vacuna'].anual]
+    if not filas:
+        return None
+    filas.sort(key=lambda f: (ORDEN_ESTADO[f['estado']], f['vacuna'].edad_meses, f['vacuna'].orden))
+    return {'filas': filas}
+
+
+def guardar_procedimiento(request, paciente, post, fecha):
+    ids = post.getlist('vacunas')
+    if not ids:
+        return []
+    lote = (post.get('vacuna_lote') or '').strip()[:60]
+    hechas = []
+    for v in Vacuna.objects.visibles().filter(pk__in=ids):
+        registrar_vacuna(paciente, v, fecha=fecha, lote=lote, usuario=request.user)
+        hechas.append(f'Vacuna {v.nombre} (dosis {v.dosis})')
+    return hechas

@@ -1,0 +1,37 @@
+{# Tarjeta de cita (agenda del día, como Pediae): a todo lo ancho; en el teléfono las acciones van abajo #}
+<div class="card os-cita estado-{{ c.estado|lower }}" style="--color-cita: {{ c.tipo.color|default:c.profesional.color_agenda }}">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+      <div class="small text-muted d-flex flex-wrap gap-2">
+        <span><i class="bi bi-clock me-1"></i>{% if c.hora_inicio %}<b class="text-body">{{ c.hora_inicio|hora12 }}</b>{% if c.hora_fin %} – {{ c.hora_fin|hora12 }}{% endif %}{% else %}<span class="fst-italic">Por definir</span>{% endif %}</span>
+        {% if c.lugar %}<span><i class="bi bi-geo-alt me-1"></i>{{ c.lugar }}</span>{% endif %}
+        {% if mostrar_profesional %}<span><span class="os-color-punto me-1" style="background:{{ c.profesional.color_agenda }}"></span>{{ c.profesional }}</span>{% endif %}
+        {% if c.sobrecupo %}<span class="fw-semibold text-warning-emphasis">Sobrecupo</span>{% endif %}
+      </div>
+      <span class="badge text-bg-{{ c.color }} flex-none">{{ c.get_estado_display }}</span>
+    </div>
+    <div class="d-flex flex-wrap align-items-end justify-content-between gap-2">
+      <div class="min-w-0 flex-grow-1">
+        <a href="{% url 'pacientes:detalle' c.paciente_id %}" class="fw-semibold fs-6 text-decoration-none text-body {% if c.estado == 'CANCELADA' %}text-decoration-line-through{% endif %}">{{ c.paciente.nombre_completo }}</a> <span class="small text-muted">{{ c.paciente.edad_texto }}</span>
+        {% if c.tipo or c.motivo %}<div class="small text-muted"><i class="bi bi-chat-text me-1"></i>{% if c.tipo %}{{ c.tipo }}{% if c.motivo %} · {% endif %}{% endif %}{{ c.motivo }}</div>{% endif %}
+        {% if c.notas %}<div class="small text-muted"><i class="bi bi-sticky me-1"></i>{{ c.notas|truncatechars:120 }}</div>{% endif %}
+        {% for pr in c.procedimientos.all %}<div class="small text-success-emphasis"><i class="bi bi-bandaid me-1"></i>{{ pr.descripcion }}</div>{% endfor %}
+        <div class="d-flex flex-wrap gap-1 mt-1">
+          {% if c.recordatorio_en %}<span class="badge text-bg-light border text-success"><i class="bi bi-check-circle me-1"></i>Recordatorio enviado</span>{% endif %}
+          {% if c.cobro == 'pagado' %}<span class="badge text-bg-success"><i class="bi bi-check-circle-fill me-1"></i>Pagado</span>
+          {% elif c.cobro == 'pendiente' %}{% if 'cobros.gestionar' in permisos %}<a href="{% url 'cobros:cuenta' c.paciente_id %}" class="badge text-bg-warning text-decoration-none"><i class="bi bi-clock-fill me-1"></i>Pago pendiente</a>{% else %}<span class="badge text-bg-warning"><i class="bi bi-clock-fill me-1"></i>Pago pendiente</span>{% endif %}{% endif %}
+          {% if c.consulta_id %}<a href="{% url 'clinica:consulta' c.consulta_id %}" class="badge text-bg-light border text-decoration-none"><i class="bi bi-journal-medical me-1"></i>Consulta</a>{% endif %}
+        </div>
+      </div>
+      <div class="d-flex gap-1 os-cita-acciones">
+        {% if c.activa and 'agenda.gestionar' in permisos %}<form method="post" action="{% url 'agenda:recordatorio' c.pk %}" target="_blank" data-offline="off">{% csrf_token %}<button class="btn btn-sm btn-outline-success" title="Recordatorio por WhatsApp" aria-label="Recordatorio por WhatsApp"><i class="bi bi-whatsapp"></i></button></form>{% endif %}
+        {% if c.activa %}
+          <button type="button" class="btn btn-sm btn-primary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modal-atender"
+            data-cita="{{ c.pk }}" data-paciente="{{ c.paciente_id }}" data-nombre="{{ c.paciente.nombre_completo }}"
+            data-consulta="{% if perfil and perfil.pk == c.profesional_id and 'consultas.crear' in permisos %}1{% endif %}"><i class="bi bi-check2-circle me-1"></i>Atender</button>
+        {% endif %}
+        <a href="{% url 'agenda:cita' c.pk %}" class="btn btn-sm btn-outline-secondary" title="Ver / editar cita" aria-label="Ver / editar cita"><i class="bi bi-pencil"></i></a>
+      </div>
+    </div>
+  </div>
+</div>

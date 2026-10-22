@@ -544,3 +544,62 @@ textarea.form-control { min-height: auto; }
 
 /* Glosario en el récipe */
 .os-glosario { background: var(--os-niebla, #F1F6FB); border: 1px dashed #C9D4DD; }
+
+/* ── Historial de la ficha (línea de tiempo, como Pediae) ─────────────── */
+.os-linea { padding: .25rem 0; }
+.os-linea-item { position: relative; border-bottom: 1px solid var(--os-borde-suave); }
+.os-linea-item:last-child { border-bottom: 0; }
+.os-linea-cabeza { display: flex; align-items: flex-start; gap: .75rem; padding: .7rem 1rem; background: none; border: 0;
+  color: inherit; }
+.os-linea-cabeza:hover { background: var(--os-azul-50); }
+.os-linea-punto { flex: none; width: 11px; height: 11px; margin-top: .35rem; border-radius: 50%;
+  background: var(--os-primario); box-shadow: 0 0 0 3px var(--os-azul-100); }
+.os-linea-procedimiento .os-linea-punto { background: var(--os-verde-600); box-shadow: 0 0 0 3px var(--os-verde-100); }
+.os-linea-flecha { margin-top: .3rem; transition: transform .15s; }
+.os-linea-cabeza.collapsed .os-linea-flecha { transform: rotate(-90deg); }
+.os-linea-cuerpo { padding: 0 1rem .9rem 2.4rem; }
+.os-badge-procedimiento { background: var(--os-verde-100); color: var(--os-verde-700); }
+
+/* ── Filas con casilla (servicios, vacunas) ───────────────────────────── */
+.os-fila-check { cursor: pointer; }
+.os-fila-check:has(input:checked) { background: var(--os-azul-50); }
+.os-lista-scroll { max-height: 320px; overflow-y: auto; }
+
+/* ── Agenda del día (como Pediae): tarjetas a todo lo ancho ───────────── */
+.os-btn-nav { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+.os-elegir-fecha { position: relative; cursor: pointer; }
+.os-elegir-fecha input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.os-contador { background: var(--os-azul-50); border-radius: var(--os-radio); padding: .5rem 0; }
+.os-contador-n { font-family: var(--os-fuente-titulos); font-weight: 800; font-size: 1.5rem; line-height: 1.1; }
+.os-contador-ok { background: var(--os-verde-50); } .os-contador-ok .os-contador-n { color: var(--os-verde-700); }
+.os-contador-pend .os-contador-n { color: var(--os-primario); }
+.os-cita { border-left: 4px solid var(--color-cita, var(--os-primario)); }
+.os-cita .card-body { padding: .75rem .9rem; }
+.os-cita.estado-atendida { background: var(--os-verde-50); }
+.os-cita.estado-cancelada, .os-cita.estado-no_asistio { opacity: .6; }
+.os-cita-consulta { --color-cita: var(--os-marino-700); }
+.os-cita-procedimiento { --color-cita: var(--os-verde-600); }
+.os-titulo-bloque { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--os-tinta-2); margin: 1.25rem 0 .5rem; }
+.flex-none { flex: none; }
+@media (max-width: 575.98px) {
+  .os-cita-acciones { width: 100%; }          /* en el teléfono las acciones ocupan toda la fila */
+  .os-cita-acciones .btn { min-height: 40px; }
+}
+
+/* ── Armar historia (plantillas con casillas) ─────────────────────────── */
+.os-pasos { padding-left: 1.2rem; }
+.os-pasos li { margin-bottom: .15rem; }
+.os-titulo-grupo { letter-spacing: .06em; color: var(--os-marino-800); }
+.os-grupo-catalogo + .os-grupo-catalogo { border-top: 1px solid var(--os-borde); }
+.os-incluida { background: var(--os-azul-50); }
+.os-chip-ficha { background: var(--os-verde-100); color: var(--os-verde-700); border-color: transparent; }
+.os-mi-historia .list-group-numbered > .list-group-item::before { font-weight: 700; color: var(--os-tinta-2); }
+.form-switch .form-check-input { width: 2.4em; height: 1.3em; cursor: pointer; }
+
+/* ── Pestañas de reportes (fijos + por especialidad) ──────────────────── */
+.os-pestanas-reporte { display: flex; gap: .25rem; overflow-x: auto; border-bottom: 1px solid var(--os-borde); }
+.os-pestana { padding: .55rem .9rem; white-space: nowrap; text-decoration: none; color: var(--os-tinta-2);
+  border-bottom: 3px solid transparent; font-weight: 600; }
+.os-pestana:hover { color: var(--os-marino-800); }
+.os-pestana.activa { color: var(--os-marino-800); border-bottom-color: var(--os-primario); }

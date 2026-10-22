@@ -87,6 +87,7 @@ def datos_reporte(f):
     por_dia = Counter(c.fecha.weekday() for c in citas.only('fecha'))
     return {
         'consultas': len(ids), 'pacientes': len(pacientes), 'con_medicion': len(ultimas),
+        'morbilidad': rs.morbilidad_de(consultas),
         'por_tipo': rs._barras(por_tipo),
         'nutricion': rs._barras([(e, nutricion[e]) for e in ORDEN_NUTRICIONAL if nutricion.get(e)]),
         'imc': rs._barras(imc.most_common()), 'talla': rs._barras(talla.most_common()),
@@ -114,6 +115,7 @@ def tablero(request):
     query = request.GET.urlencode()
     return render(request, 'pediatria/reporte.html', {
         'titulo': 'Reporte pediátrico', 'filtros': f, **datos, 'rangos': rs.rangos_rapidos(),
+        'pestanas': rs.pestanas(request, 'ped_reporte'),
         'query': query})
 
 
@@ -127,7 +129,8 @@ def _excel(datos, f):
     hoja['A1'].font = Font(bold=True, size=13)
     hoja.append(['Consultas', datos['consultas']])
     hoja.append(['Pacientes atendidos', datos['pacientes']])
-    for titulo, clave in [('Tipo de consulta', 'por_tipo'), ('Estado nutricional (peso/edad)', 'nutricion'),
+    for titulo, clave in [('Enfermedades más frecuentes', 'morbilidad'), ('Tipo de consulta', 'por_tipo'),
+                          ('Estado nutricional (peso/edad)', 'nutricion'),
                           ('Clasificación OMS (IMC/edad)', 'imc'), ('Talla para la edad', 'talla'),
                           ('Grupos de edad', 'edades'), ('Antecedentes familiares', 'familiares'),
                           ('Pesquisas realizadas', 'pesquisas'), ('Citas por día', 'por_dia')]:

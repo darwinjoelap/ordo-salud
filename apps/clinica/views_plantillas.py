@@ -75,9 +75,26 @@ def plantilla(request, pk):
     _puede_ver(request)
     p = get_object_or_404(selectors.plantillas_visibles(request.membresia), pk=pk)
     editable = _puede_editar(request, p)
+    perfil = request.membresia.perfil_activo
     return render(request, 'clinica/plantilla.html', {
-        'titulo': f'Plantilla · {p}', 'plantilla': p, 'items': selectors.items_de(p), 'editable': editable,
-        'disponibles': selectors.secciones_para(p, request.tenant) if editable else []})
+        'titulo': f'Historia · {p}', 'plantilla': p, 'items': selectors.items_de(p), 'editable': editable,
+        'catalogo': selectors.catalogo_para(p, request.tenant) if editable else [],
+        'puede_copiar': not editable and perfil is not None and tiene_permiso(request, 'plantillas.propias')})
+
+
+@login_required
+@require_POST
+def plantilla_copiar(request, pk):
+    """«Hacer mi copia»: la médica parte de una plantilla que no puede editar y la ajusta a su gusto."""
+    _puede_ver(request)
+    perfil = request.membresia.perfil_activo
+    if perfil is None or not tiene_permiso(request, 'plantillas.propias'):
+        raise PermissionDenied
+    origen = get_object_or_404(selectors.plantillas_visibles(request.membresia), pk=pk)
+    copia = servicios.crear_plantilla(nombre=f'{origen.nombre} (mía)'[:100], especialidad=origen.especialidad,
+                                      profesional=perfil, copiar_de=origen)
+    messages.success(request, f'Listo: «{copia}» es tuya. Marca o desmarca las secciones que quieras.')
+    return redirect('clinica:plantilla', pk=copia.pk)
 
 
 @login_required
@@ -91,7 +108,6 @@ def plantilla_accion(request, pk):
     if accion == 'agregar':
         seccion = get_object_or_404(SeccionClinica.objects.visibles(request.tenant), pk=request.POST.get('seccion'))
         servicios.agregar_seccion(p, seccion)
-        messages.success(request, f'«{seccion}» agregada.')
     elif accion == 'quitar' and item:
         servicios.quitar_seccion(item)
     elif accion in ('subir', 'bajar') and item:
@@ -110,8 +126,9 @@ def plantilla_accion(request, pk):
         p.activa = not p.activa
         p.save(update_fields=['activa', 'actualizado_en'])
     destino = request.POST.get('volver') or ''
+    ancla = request.POST.get('ancla', '')
     return redirect(destino if destino.startswith('/') and not destino.startswith('//') else
-                    f'/plantillas/{p.pk}/')
+                    f'/plantillas/{p.pk}/' + (f'#{ancla}' if ancla.replace('-', '').isalnum() else ''))
 
 
 @login_required

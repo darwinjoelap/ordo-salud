@@ -16,6 +16,16 @@
 
 ---
 
+### Reportes fijos y por especialidad (2026-10-22)
+- Hecho: pestañas General + una por especialidad; sexo solo si es relevante; reporte GO con enfermedades, VIH, VPH (diagnóstico y vacuna), ITS, citología alterada, condiciones y hábitos (también en Excel); morbilidad en pediatría.
+- Verificado: 189 tests en verde (SQLite + PostgreSQL), ruff limpio, capturas de ambas pestañas; falta prueba manual de Darwin con datos reales
+- ADR: 042
+
+### Procedimientos, agenda y «Armar historia» (2026-10-22)
+- Hecho: procedimientos sin consulta (varios por día, cargos por servicio, vacunas en pediatría), agenda del día como Pediae, historial de consultas desplegable en la ficha, editor de plantillas con interruptores y «Hacer mi copia».
+- Verificado: tests (SQLite + PostgreSQL), ruff limpio, capturas escritorio y móvil.
+- ADR: 040, 041.
+
 ### Fase 14 Ginecología y obstetricia (2026-10-21, falta revisión clínica)
 - Hecho: módulo GO desde Ginea (ficha, consulta, control prenatal con EG/FPP, paneles, constancia de embarazo, carnet prenatal, reporte + Excel), sexo F por defecto en GO; arreglos: editar paciente (500) y documentos sin formulario desde la ficha.
 - Verificado: 181 tests (SQLite + PostgreSQL), ruff limpio, capturas escritorio y móvil.

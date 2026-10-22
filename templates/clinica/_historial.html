@@ -1,0 +1,67 @@
+{# Historial de la ficha (como Pediae): consultas y procedimientos, del más reciente al más viejo; cada uno se despliega #}
+<div class="card mb-3 os-historial">
+  <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-clock-history me-1"></i>Historial de consultas</span>
+    <span class="small text-muted fw-normal">{{ consultas|length }} consulta{{ consultas|length|pluralize }}{% if ocultas %} · {{ ocultas }} de otros médicos no visibles{% endif %}</span>
+  </div>
+  {% if historial %}
+  <div class="os-linea">
+    {% for e in historial %}
+    {% if e.tipo == 'consulta' %}{% with c=e.consulta %}
+    <div class="os-linea-item {% if c.estado == 'ANULADA' %}opacity-50{% endif %}">
+      <button class="os-linea-cabeza w-100 text-start {% if not e.abierta %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#h-c{{ c.pk }}" aria-expanded="{% if e.abierta %}true{% else %}false{% endif %}">
+        <span class="os-linea-punto"></span>
+        <span class="flex-grow-1 min-w-0">
+          <span class="d-flex flex-wrap align-items-center gap-2">
+            <b>{{ c.fecha_hora|date:"d/m/Y" }}</b>
+            <span class="badge text-bg-light border">{{ c.get_tipo_display }}</span>
+            {% if c.estado == 'BORRADOR' %}<span class="badge text-bg-warning">En curso</span>{% elif c.estado == 'ANULADA' %}<span class="badge text-bg-danger">Anulada</span>{% endif %}
+            <span class="small text-muted">{{ c.profesional }}{% if c.especialidad %} · {{ c.especialidad }}{% endif %}</span>
+          </span>
+          <span class="d-block small text-truncate">{{ c.motivo|default:"Sin motivo registrado" }}{% if c.diagnostico %} · <span class="text-muted">{{ c.diagnostico }}</span>{% endif %}</span>
+        </span>
+        <i class="bi bi-chevron-down small os-linea-flecha"></i>
+      </button>
+      <div id="h-c{{ c.pk }}" class="collapse {% if e.abierta %}show{% endif %}">
+        <div class="os-linea-cuerpo small">
+          {% if e.signos %}<div class="d-flex flex-wrap gap-2 mb-2">{% if e.signos.peso_kg %}<span class="os-chip">Peso {{ e.signos.peso_kg }} kg</span>{% endif %}{% if e.signos.talla_cm %}<span class="os-chip">Talla {{ e.signos.talla_cm }} cm</span>{% endif %}{% if e.signos.pa_sistolica %}<span class="os-chip">TA {{ e.signos.pa_sistolica }}/{{ e.signos.pa_diastolica|default_if_none:'?' }}</span>{% endif %}{% if e.signos.temperatura %}<span class="os-chip">T° {{ e.signos.temperatura }}</span>{% endif %}</div>{% endif %}
+          {% if e.diagnosticos %}<div class="mb-1"><b>Diagnóstico:</b> {% for d in e.diagnosticos %}{% if d.codigo %}<span class="text-muted">{{ d.codigo }}</span> {% endif %}{{ d.descripcion }}{% if not forloop.last %}; {% endif %}{% endfor %}</div>{% endif %}
+          {% if e.plan %}<div class="mb-1"><b>Tratamiento:</b> {{ e.plan|linebreaksbr }}</div>{% endif %}
+          {% if e.medicamentos %}<div class="mb-1"><b>Récipe:</b><ul class="mb-0 ps-3">{% for m in e.medicamentos %}<li>{{ m.medicamento }}{% if m.dosis %} · {{ m.dosis }}{% endif %}{% if m.frecuencia %} {{ m.frecuencia }}{% endif %}{% if m.duracion %} {{ m.duracion }}{% endif %}</li>{% endfor %}</ul></div>{% endif %}
+          {% if e.indicaciones %}<div class="mb-1"><b>Indicaciones:</b> {{ e.indicaciones|linebreaksbr }}</div>{% endif %}
+          {% if e.proximo_control %}<div class="mb-1 text-muted"><i class="bi bi-calendar-event me-1"></i>Próximo control: {{ e.proximo_control }}</div>{% endif %}
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            {% if c.estado == 'BORRADOR' and c.profesional_id == profesional.pk %}<a href="{% url 'clinica:consulta_editar' c.pk %}" class="btn btn-warning btn-sm"><i class="bi bi-pencil me-1"></i>Continuar</a>{% endif %}
+            <a href="{% url 'clinica:consulta' c.pk %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-eye me-1"></i>Ver completa</a>
+            {% if c.estado != 'ANULADA' %}<a href="{% url 'clinica:consulta_imprimir' c.pk %}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-printer me-1"></i>Imprimir</a>{% endif %}
+            {% if e.medicamentos and c.profesional_id == profesional.pk and c.estado != 'ANULADA' %}<a href="{% url 'documentos:emitir' 'recipe' %}?consulta={{ c.pk }}" target="_blank" class="btn btn-outline-success btn-sm"><i class="bi bi-prescription2 me-1"></i>Récipe</a>{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endwith %}{% else %}{% with p=e.procedimiento %}
+    <div class="os-linea-item os-linea-procedimiento {% if p.anulado %}opacity-50{% endif %}">
+      <button class="os-linea-cabeza w-100 text-start collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#h-p{{ p.pk }}" aria-expanded="false">
+        <span class="os-linea-punto"></span>
+        <span class="flex-grow-1 min-w-0">
+          <span class="d-flex flex-wrap align-items-center gap-2"><b>{{ p.fecha|date:"d/m/Y" }}</b><span class="badge os-badge-procedimiento"><i class="bi bi-bandaid me-1"></i>Procedimiento</span>{% if p.anulado %}<span class="badge text-bg-danger">Anulado</span>{% endif %}{% if p.profesional %}<span class="small text-muted">{{ p.profesional }}</span>{% endif %}</span>
+          <span class="d-block small text-truncate">{{ p.descripcion }}</span>
+        </span>
+        <i class="bi bi-chevron-down small os-linea-flecha"></i>
+      </button>
+      <div id="h-p{{ p.pk }}" class="collapse">
+        <div class="os-linea-cuerpo small">
+          <ul class="list-unstyled mb-1">{% for cg in p.cargos.all %}<li class="d-flex justify-content-between {% if cg.estado == 'ANULADO' %}text-decoration-line-through text-muted{% endif %}"><span>{{ cg.descripcion }}</span><span>${{ cg.monto_usd }}{% if cg.estado == 'PAGADO' %} <span class="badge text-bg-success">Pagado</span>{% elif cg.estado != 'ANULADO' %} <span class="badge text-bg-warning">Por cobrar</span>{% endif %}</span></li>{% endfor %}</ul>
+          {% if p.notas %}<div class="text-muted mb-1">{{ p.notas|linebreaksbr }}</div>{% endif %}
+          {% if p.anulado %}<div class="text-danger">Anulado: {{ p.motivo_anulacion }}</div>
+          {% elif puede_procedimiento %}<form method="post" action="{% url 'clinica:procedimiento_anular' p.pk %}" onsubmit="const m = prompt('Motivo de la anulación'); if (!m) return false; this.motivo.value = m;">{% csrf_token %}<input type="hidden" name="motivo"><button class="btn btn-link btn-sm p-0 text-danger">Anular procedimiento</button></form>{% endif %}
+        </div>
+      </div>
+    </div>
+    {% endwith %}{% endif %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card-body text-center text-muted py-4"><i class="bi bi-journal-x fs-2 opacity-50"></i><p class="mt-2 mb-0">Aún no hay consultas registradas.</p></div>
+  {% endif %}
+</div>

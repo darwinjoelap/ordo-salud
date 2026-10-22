@@ -38,13 +38,7 @@ def tablero(request):
         've_finanzas': gestion or tiene_permiso(request, 'cobros.gestionar') or not f.todo_el_consultorio,
         'profesionales': PerfilProfesional.objects.select_related('membresia__usuario') if gestion else [],
         'especialidades': request.tenant.especialidades.all() if gestion else [],
-        'rangos': selectors.rangos_rapidos(),
-        'reportes_especialidad': _reportes_especialidad(request)})
-
-
-def _reportes_especialidad(request):
-    from apps.clinica import registro
-    return registro.reportes(set(request.tenant.especialidades.values_list('codigo', flat=True)))
+        'rangos': selectors.rangos_rapidos(), 'pestanas': selectors.pestanas(request, 'general')})
 
 
 @login_required

@@ -1,71 +1,91 @@
 {% extends 'base.html' %}
 {% block contenido %}
-<a href="{% url 'clinica:plantillas' %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> Plantillas</a>
-<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mt-1 mb-3">
+<a href="{% url 'clinica:plantillas' %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> Mis historias</a>
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mt-1 mb-2">
   <div>
+    <div class="os-eyebrow">Armar historia</div>
     <h1 class="h3 mb-0">{{ plantilla.nombre }}</h1>
-    <div class="text-muted small">{{ plantilla.especialidad }} · {% if plantilla.profesional %}Plantilla de {{ plantilla.profesional }}{% else %}Plantilla de la clínica{% endif %}{% if plantilla.es_predeterminada %} · <b>predeterminada</b>{% endif %}{% if not plantilla.activa %} · <span class="text-danger">inactiva</span>{% endif %}</div>
+    <div class="text-muted small">{{ plantilla.especialidad }} · {% if plantilla.profesional %}solo la usa {{ plantilla.profesional }}{% else %}la usa todo el consultorio{% endif %}{% if plantilla.es_predeterminada %} · <b>se abre por defecto</b>{% endif %}{% if not plantilla.activa %} · <span class="text-danger">inactiva</span>{% endif %}</div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
-    <a href="{% url 'clinica:plantilla_vista_previa' plantilla.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-eye me-1"></i>Vista previa</a>
+    <a href="{% url 'clinica:plantilla_vista_previa' plantilla.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-eye me-1"></i>Ver cómo queda</a>
     {% if editable %}
-      {% if not plantilla.es_predeterminada %}<form method="post" action="{% url 'clinica:plantilla_accion' plantilla.pk %}">{% csrf_token %}<input type="hidden" name="accion" value="predeterminada"><button class="btn btn-outline-secondary btn-sm"><i class="bi bi-star me-1"></i>Hacer predeterminada</button></form>{% endif %}
+      {% if not plantilla.es_predeterminada %}<form method="post" action="{% url 'clinica:plantilla_accion' plantilla.pk %}">{% csrf_token %}<input type="hidden" name="accion" value="predeterminada"><button class="btn btn-outline-secondary btn-sm"><i class="bi bi-star me-1"></i>Usar por defecto</button></form>{% endif %}
       <form method="post" action="{% url 'clinica:plantilla_accion' plantilla.pk %}">{% csrf_token %}<input type="hidden" name="accion" value="activa"><button class="btn btn-outline-secondary btn-sm">{% if plantilla.activa %}Desactivar{% else %}Activar{% endif %}</button></form>
     {% endif %}
   </div>
 </div>
 
+{% if editable %}
+<ol class="os-pasos small text-muted mb-3">
+  <li><b>Marca</b> en «Secciones disponibles» las secciones que quieres en esta historia (desmarca las que no).</li>
+  <li><b>Ordena</b> tu historia con las flechas ↑ ↓ (las nuevas entran ya en su lugar natural).</li>
+  <li>Si hace falta, <b>ajusta</b> una sección <i class="bi bi-sliders"></i>: ocultar campos, cambiar nombres, volverlos obligatorios.</li>
+</ol>
+{% else %}
+<div class="alert alert-info d-flex flex-wrap align-items-center gap-2 justify-content-between">
+  <span><i class="bi bi-info-circle me-1"></i>Esta historia es del consultorio y solo la cambia quien administra las plantillas.{% if puede_copiar %} Haz tu copia y ármala a tu gusto.{% endif %}</span>
+  {% if puede_copiar %}<form method="post" action="{% url 'clinica:plantilla_copiar' plantilla.pk %}">{% csrf_token %}<button class="btn btn-primary btn-sm"><i class="bi bi-copy me-1"></i>Hacer mi copia</button></form>{% endif %}
+</div>
+{% endif %}
+
 <div class="row g-3">
-  <div class="col-lg-7">
-    <div class="card">
-      <div class="card-header bg-white fw-semibold">Secciones, en el orden en que se llenan</div>
-      <ul class="list-group list-group-flush">
+  <div class="{% if editable %}col-lg-6{% else %}col-lg-8{% endif %}">
+    <div class="card os-mi-historia">
+      <div class="card-header bg-white fw-semibold d-flex justify-content-between"><span><i class="bi bi-journal-medical me-1"></i>Tu historia</span><span class="small text-muted fw-normal">{{ items|length }} sección{{ items|length|pluralize:"es" }}, en orden</span></div>
+      <ol class="list-group list-group-flush list-group-numbered">
         {% for item in items %}
           <li class="list-group-item d-flex align-items-center gap-2">
-            {% if editable %}
-            <div class="d-flex flex-column">
-              <form method="post" action="{% url 'clinica:plantilla_accion' plantilla.pk %}">{% csrf_token %}<input type="hidden" name="accion" value="subir"><input type="hidden" name="item" value="{{ item.pk }}"><button class="btn btn-link btn-sm p-0 lh-1" {% if forloop.first %}disabled{% endif %} aria-label="Subir"><i class="bi bi-chevron-up"></i></button></form>
-              <form method="post" action="{% url 'clinica:plantilla_accion' plantilla.pk %}">{% csrf_token %}<input type="hidden" name="accion" value="bajar"><input type="hidden" name="item" value="{{ item.pk }}"><button class="btn btn-link btn-sm p-0 lh-1" {% if forloop.last %}disabled{% endif %} aria-label="Bajar"><i class="bi bi-chevron-down"></i></button></form>
-            </div>
-            {% endif %}
-            <div class="flex-grow-1">
-              <div class="fw-semibold">{{ item.seccion.nombre }}
-                {% if item.obligatoria %}<span class="badge text-bg-danger-subtle text-danger-emphasis">obligatoria</span>{% endif %}
-                {% if item.seccion.ambito == 'PACIENTE' %}<span class="os-chip" title="Se conserva entre consultas">del paciente</span>{% endif %}
-                {% if item.seccion.tipo == 'PERSONALIZADA' %}<span class="os-chip">personalizada</span>{% endif %}
+            <div class="flex-grow-1 min-w-0 ms-1">
+              <div class="fw-semibold">{{ item.seccion.nombre }}</div>
+              <div class="small text-muted d-flex flex-wrap gap-1 align-items-center">
+                {% if item.seccion.ambito == 'PACIENTE' %}<span class="os-chip os-chip-ficha" title="Se conserva entre consultas">ficha</span>{% endif %}
+                {% if item.obligatoria %}<span class="os-chip os-chip-estado">obligatoria</span>{% endif %}
+                {% if item.colapsada %}<span class="os-chip">empieza cerrada</span>{% endif %}
+                <span>{{ item.campos|length }} campo{{ item.campos|length|pluralize }}{% if item.ajustes.ocultos %} · {{ item.ajustes.ocultos|length }} oculto{{ item.ajustes.ocultos|length|pluralize }}{% endif %}</span>
               </div>
-              <div class="small text-muted">{{ item.campos|length }} campo{{ item.campos|length|pluralize }}{% if item.ajustes.ocultos %} · {{ item.ajustes.ocultos|length }} oculto{{ item.ajustes.ocultos|length|pluralize }}{% endif %}{% if item.ajustes.por_defecto %} · con textos por defecto{% endif %}</div>
             </div>
             {% if editable %}
-              <a href="{% url 'clinica:plantilla_item' plantilla.pk item.pk %}" class="btn btn-sm btn-outline-secondary" title="Ajustar campos"><i class="bi bi-sliders"></i></a>
-              <form method="post" action="{% url 'clinica:plantilla_accion' plantilla.pk %}" onsubmit="return confirm('¿Quitar «{{ item.seccion.nombre|escapejs }}» de la plantilla?')">{% csrf_token %}<input type="hidden" name="accion" value="quitar"><input type="hidden" name="item" value="{{ item.pk }}"><button class="btn btn-sm btn-outline-danger" title="Quitar"><i class="bi bi-x-lg"></i></button></form>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Mover">
+              <form method="post" action="{% url 'clinica:plantilla_accion' plantilla.pk %}">{% csrf_token %}<input type="hidden" name="accion" value="subir"><input type="hidden" name="item" value="{{ item.pk }}"><button class="btn btn-outline-secondary btn-sm" {% if forloop.first %}disabled{% endif %} title="Subir" aria-label="Subir {{ item.seccion.nombre }}"><i class="bi bi-arrow-up"></i></button></form>
+              <form method="post" action="{% url 'clinica:plantilla_accion' plantilla.pk %}">{% csrf_token %}<input type="hidden" name="accion" value="bajar"><input type="hidden" name="item" value="{{ item.pk }}"><button class="btn btn-outline-secondary btn-sm" {% if forloop.last %}disabled{% endif %} title="Bajar" aria-label="Bajar {{ item.seccion.nombre }}"><i class="bi bi-arrow-down"></i></button></form>
+            </div>
+            <a href="{% url 'clinica:plantilla_item' plantilla.pk item.pk %}" class="btn btn-sm btn-outline-secondary" title="Ajustar campos" aria-label="Ajustar {{ item.seccion.nombre }}"><i class="bi bi-sliders"></i></a>
             {% endif %}
           </li>
         {% empty %}
-          <li class="list-group-item text-muted">La plantilla está vacía. Agrega secciones desde la lista de la derecha.</li>
+          <li class="list-group-item text-muted">Todavía vacía. Marca secciones en «Secciones disponibles».</li>
         {% endfor %}
-      </ul>
+      </ol>
     </div>
-    {% if not editable %}<p class="small text-muted mt-2">Solo lectura. {% if 'plantillas.propias' in permisos %}Para ajustarla a tu gusto, crea una plantilla nueva «partiendo de» esta.{% endif %}</p>{% endif %}
   </div>
   {% if editable %}
-  <div class="col-lg-5">
+  <div class="col-lg-6">
     <div class="card">
-      <div class="card-header bg-white fw-semibold d-flex justify-content-between">Agregar secciones <a href="{% url 'clinica:seccion_nueva' %}" class="small">Crear una nueva</a></div>
-      <div class="card-body">
-        {% for titulo, secciones in disponibles %}
-          <div class="small text-muted text-uppercase mt-2 mb-1">{{ titulo }}</div>
-          {% for s in secciones %}
-            <form method="post" action="{% url 'clinica:plantilla_accion' plantilla.pk %}" class="d-flex justify-content-between align-items-center border-bottom py-1">{% csrf_token %}
-              <input type="hidden" name="accion" value="agregar"><input type="hidden" name="seccion" value="{{ s.pk }}">
-              <span><a href="{% url 'clinica:seccion_vista' s.pk %}" class="text-reset">{{ s.nombre }}</a>{% if s.especialidad and s.especialidad != plantilla.especialidad %} <span class="small text-muted">({{ s.especialidad }})</span>{% endif %}</span>
-              <button class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i></button>
+      <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center"><span><i class="bi bi-ui-checks me-1"></i>Secciones disponibles</span><a href="{% url 'clinica:seccion_nueva' %}" class="small fw-normal">+ Crear una sección propia</a></div>
+      {% for g in catalogo %}
+      <div class="os-grupo-catalogo">
+        <div class="px-3 pt-3 pb-1"><div class="fw-semibold small text-uppercase os-titulo-grupo">{{ g.titulo }}</div>{% if g.ayuda %}<div class="small text-muted">{{ g.ayuda }}</div>{% endif %}</div>
+        <ul class="list-group list-group-flush">
+          {% for x in g.secciones %}
+          <li class="list-group-item {% if x.incluida %}os-incluida{% endif %}" id="cat-{{ x.seccion.pk }}">
+            <form method="post" action="{% url 'clinica:plantilla_accion' plantilla.pk %}" class="d-flex align-items-start gap-2">{% csrf_token %}
+              {% if x.incluida %}<input type="hidden" name="accion" value="quitar"><input type="hidden" name="item" value="{{ x.item.pk }}">
+              {% else %}<input type="hidden" name="accion" value="agregar"><input type="hidden" name="seccion" value="{{ x.seccion.pk }}">{% endif %}
+              <input type="hidden" name="ancla" value="cat-{{ x.seccion.pk }}">
+              <div class="form-check form-switch m-0 pt-1">
+                <input class="form-check-input" type="checkbox" role="switch" id="sw-{{ x.seccion.pk }}" {% if x.incluida %}checked{% endif %} onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()" aria-describedby="campos-{{ x.seccion.pk }}">
+              </div>
+              <div class="flex-grow-1 min-w-0">
+                <label class="fw-semibold" for="sw-{{ x.seccion.pk }}">{{ x.seccion.nombre }}</label>{% if x.seccion.ambito == 'PACIENTE' %} <span class="os-chip os-chip-ficha">ficha</span>{% endif %}{% if x.seccion.especialidad and x.seccion.especialidad != plantilla.especialidad %} <span class="small text-muted">({{ x.seccion.especialidad }})</span>{% endif %}
+                <details class="small text-muted"><summary>{{ x.campos|length }} campo{{ x.campos|length|pluralize }}: {{ x.campos|slice:":3"|join:", " }}{% if x.campos|length > 3 %}…{% endif %}</summary><div id="campos-{{ x.seccion.pk }}" class="mt-1">{{ x.campos|join:" · " }}</div></details>
+              </div>
             </form>
+          </li>
           {% endfor %}
-        {% empty %}
-          <div class="text-muted small">Ya agregaste todas las secciones disponibles.</div>
-        {% endfor %}
+        </ul>
       </div>
+      {% endfor %}
     </div>
   </div>
   {% endif %}

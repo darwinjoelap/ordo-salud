@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% block contenido %}
-<a href="{% url 'reportes:tablero' %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> Reportes</a>
-<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3 mt-1">
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
   <div><div class="os-eyebrow">Ginecología y obstetricia</div><h1 class="h3 mb-0">Reporte de ginecología</h1><div class="text-muted">{{ filtros.periodo_texto }}{% if filtros.profesional %} · {{ filtros.profesional }}{% endif %}</div></div>
   <a href="?{{ query }}{% if query %}&{% endif %}formato=excel" class="btn btn-outline-secondary btn-sm"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Excel</a>
 </div>
+{% include 'reportes/_pestanas.html' %}
 <form method="get" class="card card-body mb-3"><div class="row g-2 align-items-end">
   <div class="col-6 col-md-3"><label class="form-label">Desde</label><input type="date" name="desde" value="{{ filtros.desde|date:'Y-m-d' }}" class="form-control"></div>
   <div class="col-6 col-md-3"><label class="form-label">Hasta</label><input type="date" name="hasta" value="{{ filtros.hasta|date:'Y-m-d' }}" class="form-control"></div>
@@ -21,15 +21,27 @@
 <div class="card mb-3"><div class="card-header">Partos esperados en los próximos 30 días</div>
   <ul class="list-group list-group-flush">{% for c in proximos %}<li class="list-group-item d-flex justify-content-between"><a href="{% url 'pacientes:detalle' c.paciente_id %}">{{ c.paciente.nombre_completo }}</a><span>FPP {{ c.fpp|date:'d/m/Y' }}</span></li>{% endfor %}</ul></div>
 {% endif %}
+<h2 class="os-titulo-bloque">Enfermedades e infecciones</h2>
 <div class="row g-3">
-  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Tipo de consulta</div><div class="card-body">{% include 'reportes/_barras.html' with barras=por_tipo vacio='Sin datos.' %}</div></div></div>
-  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Embarazos en curso por trimestre</div><div class="card-body">{% include 'reportes/_barras.html' with barras=trimestres vacio='Sin embarazos en curso.' %}</div></div></div>
-  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Grupos de edad</div><div class="card-body">{% include 'reportes/_barras.html' with barras=edades vacio='Sin pacientes.' %}</div></div></div>
-  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Métodos anticonceptivos</div><div class="card-body">{% include 'reportes/_barras.html' with barras=metodos vacio='Sin fichas de planificación.' %}</div></div></div>
-  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Citología</div><div class="card-body">{% include 'reportes/_barras.html' with barras=citologia vacio='Sin datos.' %}</div></div></div>
-  <div class="col-lg-4"><div class="card h-100"><div class="card-header">Prueba de VIH</div><div class="card-body">{% include 'reportes/_barras.html' with barras=vih vacio='Sin datos.' %}</div></div></div>
-  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Antecedentes familiares</div><div class="card-body">{% include 'reportes/_barras.html' with barras=familiares vacio='Sin fichas con antecedentes.' %}</div></div></div>
-  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Citas por día de la semana</div><div class="card-body">{% include 'reportes/_barras.html' with barras=por_dia vacio='Sin citas.' %}</div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Enfermedades más frecuentes (diagnósticos)</div><div class="card-body">{% include 'reportes/_barras.html' with barras=morbilidad vacio='Sin diagnósticos en el período.' %}</div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header">Infecciones y hallazgos</div><div class="card-body">{% include 'reportes/_barras.html' with barras=infecciones vacio='Sin fichas.' %}<p class="small text-muted mb-0 mt-2">Sobre {{ con_ficha }} paciente{{ con_ficha|pluralize }} con historia gineco-obstétrica.</p></div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">Prueba de VIH</div><div class="card-body">{% include 'reportes/_barras.html' with barras=vih vacio='Sin datos.' %}</div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">Vacuna contra el VPH</div><div class="card-body">{% include 'reportes/_barras.html' with barras=vph_barras vacio='Sin datos.' %}</div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">Citología</div><div class="card-body">{% include 'reportes/_barras.html' with barras=citologia vacio='Sin datos.' %}</div></div></div>
+</div>
+<h2 class="os-titulo-bloque">Salud gineco-obstétrica y embarazo</h2>
+<div class="row g-3">
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">Condiciones</div><div class="card-body">{% include 'reportes/_barras.html' with barras=condiciones vacio='Sin datos.' %}</div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">Métodos anticonceptivos</div><div class="card-body">{% include 'reportes/_barras.html' with barras=metodos vacio='Sin fichas de planificación.' %}</div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">Embarazos en curso por trimestre</div><div class="card-body">{% include 'reportes/_barras.html' with barras=trimestres vacio='Sin embarazos en curso.' %}</div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">Antecedentes familiares</div><div class="card-body">{% include 'reportes/_barras.html' with barras=familiares vacio='Sin fichas con antecedentes.' %}</div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">Hábitos</div><div class="card-body">{% include 'reportes/_barras.html' with barras=habitos vacio='Sin datos.' %}</div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-header">Grupos de edad</div><div class="card-body">{% include 'reportes/_barras.html' with barras=edades vacio='Sin pacientes.' %}</div></div></div>
+</div>
+<h2 class="os-titulo-bloque">Actividad</h2>
+<div class="row g-3">
+  <div class="col-md-6"><div class="card h-100"><div class="card-header">Tipo de consulta</div><div class="card-body">{% include 'reportes/_barras.html' with barras=por_tipo vacio='Sin datos.' %}</div></div></div>
+  <div class="col-md-6"><div class="card h-100"><div class="card-header">Citas por día de la semana</div><div class="card-body">{% include 'reportes/_barras.html' with barras=por_dia vacio='Sin citas.' %}</div></div></div>
 </div>
 <p class="small text-muted mt-3 mb-0">Fichas (métodos, citología, VIH, VPH, antecedentes) = pacientes atendidas en el período. Citología al día = hecha en el último año. Embarazos en curso = último control con FPP vigente.</p>
 {% endblock %}

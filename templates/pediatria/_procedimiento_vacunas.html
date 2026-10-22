@@ -1,0 +1,14 @@
+{# Bloque de pediatría en «Procedimiento»: vacunas aplicadas (quedan en el esquema del paciente) #}
+<div class="card mb-3">
+  <div class="card-header bg-white fw-semibold"><i class="bi bi-shield-plus me-1"></i>Vacunas aplicadas hoy <span class="small fw-normal text-muted">· quedan en el esquema</span></div>
+  <div class="list-group list-group-flush os-lista-scroll">
+    {% for f in extra.filas %}
+    <label class="list-group-item d-flex align-items-center gap-3 os-fila-check">
+      <input class="form-check-input m-0" type="checkbox" name="vacunas" value="{{ f.vacuna.pk }}">
+      <span class="flex-grow-1">{{ f.vacuna.nombre }} · dosis {{ f.vacuna.dosis }} <span class="small text-muted">({{ f.vacuna.edad_texto }})</span></span>
+      <span class="badge text-bg-{{ f.color }}">{{ f.texto }}</span>
+    </label>
+    {% endfor %}
+  </div>
+  <div class="card-body border-top"><label class="form-label small mb-0" for="vacuna_lote">Lote (opcional)</label><input class="form-control" name="vacuna_lote" id="vacuna_lote" maxlength="60" style="max-width:260px"></div>
+</div>

@@ -95,6 +95,11 @@ def detalle(request, pk):
     if ve_historia:
         from apps.clinica.selectors import resumen_paciente
         contexto.update(resumen_paciente(request, paciente))
+    from apps.clinica.views_procedimientos import puede_registrar
+    contexto['puede_procedimiento'] = puede_registrar(request)
+    if not ve_historia and contexto['puede_procedimiento']:      # la asistente ve los procedimientos (no la historia)
+        from apps.clinica.models import Procedimiento
+        contexto['procedimientos'] = Procedimiento.objects.filter(paciente=paciente).prefetch_related('cargos')[:20]
     return render(request, 'pacientes/detalle.html', contexto)
 
 

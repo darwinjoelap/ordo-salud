@@ -20,7 +20,7 @@ from apps.reportes import selectors as rs
 
 from . import obstetricia as ob
 from .models import ControlPrenatal
-from .paneles import CITOLOGIA_VIGENTE_DIAS
+from .paneles import CITOLOGIA_VIGENTE_DIAS, citologia_alterada
 from .secciones import FAMILIARES, TIPOS_CONSULTA
 
 GRUPOS_EDAD = [('Hasta 20 años', 0, 21), ('21 a 30', 21, 31), ('31 a 40', 31, 41), ('41 a 50', 41, 51),
@@ -56,10 +56,22 @@ def datos_reporte(f):
             metodos[metodo[:1].upper() + metodo[1:].lower()] += 1     # texto libre (como en Ginea)
     for r in fichas.filter(seccion__codigo='go.familiares'):
         familiares.update(r.datos.get('antecedentes') or [])
+    vph_no = its = cito_alterada = 0
+    condiciones = Counter()
     for r in fichas.filter(seccion__codigo='go.gineco'):
         d = r.datos
-        vph_vacuna += bool(d.get('vph_vacuna'))
+        vph_vacuna += d.get('vph_vacuna') is True
+        vph_no += d.get('vph_vacuna') is False
         vph_dx += bool(d.get('vph_diagnostico'))
+        its += bool((d.get('its_previas') or '').strip())
+        cito_alterada += citologia_alterada(d.get('citologia_resultado'))
+        for clave, nombre in (('menopausia', 'Menopausia'), ('histerectomia', 'Histerectomía'),
+                              ('dispareunia', 'Dispareunia'), ('ciclo_regular', None)):
+            if clave == 'ciclo_regular':
+                if d.get(clave) is False:
+                    condiciones['Ciclo irregular'] += 1
+            elif d.get(clave):
+                condiciones[nombre] += 1
         if d.get('vih_resultado'):
             vih[d['vih_resultado']] += 1
         fecha = ob.a_fecha(d.get('citologia_fecha'))
@@ -70,6 +82,15 @@ def datos_reporte(f):
             else:
                 cito_vencida += 1
     cito_sin = len([p for p in pacientes if p not in con_cito])
+    habitos = Counter()
+    for r in fichas.filter(seccion__codigo='go.habitos'):
+        for clave, nombre in (('tabaquismo', 'Tabaquismo'), ('alcohol', 'Alcoholismo'),
+                              ('transfusiones', 'Transfusiones')):
+            habitos[nombre] += bool(r.datos.get(clave))
+    for r in fichas.filter(seccion__codigo='go.planificacion'):
+        if r.datos.get('deseo_embarazo'):
+            condiciones['Desea embarazo'] += 1
+    con_ficha = fichas.filter(seccion__codigo='go.gineco').count()
 
     # Embarazos en curso (de las pacientes atendidas) y partos esperados en los próximos 30 días
     ultimos = {}
@@ -98,6 +119,14 @@ def datos_reporte(f):
         'citologia': rs._barras([('Al día (último año)', cito_al_dia), ('Vencida', cito_vencida),
                                  ('Sin registro', cito_sin)]),
         'vph': {'vacunadas': vph_vacuna, 'diagnostico': vph_dx},
+        'vph_barras': rs._barras([('Vacunadas', vph_vacuna), ('No vacunadas', vph_no),
+                                  ('Sin dato', max(con_ficha - vph_vacuna - vph_no, 0))]),
+        'infecciones': rs._barras([('VIH positivo', vih.get('POSITIVO', 0)), ('Diagnóstico de VPH', vph_dx),
+                                   ('Con ITS previas', its), ('Citología alterada', cito_alterada)]),
+        'condiciones': rs._barras(condiciones.most_common()),
+        'habitos': rs._barras([(k, v) for k, v in habitos.items() if v]),
+        'morbilidad': rs.morbilidad_de(consultas),
+        'con_ficha': con_ficha,
         'por_dia': rs._barras([(DIAS[i], por_dia.get(i, 0)) for i in range(7)]),
     }
 
@@ -113,6 +142,7 @@ def tablero(request):
         return _excel(datos, f)
     return render(request, 'ginecologia/reporte.html', {
         'titulo': 'Reporte de ginecología', 'filtros': f, **datos, 'rangos': rs.rangos_rapidos(),
+        'pestanas': rs.pestanas(request, 'go_reporte'),
         'query': request.GET.urlencode()})
 
 
@@ -130,7 +160,10 @@ def _excel(datos, f):
                             ('Vacunadas contra VPH', datos['vph']['vacunadas']),
                             ('Con diagnóstico de VPH', datos['vph']['diagnostico'])):
         hoja.append([etiqueta, valor])
-    for titulo, clave in [('Tipo de consulta', 'por_tipo'), ('Embarazos por trimestre', 'trimestres'),
+    for titulo, clave in [('Enfermedades más frecuentes', 'morbilidad'), ('Infecciones y hallazgos', 'infecciones'),
+                          ('Vacuna contra el VPH', 'vph_barras'), ('Condiciones gineco-obstétricas', 'condiciones'),
+                          ('Hábitos', 'habitos'),
+                          ('Tipo de consulta', 'por_tipo'), ('Embarazos por trimestre', 'trimestres'),
                           ('Grupos de edad', 'edades'), ('Métodos anticonceptivos', 'metodos'),
                           ('Citología', 'citologia'), ('Prueba de VIH', 'vih'),
                           ('Antecedentes familiares', 'familiares'), ('Citas por día', 'por_dia')]:

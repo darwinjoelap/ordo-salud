@@ -51,6 +51,8 @@ class Cargo(TenantModel, Auditable):
     consulta = models.ForeignKey('clinica.Consulta', on_delete=models.SET_NULL, null=True, blank=True,
                                  related_name='cargos')
     cita = models.ForeignKey('agenda.Cita', on_delete=models.SET_NULL, null=True, blank=True, related_name='cargos')
+    procedimiento = models.ForeignKey('clinica.Procedimiento', on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='cargos')
     profesional = models.ForeignKey('equipo.PerfilProfesional', on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='cargos')
     servicio = models.ForeignKey(Servicio, on_delete=models.SET_NULL, null=True, blank=True, related_name='cargos')

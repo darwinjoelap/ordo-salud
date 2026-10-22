@@ -165,7 +165,11 @@ class GinecologiaTest(BaseTest):
         x = self.cliente.get('/esp/ginecologia/reportes/?formato=excel')
         self.assertEqual(x['Content-Type'].split(';')[0],
                          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        self.assertContains(self.cliente.get('/reportes/'), 'Reporte de ginecología')
+        general = self.cliente.get('/reportes/')
+        self.assertContains(general, 'Ginecología')                  # pestaña de la especialidad
+        self.assertFalse(general.context['mostrar_sexo'])            # en GO el reporte por sexo no tiene sentido
+        self.assertContains(r, 'Enfermedades e infecciones')
+        self.assertContains(r, 'Vacuna contra el VPH')
 
     def test_paciente_nueva_sale_femenina_y_editar_funciona(self):
         r = self.cliente.get('/pacientes/nuevo/')

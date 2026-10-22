@@ -12,6 +12,7 @@
     {% if 'agenda.gestionar' in permisos and paciente.activo %}<a href="{% url 'agenda:cita_nueva' %}?paciente={{ paciente.pk }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-calendar-plus me-1"></i>Agendar cita</a>{% endif %}
     {% if 'cobros.gestionar' in permisos %}<a href="{% url 'cobros:cuenta' paciente.pk %}" class="btn btn-outline-success btn-sm"><i class="bi bi-cash-coin me-1"></i>Cuenta</a>{% endif %}
     {% if ve_historia and paciente.activo %}{% menu_documentos paciente %}{% endif %}
+    {% if puede_procedimiento and paciente.activo %}<a href="{% url 'clinica:procedimiento_nuevo' paciente.pk %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-bandaid me-1"></i>Procedimiento</a>{% endif %}
     {% if 'consultas.crear' in permisos and paciente.activo %}
       {% if consulta_en_curso %}<a href="{% url 'clinica:consulta_editar' consulta_en_curso.pk %}" class="btn btn-warning btn-sm"><i class="bi bi-pencil me-1"></i>Continuar consulta en curso</a>{% endif %}
       <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#nueva-consulta"><i class="bi bi-clipboard2-plus me-1"></i>Nueva consulta</button>
@@ -40,41 +41,9 @@
 {% endif %}
 
 <div class="row g-3">
-  <div class="col-lg-4">
-    <div class="card mb-3"><div class="card-header bg-white fw-semibold">Contacto</div>
-      <div class="card-body small">
-        <div><i class="bi bi-telephone me-1"></i>{{ paciente.telefono|default:"—" }}{% if paciente.telefono_2 %} · {{ paciente.telefono_2 }}{% endif %}</div>
-        {% if paciente.email %}<div><i class="bi bi-envelope me-1"></i>{{ paciente.email }}</div>{% endif %}
-        {% if paciente.direccion or paciente.ciudad %}<div><i class="bi bi-geo-alt me-1"></i>{{ paciente.direccion }}{% if paciente.ciudad %} · {{ paciente.ciudad }}{% endif %}</div>{% endif %}
-        {% if paciente.contacto_emergencia %}<div class="mt-1"><b>Emergencia:</b> {{ paciente.contacto_emergencia }}</div>{% endif %}
-        {% if paciente.ocupacion %}<div><b>Ocupación:</b> {{ paciente.ocupacion }}</div>{% endif %}
-        {% if paciente.seguro %}<div><b>Seguro:</b> {{ paciente.seguro }}</div>{% endif %}
-        {% if paciente.referido_por %}<div><b>Referido por:</b> {{ paciente.referido_por }}</div>{% endif %}
-        <div class="text-muted mt-2">Registrado el {{ paciente.creado_en|date:"d/m/Y" }}{% if paciente.creado_por %} por {{ paciente.creado_por.nombre_visible }}{% endif %}</div>
-      </div>
-    </div>
-    {% if proximas_citas %}
-    <div class="card mb-3"><div class="card-header bg-white fw-semibold">Próximas citas</div>
-      <div class="list-group list-group-flush small">{% for c in proximas_citas %}<a href="{% url 'agenda:cita' c.pk %}" class="list-group-item list-group-item-action">{{ c.fecha|date:"d/m/Y" }}{% if c.hora_inicio %} · {{ c.hora_inicio|hora12 }}{% endif %} · {{ c.profesional }}</a>{% endfor %}</div>
-    </div>
-    {% endif %}
-    <div class="card"><div class="card-header bg-white fw-semibold d-flex justify-content-between">Representantes
-      {% if 'pacientes.gestionar' in permisos %}<a href="{% url 'pacientes:representante_nuevo' paciente.pk %}" class="small">Agregar</a>{% endif %}</div>
-      <ul class="list-group list-group-flush small">
-        {% for r in paciente.representantes.all %}
-          <li class="list-group-item d-flex justify-content-between align-items-start">
-            <span><b>{{ r.nombre }}</b> · {{ r.get_parentesco_display }}{% if r.es_principal %} <span class="badge text-bg-light border">principal</span>{% endif %}<br>
-              <span class="text-muted">{{ r.documento|default:"Sin documento" }}{% if r.telefono %} · {{ r.telefono }}{% endif %}</span></span>
-            {% if 'pacientes.gestionar' in permisos %}<a href="{% url 'pacientes:representante' paciente.pk r.pk %}" class="small">Editar</a>{% endif %}
-          </li>
-        {% empty %}
-          <li class="list-group-item text-muted">{% if paciente.es_menor %}<span class="text-warning-emphasis">Menor sin representante registrado.</span>{% else %}Sin representante.{% endif %}</li>
-        {% endfor %}
-      </ul>
-    </div>
-  </div>
-  <div class="col-lg-8">
+  <div class="col-lg-8 order-lg-2">
     {% if ve_historia %}
+    {% include 'clinica/_historial.html' %}
     <div class="card mb-3"><div class="card-header bg-white fw-semibold d-flex justify-content-between">Antecedentes generales
       <a href="{% url 'pacientes:antecedentes' paciente.pk %}" class="small">Editar</a></div>
       <div class="card-body small">
@@ -108,18 +77,6 @@
     </div>
     {% endfor %}
     {% for p in paneles_especialidad %}{% include p.def.plantilla with panel=p.ctx %}{% endfor %}
-    <div class="card mb-3"><div class="card-header bg-white fw-semibold d-flex justify-content-between">Consultas <span class="small text-muted fw-normal">{{ consultas|length }}{% if ocultas %} · {{ ocultas }} de otros médicos no visibles{% endif %}</span></div>
-      <div class="list-group list-group-flush">
-        {% for c in consultas %}
-          <a href="{% if c.estado == 'BORRADOR' and c.profesional_id == profesional.pk %}{% url 'clinica:consulta_editar' c.pk %}{% else %}{% url 'clinica:consulta' c.pk %}{% endif %}" class="list-group-item list-group-item-action small {% if c.estado == 'ANULADA' %}text-decoration-line-through text-muted{% endif %}">
-            <div class="d-flex justify-content-between"><b>{{ c.fecha_hora|date:"d/m/Y" }}</b>
-              <span>{% if c.estado == 'BORRADOR' %}<span class="badge text-bg-warning">En curso</span>{% elif c.estado == 'ANULADA' %}<span class="badge text-bg-danger">Anulada</span>{% endif %} <span class="text-muted">{{ c.profesional }} · {{ c.especialidad }}</span></span></div>
-            <div>{{ c.motivo|default:"—"|truncatechars:110 }}</div>
-            {% if c.diagnostico %}<div class="text-muted"><i class="bi bi-clipboard2-pulse me-1"></i>{{ c.diagnostico }}</div>{% endif %}
-          </a>
-        {% empty %}<div class="list-group-item small text-muted">Sin consultas todavía.</div>{% endfor %}
-      </div>
-    </div>
     <div class="card mb-3"><div class="card-header bg-white fw-semibold">Documentos emitidos</div>{% documentos_emitidos paciente %}</div>
     {% if signos %}
     <div class="card"><div class="card-header bg-white fw-semibold">Evolución de signos vitales</div>
@@ -131,9 +88,47 @@
     </div>
     {% endif %}
     {% else %}
-    <div class="card card-body small text-muted"><i class="bi bi-lock me-1"></i>El contenido clínico lo ven solo los profesionales.</div>
+    <div class="card card-body small text-muted mb-3"><i class="bi bi-lock me-1"></i>El contenido clínico lo ven solo los profesionales.</div>
+    {% if procedimientos %}
+    <div class="card mb-3"><div class="card-header bg-white fw-semibold"><i class="bi bi-bandaid me-1"></i>Procedimientos</div>
+      <ul class="list-group list-group-flush small">{% for p in procedimientos %}<li class="list-group-item d-flex justify-content-between {% if p.anulado %}text-muted text-decoration-line-through{% endif %}"><span><b>{{ p.fecha|date:"d/m/Y" }}</b> · {{ p.descripcion }}</span><span>${{ p.total_usd }}</span></li>{% endfor %}</ul>
+    </div>
+    {% endif %}
     {% endif %}
     {% if paciente.observaciones %}<div class="card card-body small mt-3"><b>Observaciones:</b> {{ paciente.observaciones|linebreaksbr }}</div>{% endif %}
+  </div>
+  <div class="col-lg-4 order-lg-1 os-col-lateral">
+    <div class="card mb-3"><div class="card-header bg-white fw-semibold">Contacto</div>
+      <div class="card-body small">
+        <div><i class="bi bi-telephone me-1"></i>{{ paciente.telefono|default:"—" }}{% if paciente.telefono_2 %} · {{ paciente.telefono_2 }}{% endif %}</div>
+        {% if paciente.email %}<div><i class="bi bi-envelope me-1"></i>{{ paciente.email }}</div>{% endif %}
+        {% if paciente.direccion or paciente.ciudad %}<div><i class="bi bi-geo-alt me-1"></i>{{ paciente.direccion }}{% if paciente.ciudad %} · {{ paciente.ciudad }}{% endif %}</div>{% endif %}
+        {% if paciente.contacto_emergencia %}<div class="mt-1"><b>Emergencia:</b> {{ paciente.contacto_emergencia }}</div>{% endif %}
+        {% if paciente.ocupacion %}<div><b>Ocupación:</b> {{ paciente.ocupacion }}</div>{% endif %}
+        {% if paciente.seguro %}<div><b>Seguro:</b> {{ paciente.seguro }}</div>{% endif %}
+        {% if paciente.referido_por %}<div><b>Referido por:</b> {{ paciente.referido_por }}</div>{% endif %}
+        <div class="text-muted mt-2">Registrado el {{ paciente.creado_en|date:"d/m/Y" }}{% if paciente.creado_por %} por {{ paciente.creado_por.nombre_visible }}{% endif %}</div>
+      </div>
+    </div>
+    {% if proximas_citas %}
+    <div class="card mb-3"><div class="card-header bg-white fw-semibold">Próximas citas</div>
+      <div class="list-group list-group-flush small">{% for c in proximas_citas %}<a href="{% url 'agenda:cita' c.pk %}" class="list-group-item list-group-item-action">{{ c.fecha|date:"d/m/Y" }}{% if c.hora_inicio %} · {{ c.hora_inicio|hora12 }}{% endif %} · {{ c.profesional }}</a>{% endfor %}</div>
+    </div>
+    {% endif %}
+    <div class="card"><div class="card-header bg-white fw-semibold d-flex justify-content-between">Representantes
+      {% if 'pacientes.gestionar' in permisos %}<a href="{% url 'pacientes:representante_nuevo' paciente.pk %}" class="small">Agregar</a>{% endif %}</div>
+      <ul class="list-group list-group-flush small">
+        {% for r in paciente.representantes.all %}
+          <li class="list-group-item d-flex justify-content-between align-items-start">
+            <span><b>{{ r.nombre }}</b> · {{ r.get_parentesco_display }}{% if r.es_principal %} <span class="badge text-bg-light border">principal</span>{% endif %}<br>
+              <span class="text-muted">{{ r.documento|default:"Sin documento" }}{% if r.telefono %} · {{ r.telefono }}{% endif %}</span></span>
+            {% if 'pacientes.gestionar' in permisos %}<a href="{% url 'pacientes:representante' paciente.pk r.pk %}" class="small">Editar</a>{% endif %}
+          </li>
+        {% empty %}
+          <li class="list-group-item text-muted">{% if paciente.es_menor %}<span class="text-warning-emphasis">Menor sin representante registrado.</span>{% else %}Sin representante.{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </div>
   </div>
 </div>
 {% endblock %}

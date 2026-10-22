@@ -102,7 +102,7 @@ def _barras(pares):
 
 def resumen(f):
     from apps.agenda.models import Cita
-    from apps.clinica.models import Consulta, DiagnosticoConsulta
+    from apps.clinica.models import Consulta
 
     consultas = consultas_de(f)
     total_consultas = consultas.count()
@@ -131,9 +131,7 @@ def resumen(f):
     }
 
     # Morbilidad (CIE-10)
-    diagnosticos = (DiagnosticoConsulta.objects.filter(consulta__in=consultas)
-                    .values('codigo', 'descripcion').annotate(n=Count('id')).order_by('-n', 'codigo')[:15])
-    morbilidad = _barras([(f"{d['codigo']} · {d['descripcion']}".strip(' ·'), d['n']) for d in diagnosticos])
+    morbilidad = morbilidad_de(consultas)
 
     # Pacientes atendidos: sexo y edad
     from apps.pacientes.models import Paciente
@@ -174,10 +172,45 @@ def resumen(f):
         'filtros': f, 'consultas': total_consultas, 'pacientes_atendidos': len(pacientes_ids),
         'pacientes_nuevos': nuevos, 'controles': total_consultas - por_tipo.get('PRIMERA', 0),
         'tipos': tipos, 'agenda': agenda, 'morbilidad': morbilidad,
-        'sexos': _barras(sexos.most_common()), 'edades': _barras([(k, v) for k, v in edades.items() if v]),
+        'sexos': _barras(sexos.most_common()), 'mostrar_sexo': _sexo_relevante(sexos),
+        'edades': _barras([(k, v) for k, v in edades.items() if v]),
         'mensual': mensual, 'finanzas': finanzas,
         'por_profesional': por_profesional(f) if f.todo_el_consultorio and f.profesional is None else [],
     }
+
+
+def morbilidad_de(consultas, limite=15):
+    """Diagnósticos más frecuentes (CIE-10 o texto) de esas consultas, como barras."""
+    from apps.clinica.models import DiagnosticoConsulta
+    diagnosticos = (DiagnosticoConsulta.objects.filter(consulta__in=consultas)
+                    .values('codigo', 'descripcion').annotate(n=Count('id')).order_by('-n', 'codigo')[:limite])
+    return _barras([(f"{d['codigo']} · {d['descripcion']}".strip(' ·'), d['n']) for d in diagnosticos])
+
+
+def _sexo_relevante(sexos):
+    """El reporte por sexo solo se muestra si hay al menos dos sexos con peso (en GO no tiene sentido)."""
+    total = sum(n for k, n in sexos.items() if k != 'Sin dato')
+    return total > 0 and sum(1 for k, n in sexos.items() if k != 'Sin dato' and n * 100 / total >= 5) >= 2
+
+
+def pestanas(request, activa):
+    """Reportes fijos («General») + uno por cada especialidad del consultorio con reporte propio."""
+    from django.urls import reverse
+
+    from apps.clinica import registro
+    query = '&'.join(f'{k}={request.GET[k]}' for k in ('desde', 'hasta', 'profesional') if request.GET.get(k))
+    sufijo = f'?{query}' if query else ''
+    salida = [{'codigo': 'general', 'titulo': 'General', 'icono': 'bi-bar-chart-line',
+               'url': reverse('reportes:tablero') + sufijo, 'activa': activa == 'general',
+               'descripcion': 'Actividad, agenda, enfermedades, edades e ingresos'}]
+    codigos = set(request.tenant.especialidades.values_list('codigo', flat=True))
+    for codigo in sorted(codigos):
+        esp = registro.especialidad(codigo)
+        for r in (esp.reportes if esp else []):
+            titulo = esp.nombre if len(esp.reportes) == 1 else r.titulo
+            salida.append({'codigo': r.codigo, 'titulo': titulo, 'icono': r.icono, 'url': reverse(r.url) + sufijo,
+                           'activa': activa == r.codigo, 'descripcion': r.descripcion or r.titulo})
+    return salida
 
 
 def finanzas_de(f):

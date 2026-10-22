@@ -1,0 +1,6 @@
+{# Reportes fijos («General») y uno por especialidad del consultorio: mismas fechas al cambiar de pestaña #}
+{% if pestanas|length > 1 %}
+<nav class="os-pestanas-reporte mb-3" aria-label="Tipo de reporte">
+  {% for p in pestanas %}<a href="{{ p.url }}" class="os-pestana {% if p.activa %}activa{% endif %}" title="{{ p.descripcion }}" {% if p.activa %}aria-current="page"{% endif %}><i class="bi {{ p.icono }} me-1"></i>{{ p.titulo }}</a>{% endfor %}
+</nav>
+{% endif %}

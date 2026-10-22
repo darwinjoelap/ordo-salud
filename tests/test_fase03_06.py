@@ -221,8 +221,9 @@ class PlantillasTest(BaseTest):
         self.cliente.post(f'/plantillas/{self.plantilla.pk}/accion/', {'accion': 'quitar', 'item': segundo.pk})
         self.cliente.post(f'/plantillas/{self.plantilla.pk}/accion/', {'accion': 'agregar',
                                                                      'seccion': segundo.seccion_id})
-        with self.en_tenant():
-            self.assertEqual(self.plantilla.items.order_by('orden').last().seccion_id, segundo.seccion_id)
+        with self.en_tenant():     # vuelve a su lugar natural (orden del catálogo), no al final
+            orden = list(self.plantilla.items.order_by('orden').values_list('seccion_id', flat=True))
+            self.assertEqual(orden.index(segundo.seccion_id), 1)
 
     def test_ajustes_ocultan_y_renombran(self):
         with self.en_tenant():
@@ -300,3 +301,26 @@ class SeccionesPersonalizadasTest(BaseTest):
         otro, _ = crear_consultorio('Otro', 'otro', usuario='otro')
         with self.en_tenant(otro):
             self.assertFalse(SeccionClinica.objects.visibles().filter(pk=s.pk).exists())
+
+
+class ArmarHistoriaTest(BaseTest):
+    """Plantillas con casillas: catálogo agrupado, marcar/desmarcar y «hacer mi copia»."""
+
+    def test_marcar_desmarcar_y_copia(self):
+        from apps.clinica.models import PlantillaHistoria
+        with self.en_tenant():
+            p = PlantillaHistoria.objects.filter(activa=True).first()
+            examen = p.items.get(seccion__codigo='nucleo.examen_fisico')
+        r = self.cliente.get(f'/plantillas/{p.pk}/')
+        self.assertContains(r, 'Secciones disponibles')
+        self.assertContains(r, 'role="switch"')
+        self.cliente.post(f'/plantillas/{p.pk}/accion/', {'accion': 'quitar', 'item': examen.pk})
+        with self.en_tenant():
+            self.assertFalse(p.items.filter(seccion__codigo='nucleo.examen_fisico').exists())
+        r = self.cliente.post(f'/plantillas/{p.pk}/copiar/')
+        self.assertEqual(r.status_code, 302)
+        with self.en_tenant():
+            copia = PlantillaHistoria.objects.get(nombre__endswith='(mía)')
+            self.assertIsNotNone(copia.profesional_id)
+            self.assertEqual(copia.items.count(), p.items.count())
+

@@ -11,6 +11,13 @@
 
 ---
 
+## Retomar aquí (2026-10-22)
+1. Darwin: probar en su PC «Armar historia» (menú Historia clínica), la agenda nueva y «Procedimiento» (ficha y agenda).
+   Si sigue sin ver secciones: `sincronizar_especialidades` + `refrescar_plantillas <esp> --consultorio <enlace>` y
+   Ctrl+F5; si la plantilla es del consultorio y su usuario no la puede editar, usar «Hacer mi copia».
+2. Darwin: revisar «Reportes» → pestañas General y Ginecología y obstetricia (ADR-042) con pacientes reales; decir qué
+   otra estadística de interés falta (p. ej. por diagnóstico CIE-10 específico, prenatales por mes).
+
 ## Completado (código + tests; falta prueba manual de Darwin)
 - [x] 01 Esqueleto (settings por entorno, Dockerfile, railway.json, cron, `/salud/`)
 - [x] 02 Tenancy, usuarios, equipo, permisos, plataforma, planes, auditoría
@@ -26,12 +33,13 @@
 - [x] 12 PWA offline de consulta: borradores, cola con idempotencia, precarga y copias de agenda/fichas, consulta nueva sin red (ADR-032)
 - [~] 13 Pediatría (perfil, ADR-036): historia en el orden de Pediae con tipo de consulta, ficha pediátrica en página propia, percentiles OMS 0–19 años (ADR-034), curvas (pantalla y PDF), vacunas y pesquisas, constancias (niño sano, lactancia ×2, carnet, curvas), reporte pediátrico + Excel, offline · glosario con calculadora de dosis en el núcleo (ADR-037) · ajustes de Pediae en el núcleo (ADR-035)
 - [~] 14 Ginecología y obstetricia (ADR-039): ficha GO, consulta como Ginea, control prenatal con EG/FPP, paneles de embarazo y resumen, constancia de embarazo y carnet prenatal, reporte GO + Excel · falta revisión con una ginecóloga real
+- [x] Procedimientos sin consulta (ADR-040) · agenda estilo Pediae, historial en la ficha y «Armar historia» con casillas (ADR-041)
 - [x] Panel de suscripciones: planes, días de gracia, anular renovación, tablero, registro de accesos de soporte (ADR-033)
 - [x] Perfil del médico estilo Pediae: logo/marca de agua, banner, firma y sello fijos al pie (ADR-030)
 - [x] Alcance de pacientes por rol (ADR-029): médico ve los suyos; asistente/titular ven todo; configurable
 - [x] Marca **Ordo Salud** (ADR-038, reemplaza Omnis): logo en vector, paleta azul marino/verde, Nunito + Inter locales, menú marino, login en dos paneles
 
-**Verificación:** 181 tests en verde en SQLite y PostgreSQL 16 · `ruff` limpio · `makemigrations --check` limpio ·
+**Verificación:** 189 tests en verde en SQLite y PostgreSQL 16 · `ruff` limpio · `makemigrations --check` limpio ·
 E2E con navegador: paciente → consulta → cierre → PDF; offline (servidor apagado): copia de agenda, consulta nueva en cola, sincroniza al volver.
 
 ## Pendiente inmediato

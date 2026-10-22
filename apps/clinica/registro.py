@@ -47,6 +47,20 @@ class PanelDef:
 
 
 @dataclass
+class ExtraProcedimientoDef:
+    """
+    Bloque que un módulo agrega al formulario de procedimiento (p. ej. vacunas aplicadas en pediatría).
+    contexto(request, paciente) -> dict | None (None = no se muestra para ese paciente)
+    guardar(request, paciente, post, fecha) -> list[str] (lo registrado, va en la descripción del procedimiento;
+    corre dentro de la misma transacción: si el procedimiento falla, se deshace)
+    """
+    codigo: str
+    plantilla: str
+    contexto: object
+    guardar: object
+
+
+@dataclass
 class ReporteDef:
     """Reporte propio de una especialidad (aparece en «Reportes»)."""
     codigo: str
@@ -70,7 +84,8 @@ class EspecialidadDef:
     documentos: list = field(default_factory=list)
     paneles: list = field(default_factory=list)
     reportes: list = field(default_factory=list)
-    paginas_paciente: list = field(default_factory=list)   # nombres de URL (pk del paciente) que se precargan offline
+    paginas_paciente: list = field(default_factory=list)
+    extras_procedimiento: list = field(default_factory=list)   # nombres de URL (pk del paciente) que se precargan offline
     basica: bool = False         # registrada por `general` sin módulo propio: un módulo real la reemplaza
 
 
@@ -121,6 +136,11 @@ def paneles(codigos):
     """Paneles de la ficha del paciente de las especialidades habilitadas (códigos), ordenados."""
     salida = [p for c, e in _especialidades.items() if c in codigos for p in e.paneles]
     return sorted(salida, key=lambda p: p.orden)
+
+
+def extras_procedimiento():
+    """Bloques de procedimiento de todos los módulos instalados (cada uno decide si aplica al paciente)."""
+    return [x for e in _especialidades.values() for x in e.extras_procedimiento]
 
 
 def reportes(codigos):

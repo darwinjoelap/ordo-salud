@@ -3,7 +3,7 @@ Pediatría (Fase 13, ADR-034): reemplaza a la especialidad «básica» del mismo
 Ver docs/roadmap/13_pediatria.md.
 """
 from apps.clinica import registro
-from apps.clinica.registro import EspecialidadDef, PanelDef, PlantillaDef, ReporteDef
+from apps.clinica.registro import EspecialidadDef, ExtraProcedimientoDef, PanelDef, PlantillaDef, ReporteDef
 
 from .calculos import CALCULOS
 from .documentos import DOCUMENTOS
@@ -37,6 +37,13 @@ PLANTILLAS = [
 
 
 
+def _extra(nombre):
+    def funcion(*args):
+        from . import vacunas
+        return getattr(vacunas, nombre)(*args)
+    return funcion
+
+
 def _panel(nombre):
     def contexto(request, paciente):
         from . import paneles
@@ -55,6 +62,8 @@ registro.registrar(EspecialidadDef(
     reportes=[ReporteDef('ped_reporte', 'Reporte pediátrico', 'pediatria:reporte', icono='bi-balloon-heart',
                          descripcion='Estado nutricional, edades, vacunas, lactancia, antecedentes y pesquisas.')],
     paginas_paciente=['pediatria:vacunas'],
+    extras_procedimiento=[ExtraProcedimientoDef('ped_vacunas', 'pediatria/_procedimiento_vacunas.html',
+                                                _extra('contexto_procedimiento'), _extra('guardar_procedimiento'))],
 ))
 
 
