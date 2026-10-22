@@ -33,7 +33,10 @@ def subir(request):
     if audio is None or audio.size == 0:
         return _error('No llegó el audio.')
     if audio.size > servicios.MAX_BYTES:
-        return _error('La grabación es muy larga (máximo 25 MB). Divide el dictado en dos partes.')
+        return _error('La grabación es muy pesada (máximo 120 MB). Divídela en dos partes.')
+    if not (audio.content_type or '').startswith(('audio/', 'video/')) and not (audio.name or '').lower().endswith(
+            ('.m4a', '.mp3', '.ogg', '.opus', '.wav', '.aac', '.flac', '.webm', '.amr', '.3gp', '.mp4')):
+        return _error('El archivo no parece una grabación de audio.')
     if request.POST.get('consentimiento') != '1':
         return _error('Falta marcar que el paciente o su representante autorizó la grabación.')
     ok, motivo = servicios.puede_dictar(request.tenant, segundos)
@@ -51,8 +54,9 @@ def subir(request):
         plantilla = get_object_or_404(PlantillaHistoria.objects.select_related('especialidad'),
                                       pk=request.POST.get('plantilla') or 0)
         estructura, especialidad = congelar_estructura(plantilla), plantilla.especialidad
+    origen = SesionDictado.Origen.ARCHIVO if request.POST.get('origen') == 'archivo' else SesionDictado.Origen.GRABACION
     sesion = SesionDictado.objects.create(paciente=paciente, profesional=perfil, consulta=consulta,
-                                         plantilla=plantilla, segundos=segundos, consentimiento=True)
+                                         plantilla=plantilla, segundos=segundos, consentimiento=True, origen=origen)
     auditoria.registrar(request, 'CREAR', sesion, paciente_id=paciente.pk,
                         detalle=f'Dictado con IA ({round(segundos / 60, 1)} min)')
     servicios.lanzar(sesion.pk, audio.read(), audio.name or 'dictado.webm', audio.content_type, estructura,

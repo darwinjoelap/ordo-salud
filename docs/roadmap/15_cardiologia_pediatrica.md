@@ -64,7 +64,7 @@
 - [x] 15.7 Tests, capturas, comparación con su Word
 - [ ] 15.8 Pendientes con la doctora: fórmula de SC, calculadora de Z-score, abreviaturas de ritmo, revisión del informe
 
-## 6. Dictado de toda la consulta con IA (ADR-045)
+## 6. Dictado de toda la consulta con IA (ADR-045, proveedor Gemini por ADR-046)
 1. «Dictar consulta» + casilla de autorización → graba (pausa, terminar, descartar).
 2. Al terminar: OpenAI `gpt-4o-transcribe` (español + vocabulario de cardiología) → Claude Sonnet 5.5 ubica los datos en
    los campos de la plantilla → validación → el formulario se llena resaltado en amarillo; lo que no encaja aparece aparte.
@@ -72,3 +72,7 @@
 - Costo estimado: ≈ US$0.06 transcripción + ≈ US$0.04 IA por consulta de 10 min.
 - Pendiente: prueba con claves reales; si la doctora dicta antecedentes en una consulta sin esa sección, quedan en
   «no ubicado» (usar la plantilla «Primera consulta»).
+- **Gemini Flash** (ADR-046): OpenAI y Anthropic no admiten Venezuela. Una llamada: audio → transcripción + campos.
+  ≈ US$0.03 por consulta de 10 min. Requiere nivel pagado de Gemini.
+- **Si se va la luz o internet:** «Subir grabación» (nota de voz del teléfono) o, si grabó en el sistema, la grabación
+  queda guardada en el equipo y se envía después.

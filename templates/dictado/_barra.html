@@ -7,6 +7,8 @@
   <div class="card-body py-2 d-flex flex-wrap align-items-center gap-2">
     <div class="os-dictado-inicio d-flex flex-wrap align-items-center gap-2 flex-grow-1">
       <button type="button" class="btn btn-danger btn-sm" data-accion="grabar" {% if dictado.agotado %}disabled{% endif %}><i class="bi bi-mic-fill me-1"></i>Dictar consulta</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-accion="subir" {% if dictado.agotado %}disabled{% endif %} title="¿Sin luz o sin internet? Grabe con el teléfono y suba el audio después."><i class="bi bi-upload me-1"></i>Subir grabación</button>
+      <input type="file" class="d-none" data-archivo accept="audio/*,.m4a,.mp3,.ogg,.opus,.wav,.aac,.amr,.3gp">
       <label class="small d-flex align-items-center gap-1 mb-0"><input type="checkbox" class="form-check-input mt-0" data-consentimiento> El paciente o su representante autoriza la grabación</label>
       <span class="small text-muted ms-auto">{% if dictado.limite %}{{ dictado.usados }} de {{ dictado.limite }} min este mes{% else %}{{ dictado.usados }} min este mes{% endif %}{% if dictado.agotado %} · <span class="text-danger">agotados</span>{% endif %}</span>
     </div>
@@ -21,6 +23,12 @@
       <span class="spinner-border spinner-border-sm text-primary"></span><span class="small">Transcribiendo y ordenando en la historia… (20 a 60 s). No cierres esta página.</span>
     </div>
     <div class="os-dictado-listo d-none flex-grow-1 small" data-resumen></div>
+  </div>
+  <div class="os-dictado-pendiente d-none border-top px-3 py-2 small bg-warning-subtle">
+    <i class="bi bi-exclamation-triangle me-1"></i><span data-pendiente-texto>Hay una grabación sin enviar.</span>
+    <button type="button" class="btn btn-sm btn-primary ms-2" data-accion="reintentar">Enviar ahora</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-accion="descargar">Guardar el audio en este equipo</button>
+    <button type="button" class="btn btn-link btn-sm text-danger" data-accion="descartar-pendiente">Descartar</button>
   </div>
   <div class="os-dictado-detalle d-none border-top px-3 py-2 small">
     <div class="alert alert-warning py-2 mb-2 d-none" data-no-ubicado><b>No se pudo ubicar (revísalo y colócalo donde corresponda):</b><div class="mt-1" style="white-space: pre-line" data-no-ubicado-texto></div></div>

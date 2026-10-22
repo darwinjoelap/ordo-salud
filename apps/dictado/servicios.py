@@ -15,8 +15,8 @@ from apps.core.tenancy import usando_tenant
 from . import proveedores
 from .models import SesionDictado
 
-MAX_BYTES = 25 * 1024 * 1024          # límite del servicio de transcripción
-MAX_SEGUNDOS = 60 * 60
+MAX_BYTES = 120 * 1024 * 1024         # grabaciones del teléfono (.m4a) de hasta ~1,5 h
+MAX_SEGUNDOS = 90 * 60
 TIPOS_IGNORADOS = {'subtitulo', 'calculado'}
 
 VOCABULARIO = {
@@ -175,21 +175,26 @@ def validar(entrada, estructura):
 # ── Procesar ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 def procesar(sesion_id, audio, nombre, tipo, estructura, especialidad_codigo, especialidad_nombre):
-    """Transcribe, ordena y valida. El audio solo vive en esta función (no se guarda en ningún lado)."""
+    """Convierte, envía a la IA y valida. El audio solo vive en esta función (no se guarda en ningún lado)."""
+    from . import audio as conversor
     # En el hilo no hay consultorio activo: se lee sin el filtro por tenant y luego se activa el de la sesión.
     sesion = SesionDictado.todos.select_related('tenant', 'paciente').get(pk=sesion_id)
     with usando_tenant(sesion.tenant):
         try:
+            datos, tipo_mime, segundos = conversor.convertir(audio, nombre, tipo)
+            if segundos:                                   # duración real (también para archivos subidos)
+                sesion.segundos = min(segundos, MAX_SEGUNDOS)
             vocabulario = VOCABULARIO[''] + ' ' + VOCABULARIO.get(especialidad_codigo, '')
-            texto, modelo_t = proveedores.transcribir(audio, nombre, tipo, vocabulario)
-            sesion.transcripcion, sesion.modelo_transcripcion = texto, modelo_t
             sistema = SISTEMA.format(especialidad=especialidad_nombre or 'medicina',
                                      paciente=contexto_paciente(sesion.paciente))
-            entrada, t_in, t_out, modelo_ia = proveedores.ordenar(texto, sistema, herramienta(estructura))
-            resultado, avisos = validar(entrada, estructura)
-            no_ubicado = '\n'.join(t for t in [(entrada or {}).get('no_ubicado', '').strip(), *avisos] if t)
-            sesion.resultado, sesion.no_ubicado = resultado, no_ubicado
-            sesion.modelo_ia, sesion.tokens_entrada, sesion.tokens_salida = modelo_ia, t_in, t_out
+            r = proveedores.procesar_audio(datos, tipo_mime, vocabulario, sistema, herramienta(estructura))
+            if not sesion.segundos and r.segundos_audio:
+                sesion.segundos = min(r.segundos_audio, MAX_SEGUNDOS)
+            resultado, avisos = validar(r.entrada, estructura)
+            no_ubicado = '\n'.join(t for t in [((r.entrada or {}).get('no_ubicado') or '').strip(), *avisos] if t)
+            sesion.transcripcion, sesion.resultado, sesion.no_ubicado = r.transcripcion, resultado, no_ubicado
+            sesion.modelo_transcripcion, sesion.modelo_ia = r.modelo_transcripcion, r.modelo_ia
+            sesion.tokens_entrada, sesion.tokens_salida = r.tokens_entrada, r.tokens_salida
             sesion.estado = SesionDictado.Estado.LISTO
         except proveedores.ErrorProveedor as e:
             sesion.estado, sesion.error = SesionDictado.Estado.ERROR, str(e)[:300]
@@ -197,7 +202,6 @@ def procesar(sesion_id, audio, nombre, tipo, estructura, especialidad_codigo, es
             sesion.estado, sesion.error = SesionDictado.Estado.ERROR, f'Error inesperado: {e.__class__.__name__}'
         sesion.terminado_en = timezone.now()
         sesion.save()
-    del audio
 
 
 def lanzar(*args):

@@ -23,3 +23,5 @@ cryptography==50.0.2   # completa la cadena TLS incompleta del BCV (AIA)
 sentry-sdk==2.71.0
 # ── Excel (reportes) ──────────────────────────────────────
 openpyxl==3.1.5
+# ── Dictado: ffmpeg incluido (convierte el audio a MP3 mono y mide la duración) ──
+imageio-ffmpeg==0.6.0

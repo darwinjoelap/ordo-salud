@@ -16,6 +16,11 @@
 
 ---
 
+### Dictado con Gemini y subir grabación (2026-10-22)
+- Hecho: proveedor Gemini Flash (una llamada: transcripción + campos), conversión a MP3 y duración real con ffmpeg, «Subir grabación» del teléfono, grabación pendiente guardada en el equipo con reintento.
+- Verificado: 216 tests en verde (SQLite + PostgreSQL), ruff limpio; en navegador: subir .m4a, grabar sin internet → queda guardada → recargar → enviar.
+- ADR: 046 · Falta: prueba con clave real de Gemini (nivel pagado).
+
 ### Dictado de la consulta con IA (2026-10-22)
 - Hecho: grabar, transcribir (OpenAI), ordenar en la historia (Claude Sonnet 5.5), validar y llenar el formulario resaltado; minutos por plan; audio no se guarda; modo de prueba sin claves.
 - Verificado: 212 tests en verde (SQLite + PostgreSQL), ruff limpio; prueba en navegador con micrófono simulado (modo de prueba y llenado con respuesta simulada). Falta la prueba con claves reales.

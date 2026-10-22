@@ -19,7 +19,12 @@ class SesionDictado(TenantModel, Auditable):
                                  related_name='dictados')
     plantilla = models.ForeignKey('clinica.PlantillaHistoria', on_delete=models.SET_NULL, null=True, blank=True,
                                   related_name='+')
+    class Origen(models.TextChoices):
+        GRABACION = 'GRABACION', 'Grabado en el sistema'
+        ARCHIVO = 'ARCHIVO', 'Archivo subido (p. ej. grabado en el teléfono)'
+
     estado = models.CharField('Estado', max_length=10, choices=Estado.choices, default=Estado.PROCESANDO)
+    origen = models.CharField('Origen del audio', max_length=10, choices=Origen.choices, default=Origen.GRABACION)
     consentimiento = models.BooleanField('El paciente o su representante autorizó la grabación', default=False)
     segundos = models.PositiveIntegerField('Duración (s)', default=0)
     transcripcion = models.TextField('Transcripción', blank=True)

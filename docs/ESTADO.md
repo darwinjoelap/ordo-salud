@@ -19,8 +19,9 @@
 3. Darwin: probar pediatría (ADR-043): «Cargar carnet», botón «Vacunas» en la consulta, referencia, historia completa.
 4. Fase 15 Cardiología pediátrica (ADR-044, `roadmap/15_cardiologia_pediatrica.md`): Darwin la prueba y lleva a la
    doctora 3 preguntas: fórmula de SC, calculadora de Z-score y revisión del informe.
-5. Dictado con IA (ADR-045): Darwin crea las cuentas de OpenAI y Anthropic, pone OPENAI_API_KEY y ANTHROPIC_API_KEY
-   en .env, activa el dictado del consultorio en la plataforma y prueba un dictado real; define minutos del plan.
+5. Dictado con IA (ADR-045/046, Gemini): Darwin crea la clave en Google AI Studio **con facturación activada** (nivel
+   pagado), la pone en .env como GEMINI_API_KEY, activa el dictado del consultorio en la plataforma y prueba un
+   dictado real y una grabación subida desde el teléfono; define minutos del plan.
 
 ## Completado (código + tests; falta prueba manual de Darwin)
 - [x] 01 Esqueleto (settings por entorno, Dockerfile, railway.json, cron, `/salud/`)
