@@ -6,7 +6,8 @@ Esquema de campos de una sección clínica: contrato ÚNICO para formulario, val
                  "max": 300, "decimales": 2, "requerido": true, "ancho": 3}, ...]}
 
 Atributos comunes: clave, tipo, etiqueta, ancho (1–12, por defecto según el tipo), requerido, ayuda,
-por_defecto, visible_si {"campo": clave, "igual": valor | "en": [valores] | "distinto": valor}.
+por_defecto, visible_si {"campo": clave, "igual": valor | "en": [valores] | "distinto": valor},
+no_aplica_si (misma forma: el campo se muestra atenuado como «No aplica», sin borrar lo que tenga).
 """
 import re
 from datetime import date, time
@@ -101,9 +102,10 @@ def validar_esquema(esquema, permitir_calculado=True):
         if tipo == 'calculado' and not campo.get('funcion'):
             errores.append(f'{donde}: un campo calculado necesita "funcion".')
     for campo in esquema['campos']:
-        cond = campo.get('visible_si') if isinstance(campo, dict) else None
-        if cond and cond.get('campo') not in claves:
-            errores.append(f'Campo {campo.get("clave")}: visible_si apunta a un campo que no existe.')
+        for atributo in ('visible_si', 'no_aplica_si'):
+            cond = campo.get(atributo) if isinstance(campo, dict) else None
+            if cond and cond.get('campo') not in claves:
+                errores.append(f'Campo {campo.get("clave")}: {atributo} apunta a un campo que no existe.')
     return errores
 
 
@@ -139,10 +141,20 @@ def campos_efectivos(esquema, ajustes=None):
     return salida
 
 
+def no_aplica(campo, datos):
+    """¿El campo «no aplica» con estos datos? (se muestra atenuado; el valor se conserva)."""
+    cond = campo.get('no_aplica_si')
+    return bool(cond) and _cumple(cond, datos)
+
+
 def _visible(campo, datos):
     cond = campo.get('visible_si')
     if not cond:
         return True
+    return _cumple(cond, datos)
+
+
+def _cumple(cond, datos):
     valor = datos.get(cond.get('campo'))
     if 'igual' in cond:
         return valor == cond['igual'] or (isinstance(valor, list) and cond['igual'] in valor)

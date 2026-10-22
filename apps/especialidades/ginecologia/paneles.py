@@ -56,16 +56,27 @@ def resumen(request, paciente):
     fur = ob.a_fecha(gineco.get('fur'))
     cito_fecha = ob.a_fecha(cito.get('citologia_fecha'))
     vencida = cito_fecha is None or (hoy - cito_fecha).days > CITOLOGIA_VIGENTE_DIAS
-    if gineco.get('histerectomia') or (paciente.edad_anios is not None and paciente.edad_anios < 21):
+    histerectomia = bool(gineco.get('histerectomia'))
+    # Histerectomía total: sin cuello no toca la citología de rutina (la subtotal lo conserva y sí la necesita).
+    # Sin tipo anotado se mantiene el criterio anterior (no avisar), pero se pide completar el tipo.
+    if (histerectomia and gineco.get('histerectomia_tipo') != 'SUBTOTAL') or (
+            paciente.edad_anios is not None and paciente.edad_anios < 21):
         vencida = False
+    if histerectomia:
+        fur = None                                    # el ciclo menstrual no aplica
+    ooforectomia = gineco.get('ooforectomia')
     metodo = plan.get('metodo', '') or ('Ligadura de trompas' if plan.get('ligadura') else '')
     campo_vih = next(c for c in GINECO.esquema['campos'] if c['clave'] == 'vih_resultado')
     return {
         'formula': ob.formula(gineco), 'incongruente': ob.formula_incongruente(gineco),
         'fur': fur, 'dias_fur': (hoy - fur).days if fur else None,
         'menopausia': gineco.get('menopausia'), 'menopausia_edad': gineco.get('menopausia_edad'),
-        'histerectomia': gineco.get('histerectomia'),
-        'ciclo': f"cada {gineco['ciclo_dias']} días" if gineco.get('ciclo_dias') else '',
+        'histerectomia': histerectomia,
+        'histerectomia_texto': {'TOTAL': 'total', 'SUBTOTAL': 'subtotal (conserva el cuello)'}.get(
+            gineco.get('histerectomia_tipo'), ''),
+        'histerectomia_sin_tipo': histerectomia and not gineco.get('histerectomia_tipo'),
+        'ooforectomia_bilateral': histerectomia and ooforectomia == 'BILATERAL',
+        'ciclo': f"cada {gineco['ciclo_dias']} días" if gineco.get('ciclo_dias') and not histerectomia else '',
         'ciclo_regular': gineco.get('ciclo_regular'),
         'cito_fecha': cito_fecha, 'cito_hace': cito.get('citologia_hace', ''),
         'cito_resultado': cito.get('citologia_resultado', ''),

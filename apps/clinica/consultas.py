@@ -231,6 +231,10 @@ def _guardar_paciente(consulta, item, datos, paciente=None):
                                                     vigente=True).first()
     if actual is not None and actual.datos == datos:
         return
+    calculados = {c['clave'] for c in item.get('campos', []) if c['tipo'] == 'calculado'}
+    if not any(k not in calculados for k in datos):
+        # Llegó vacía (no se mostró o no se tocó): nunca borra una ficha que tiene datos.
+        return
     if actual is not None:
         actual.vigente = False
         actual.save(update_fields=['vigente', 'actualizado_en'])
@@ -261,7 +265,10 @@ def guardar_secciones(consulta, datos_por_seccion):
     consulta = Consulta.objects.select_for_update().get(pk=consulta.pk)
     if not consulta.editable:
         raise ErrorDeNegocio('La consulta está cerrada: para corregirla registra una enmienda.')
-    for item in consulta.estructura:
+    # Primero la ficha (ámbito PACIENTE) y después lo de la consulta: así lo que un gancho de la consulta copia a
+    # la ficha (p. ej. la FUR del control prenatal) no queda pisado por el valor anterior que traía el formulario.
+    orden = sorted(consulta.estructura, key=lambda i: 0 if i['ambito'] == 'PACIENTE' else 1)
+    for item in orden:
         if item['seccion_id'] in datos_por_seccion:
             _guardar(consulta, item, datos_por_seccion[item['seccion_id']])
     consulta.save(update_fields=['actualizado_en'])

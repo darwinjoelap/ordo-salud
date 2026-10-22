@@ -627,3 +627,8 @@ textarea.form-control { min-height: auto; }
 .os-punto-rec { width: .75rem; height: .75rem; border-radius: 50%; background: #C0392B; animation: os-latido 1.2s infinite; }
 .os-dictado.pausado .os-punto-rec { animation: none; background: #8A99A6; }
 .os-ia-llenado { background: #FFF6D6 !important; box-shadow: 0 0 0 2px #F5D76E inset; }
+
+/* Campo que «no aplica» (p. ej. ciclo menstrual con histerectomía): atenuado, conserva su valor */
+.os-no-aplica { opacity: .45; position: relative; }
+.os-no-aplica input, .os-no-aplica select, .os-no-aplica textarea, .os-no-aplica label { pointer-events: none; }
+.os-no-aplica > .form-label::after { content: ' · No aplica'; font-weight: 600; color: #8A5A00; }

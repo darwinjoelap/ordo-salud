@@ -44,7 +44,7 @@ class PediatriaTest(BaseTest):
         c = self.abrir()
         codigos = [i['codigo'] for i in c.estructura]
         self.assertEqual(codigos[:4], ['ped.tipo', 'ped.antropometria', 'nucleo.signos_vitales', 'nucleo.motivo'])
-        self.assertNotIn('ped.perinatales', codigos)          # como en Pediae: la ficha va aparte
+        self.assertIn('ped.perinatales', codigos)             # historia completa en una pantalla (2026-10-22)
         self.assertEqual(codigos[-1], 'ped.habitos')
         signos = next(i for i in c.estructura if i['codigo'] == 'nucleo.signos_vitales')
         self.assertNotIn('peso_kg', [x['clave'] for x in signos['campos']])     # el peso va en antropometría

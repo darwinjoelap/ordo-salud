@@ -12,6 +12,9 @@
 ---
 
 ## Retomar aquí (2026-10-22)
+0. Tras actualizar (ADR-047): `python manage.py sincronizar_especialidades` y en cada consultorio
+   `python manage.py refrescar_plantillas <especialidad> --consultorio <enlace>` (las copias propias de cada médico y
+   las consultas ya abiertas no cambian). Revisar con la ginecóloga el criterio de histerectomía (tipo, citología).
 1. Darwin: probar en su PC «Armar historia» (menú Historia clínica), la agenda nueva y «Procedimiento» (ficha y agenda).
    Si sigue sin ver secciones: `sincronizar_especialidades` + `refrescar_plantillas <esp> --consultorio <enlace>` y
    Ctrl+F5; si la plantilla es del consultorio y su usuario no la puede editar, usar «Hacer mi copia».

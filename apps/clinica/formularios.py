@@ -107,6 +107,9 @@ class FormularioSeccion(forms.Form):
         for c in campos:              # atributos para el JS de visible_si y la vista previa de calculados
             if c['clave'] in self.fields and c.get('visible_si'):
                 self.fields[c['clave']].widget.attrs['data-visible-si'] = _json(c['visible_si'])
+            if c['clave'] in self.fields and c.get('no_aplica_si'):
+                # «No aplica» (p. ej. ciclo menstrual con histerectomía): se atenúa, pero el dato NO se borra.
+                self.fields[c['clave']].widget.attrs['data-no-aplica-si'] = _json(c['no_aplica_si'])
 
     @property
     def tiene_calculados(self):

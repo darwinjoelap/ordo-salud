@@ -127,15 +127,18 @@ class DictadoTest(BaseTest):
 
     def test_grabacion_del_telefono_se_convierte_y_mide(self):
         """«Si se va la luz»: la doctora graba con el teléfono (.m4a) y lo sube después; se cobra la duración real."""
+        import os
         import subprocess
         import tempfile
         ffmpeg = conversor._ffmpeg()
         if not ffmpeg:
             self.skipTest('sin ffmpeg')
-        with tempfile.NamedTemporaryFile(suffix='.m4a') as f:
+        # Carpeta temporal (no NamedTemporaryFile): en Windows un archivo abierto no lo puede escribir ffmpeg.
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = os.path.join(carpeta, 'nota.m4a')
             subprocess.run([ffmpeg, '-y', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=75', '-c:a', 'aac',
-                            f.name], capture_output=True, check=True)
-            with open(f.name, 'rb') as leido:
+                            ruta], capture_output=True, check=True)
+            with open(ruta, 'rb') as leido:
                 datos = leido.read()
         mp3, tipo, segundos = conversor.convertir(datos, 'nota de voz.m4a', 'audio/x-m4a')
         self.assertEqual((tipo, segundos), ('audio/mp3', 75))

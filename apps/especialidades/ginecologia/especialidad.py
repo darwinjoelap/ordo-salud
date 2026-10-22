@@ -21,7 +21,7 @@ PLAN = ('nucleo.plan', {'ajustes': {'etiquetas': {'plan': 'Tratamiento', 'indica
                                                   'proximo_control': 'Próxima cita'}}})
 ORDENES = ('nucleo.ordenes', {'ajustes': {'ocultos': ['imagenes', 'otros'],
                                           'etiquetas': {'laboratorio': 'Exámenes solicitados'}}})
-FICHA_COLAPSADA = [(s.codigo, {'colapsada': True}) for s in FICHA]
+FICHA_ABIERTA = [s.codigo for s in FICHA]        # historia completa en una pantalla (se puede contraer)
 # En Ginea el motivo y el diagnóstico no son obligatorios (la doctora lo pidió así): se respetan.
 MOTIVO = ('nucleo.motivo', {'ajustes': {'opcionales': ['motivo'], 'etiquetas': {
     'motivo': 'Motivo / notas adicionales', 'enfermedad_actual': 'Síntomas actuales'}}})
@@ -31,20 +31,23 @@ TIPO_PRENATAL = ('go.tipo', {'ajustes': {'por_defecto': {'tipo': 'PRENATAL'}}})
 # Igual que la consulta de Ginea: datos (peso, TA) · motivo y síntomas · examen físico · ecografía, colposcopia,
 # imágenes · diagnóstico · tratamiento e indicaciones (+ próxima cita) · récipe · exámenes solicitados ·
 # control prenatal (solo si aplica) · actualizar ficha (FUR, citología).
-CONSULTA_GINEA = ['go.tipo', SIGNOS_GO, MOTIVO, EXAMEN, 'go.estudios', DIAGNOSTICOS, PLAN, 'nucleo.prescripcion',
-                  ORDENES, 'go.notas', ('go.prenatal', {'colapsada': True}), ('go.actualizar', {'colapsada': True})]
-PRENATAL = [TIPO_PRENATAL, SIGNOS_GO, 'go.prenatal', MOTIVO, EXAMEN, 'go.estudios', DIAGNOSTICOS, PLAN,
-            'nucleo.prescripcion', ORDENES, 'go.notas', ('go.actualizar', {'colapsada': True})]
-PRIMERA = ['go.tipo', SIGNOS_GO, MOTIVO, 'nucleo.antecedentes', *FICHA_COLAPSADA, EXAMEN, 'go.estudios',
+# Pedido de Darwin (2026-10-22): la historia completa en la misma pantalla. La ficha gineco-obstétrica va dentro de
+# la consulta, abierta, después del motivo (anamnesis → antecedentes → examen); la doctora contrae lo que no use.
+# «Actualizar ficha» (FUR y citología) ya no hace falta: la ficha está en la misma pantalla (sigue en el catálogo).
+CONSULTA_GINEA = ['go.tipo', SIGNOS_GO, MOTIVO, *FICHA_ABIERTA, EXAMEN, 'go.estudios', DIAGNOSTICOS, PLAN,
+                  'nucleo.prescripcion', ORDENES, 'go.notas', ('go.prenatal', {'colapsada': True})]
+PRENATAL = [TIPO_PRENATAL, SIGNOS_GO, 'go.prenatal', MOTIVO, *FICHA_ABIERTA, EXAMEN, 'go.estudios', DIAGNOSTICOS,
+            PLAN, 'nucleo.prescripcion', ORDENES, 'go.notas']
+PRIMERA = ['go.tipo', SIGNOS_GO, MOTIVO, 'nucleo.antecedentes', *FICHA_ABIERTA, EXAMEN, 'go.estudios',
            DIAGNOSTICOS, PLAN, 'nucleo.prescripcion', ORDENES, 'go.notas', ('go.prenatal', {'colapsada': True})]
 
 PLANTILLAS = [
     PlantillaDef('Consulta ginecológica', CONSULTA_GINEA, predeterminada=True,
-                 descripcion='Igual que en Ginea. La ficha ginecológica se llena en la ficha de la paciente.'),
+                 descripcion='Historia completa en una pantalla: ficha gineco-obstétrica y consulta (se contraen).'),
     PlantillaDef('Control prenatal', PRENATAL,
                  descripcion='Control del embarazo primero: EG y FPP calculadas, altura uterina, FCF.'),
     PlantillaDef('Primera consulta con ficha completa', PRIMERA,
-                 descripcion='Incluye toda la ficha ginecológica dentro de la consulta.'),
+                 descripcion='Igual a la consulta ginecológica, más los antecedentes generales.'),
 ]
 
 

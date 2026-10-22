@@ -26,15 +26,16 @@ PLAN = ('nucleo.plan', {'ajustes': {'etiquetas': {
 ORDENES = ('nucleo.ordenes', {'ajustes': {'etiquetas': {'otros': 'Holter, MAPA, interconsultas y otros'}}})
 
 # Mismo orden que su informe: enfermedad actual · (antecedentes) · examen · EKG · eco · comentario.
-CONSULTA_CP = [MOTIVO, SIGNOS, EXAMEN, 'cp.ekg', 'cp.eco', DIAGNOSTICOS, PLAN, 'nucleo.prescripcion', ORDENES]
+CONSULTA_CP = [MOTIVO, 'cp.antecedentes', SIGNOS, EXAMEN, 'cp.ekg', 'cp.eco', DIAGNOSTICOS, PLAN,
+               'nucleo.prescripcion', ORDENES]
 PRIMERA = [MOTIVO, 'cp.antecedentes', SIGNOS, EXAMEN, 'cp.ekg', 'cp.eco', DIAGNOSTICOS, PLAN, 'nucleo.prescripcion',
            ORDENES]
-CONTROL_SIN_ECO = [MOTIVO, SIGNOS, EXAMEN, 'cp.ekg', DIAGNOSTICOS, PLAN, 'nucleo.prescripcion', ORDENES,
+CONTROL_SIN_ECO = [MOTIVO, 'cp.antecedentes', SIGNOS, EXAMEN, 'cp.ekg', DIAGNOSTICOS, PLAN, 'nucleo.prescripcion', ORDENES,
                    ('cp.eco', {'colapsada': True})]
 
 PLANTILLAS = [
     PlantillaDef('Consulta de cardiología pediátrica', CONSULTA_CP, predeterminada=True,
-                 descripcion='Como el informe de la doctora. Los antecedentes se llenan en la ficha del paciente.'),
+                 descripcion='Como el informe de la doctora, con los antecedentes en la misma pantalla.'),
     PlantillaDef('Primera consulta (con antecedentes)', PRIMERA,
                  descripcion='Incluye los antecedentes personales dentro de la consulta.'),
     PlantillaDef('Control (eco opcional)', CONTROL_SIN_ECO,

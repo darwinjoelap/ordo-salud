@@ -8,6 +8,7 @@ from apps.clinica.registro import SeccionDef
 
 T = 'texto_largo'
 SI = {'igual': True}
+CON_HISTERECTOMIA = {'campo': 'histerectomia', 'igual': True}
 
 TIPOS_CONSULTA = [['GINECOLOGICA', 'Ginecológica'], ['PRENATAL', 'Control prenatal'],
                   ['PLANIFICACION', 'Planificación familiar'], ['SEGUIMIENTO', 'Seguimiento / resultados'],
@@ -39,11 +40,24 @@ GINECO = SeccionDef('go.gineco', 'Historia gineco-obstétrica', ambito='PACIENTE
     {'clave': 'menarquia', 'tipo': 'numero', 'etiqueta': 'Menarquía (edad)', 'decimales': 0, 'min': 6, 'max': 25,
      'ancho': 3},
     {'clave': 'histerectomia', 'tipo': 'si_no', 'etiqueta': 'Histerectomía', 'ancho': 3},
+    # Con histerectomía: tipo (la subtotal conserva el cuello → sigue la citología), ooforectomía (bilateral =
+    # menopausia quirúrgica) y el ciclo menstrual queda atenuado como «No aplica» (sin borrar lo anotado).
+    {'clave': 'histerectomia_tipo', 'tipo': 'opcion', 'etiqueta': 'Tipo de histerectomía', 'ancho': 3,
+     'visible_si': CON_HISTERECTOMIA,
+     'opciones': [['TOTAL', 'Total (sin cuello)'], ['SUBTOTAL', 'Subtotal (conserva el cuello)']]},
+    {'clave': 'ooforectomia', 'tipo': 'opcion', 'etiqueta': 'Ooforectomía', 'ancho': 3, 'visible_si': CON_HISTERECTOMIA,
+     'opciones': [['NO', 'No'], ['UNILATERAL', 'Unilateral'], ['BILATERAL', 'Bilateral']],
+     'ayuda': 'Bilateral = menopausia quirúrgica.'},
+    {'clave': 'histerectomia_fecha', 'tipo': 'texto', 'etiqueta': 'Histerectomía (año o edad)', 'ancho': 3,
+     'visible_si': CON_HISTERECTOMIA},
     {'clave': 'ciclo_dias', 'tipo': 'numero', 'etiqueta': 'Duración del ciclo (días)', 'decimales': 0, 'min': 10,
-     'max': 120, 'ancho': 3},
-    {'clave': 'ciclo_regular', 'tipo': 'si_no', 'etiqueta': 'Ciclo regular', 'ancho': 3},
-    {'clave': 'fur', 'tipo': 'fecha', 'etiqueta': 'FUR (Fecha última regla)', 'ancho': 3},
-    {'clave': 'ciclo_caracteristicas', 'tipo': T, 'etiqueta': 'Características del sangrado menstrual', 'filas': 2},
+     'max': 120, 'ancho': 3, 'no_aplica_si': CON_HISTERECTOMIA},
+    {'clave': 'ciclo_regular', 'tipo': 'si_no', 'etiqueta': 'Ciclo regular', 'ancho': 3,
+     'no_aplica_si': CON_HISTERECTOMIA},
+    {'clave': 'fur', 'tipo': 'fecha', 'etiqueta': 'FUR (Fecha última regla)', 'ancho': 3,
+     'no_aplica_si': CON_HISTERECTOMIA},
+    {'clave': 'ciclo_caracteristicas', 'tipo': T, 'etiqueta': 'Características del sangrado menstrual', 'filas': 2,
+     'no_aplica_si': CON_HISTERECTOMIA},
     {'clave': 'gestas', 'tipo': 'numero', 'etiqueta': 'Gestas', 'decimales': 0, 'min': 0, 'max': 30, 'ancho': 2},
     {'clave': 'partos', 'tipo': 'numero', 'etiqueta': 'Partos', 'decimales': 0, 'min': 0, 'max': 30, 'ancho': 2},
     {'clave': 'cesareas', 'tipo': 'numero', 'etiqueta': 'Cesáreas', 'decimales': 0, 'min': 0, 'max': 30, 'ancho': 2},
@@ -83,7 +97,8 @@ PLANIFICACION = SeccionDef('go.planificacion', 'Planificación familiar', ambito
     {'clave': 'diu_fecha', 'tipo': 'fecha', 'etiqueta': 'DIU (fecha de colocación)', 'ancho': 3},
 ]})
 
-OBSERVACIONES = SeccionDef('go.observaciones', 'Observaciones', ambito='PACIENTE', orden=25, esquema={'campos': [
+OBSERVACIONES = SeccionDef('go.observaciones', 'Observaciones generales (ficha)', ambito='PACIENTE', orden=25,
+                           esquema={'campos': [
     {'clave': 'observaciones', 'tipo': T, 'etiqueta': 'Observaciones generales', 'filas': 3},
 ]})
 

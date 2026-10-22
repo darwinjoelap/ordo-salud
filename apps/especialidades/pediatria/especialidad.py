@@ -19,24 +19,26 @@ from .secciones import CONSULTA, FICHA
 # En pediatría peso y talla van en «Antropometría» (con percentiles): se ocultan de los signos vitales del núcleo.
 SIGNOS_PEDIATRICOS = ('nucleo.signos_vitales', {'ajustes': {'ocultos': [
     'peso_kg', 'talla_cm', 'imc', 'superficie_corporal', 'glicemia', 'perimetro_abdominal']}})
-FICHA_COLAPSADA = [(s.codigo, {'colapsada': True}) for s in FICHA]
+FICHA_ABIERTA = [s.codigo for s in FICHA]        # historia completa en una pantalla (se puede contraer)
 
 # Igual que la consulta de Pediae: tipo · antropometría · signos · motivo y enfermedad actual · examen físico ·
 # desarrollo · diagnóstico · tratamiento e indicaciones (+ próxima cita) · récipe · paraclínicos · hábitos.
-CONSULTA_PEDIAE = ['ped.tipo', 'ped.antropometria', SIGNOS_PEDIATRICOS, 'nucleo.motivo', 'nucleo.examen_fisico',
+# Pedido de Darwin (2026-10-22): la ficha pediátrica va dentro de la consulta, abierta (se puede contraer).
+CONSULTA_PEDIAE = ['ped.tipo', 'ped.antropometria', SIGNOS_PEDIATRICOS, 'nucleo.motivo', *FICHA_ABIERTA,
+                   'nucleo.examen_fisico',
                    'ped.desarrollo', ('nucleo.diagnosticos', {'obligatoria': True}), 'nucleo.plan',
                    'nucleo.prescripcion', 'nucleo.ordenes', 'ped.habitos']
-PRIMERA = ['ped.tipo', 'nucleo.motivo', 'nucleo.antecedentes', *FICHA_COLAPSADA, 'ped.antropometria',
+PRIMERA = ['ped.tipo', 'nucleo.motivo', 'nucleo.antecedentes', *FICHA_ABIERTA, 'ped.antropometria',
            SIGNOS_PEDIATRICOS, 'nucleo.examen_fisico', 'ped.desarrollo', 'nucleo.paraclinicos',
            ('nucleo.diagnosticos', {'obligatoria': True}), 'nucleo.plan', 'nucleo.prescripcion', 'nucleo.ordenes',
            'ped.habitos']
-CONTROL_SANO = ['ped.tipo', 'ped.antropometria', SIGNOS_PEDIATRICOS, 'nucleo.motivo', 'ped.habitos',
+CONTROL_SANO = ['ped.tipo', 'ped.antropometria', SIGNOS_PEDIATRICOS, 'nucleo.motivo', *FICHA_ABIERTA, 'ped.habitos',
                 'ped.desarrollo', 'nucleo.examen_fisico', ('nucleo.diagnosticos', {'obligatoria': True}),
                 'nucleo.plan', 'nucleo.prescripcion']
 
 PLANTILLAS = [
     PlantillaDef('Consulta pediátrica', CONSULTA_PEDIAE, predeterminada=True,
-                 descripcion='Igual que en Pediae. La ficha pediátrica se llena en la ficha del paciente.'),
+                 descripcion='Historia completa en una pantalla: ficha pediátrica y consulta (cada bloque se contrae).'),
     PlantillaDef('Primera consulta con ficha completa', PRIMERA,
                  descripcion='Incluye toda la ficha pediátrica dentro de la consulta.'),
     PlantillaDef('Control de niño sano', CONTROL_SANO, descripcion='Crecimiento, hábitos y desarrollo primero.'),

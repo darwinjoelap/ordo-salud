@@ -13,7 +13,7 @@
       {% if panel.fur %}<span class="os-chip">FUR {{ panel.fur|date:'d/m/Y' }}{% if panel.dias_fur is not None and panel.dias_fur <= 60 %} · hace {{ panel.dias_fur }} días{% endif %}</span>{% endif %}
       {% if panel.ciclo %}<span class="os-chip">Ciclo {{ panel.ciclo }}{% if panel.ciclo_regular is False %}, irregular{% endif %}</span>{% endif %}
       {% if panel.menopausia %}<span class="os-chip">Menopausia{% if panel.menopausia_edad %} a los {{ panel.menopausia_edad }}{% endif %}</span>{% endif %}
-      {% if panel.histerectomia %}<span class="os-chip">Histerectomía</span>{% endif %}
+      {% if panel.histerectomia %}<span class="os-chip" title="El ciclo menstrual no aplica">Histerectomía{% if panel.histerectomia_texto %} {{ panel.histerectomia_texto }}{% endif %}</span>{% if panel.ooforectomia_bilateral %}<span class="os-chip">Ooforectomía bilateral</span>{% endif %}{% if panel.histerectomia_sin_tipo %}<span class="os-chip os-chip-estado" title="Si es subtotal conserva el cuello y sigue necesitando citología">Falta el tipo de histerectomía</span>{% endif %}{% endif %}
       {% if panel.metodo %}<span class="os-chip"><i class="bi bi-shield-check me-1"></i>{{ panel.metodo }}</span>{% endif %}
       {% if panel.deseo_embarazo %}<span class="os-chip os-chip-ok">Desea embarazo</span>{% endif %}
     </div>

@@ -70,10 +70,11 @@ class GinecologiaTest(BaseTest):
                                        'Primera consulta con ficha completa'})
         c = self.abrir()
         codigos = [i['codigo'] for i in c.estructura]
-        self.assertEqual(codigos[:5], ['go.tipo', 'nucleo.signos_vitales', 'nucleo.motivo', 'nucleo.examen_fisico',
-                                       'go.estudios'])
-        self.assertEqual(codigos[-2:], ['go.prenatal', 'go.actualizar'])
-        self.assertNotIn('go.gineco', codigos)                   # la ficha va aparte, como en Ginea
+        self.assertEqual(codigos[:5], ['go.tipo', 'nucleo.signos_vitales', 'nucleo.motivo', 'go.habitos',
+                                       'go.familiares'])
+        self.assertEqual(codigos[-2:], ['go.notas', 'go.prenatal'])
+        self.assertNotIn('go.actualizar', codigos)               # ya no hace falta: la ficha está en la pantalla
+        self.assertIn('go.gineco', codigos)                      # historia completa en una pantalla (2026-10-22)
 
     def test_control_prenatal_calcula_y_sigue_el_embarazo(self):
         fur = timezone.localdate() - timedelta(days=150)
@@ -113,8 +114,8 @@ class GinecologiaTest(BaseTest):
         c = self.abrir()
         hoy = timezone.localdate().isoformat()
         self.cliente.post(f'/consultas/{c.pk}/editar/', {
-            self.campo('go.actualizar', 'citologia_fecha'): hoy,
-            self.campo('go.actualizar', 'citologia_resultado'): 'NILM',
+            self.campo('go.gineco', 'citologia_fecha'): hoy,             # la ficha está dentro de la consulta
+            self.campo('go.gineco', 'citologia_resultado'): 'NILM',
             self.campo('nucleo.motivo', 'motivo'): 'Citología'})
         with self.en_tenant():
             cito = RegistroSeccionPaciente.objects.get(paciente=self.p, seccion_id=self.s['go.gineco'],
@@ -222,5 +223,40 @@ class GinecologiaTest(BaseTest):
             plantilla.items.all().delete()
         call_command('refrescar_plantillas', 'ginecologia', '--consultorio', 'gineco', stdout=StringIO())
         with self.en_tenant():
-            self.assertEqual(plantilla.items.count(), 12)
+            self.assertEqual(plantilla.items.count(), 16)                  # 11 de la consulta + 5 de la ficha
 
+
+
+class HistoriaCompletaYHisterectomiaTest(BaseTest):
+    """2026-10-22: la ficha va dentro de la consulta; con histerectomía el ciclo «no aplica» (sin borrar datos)."""
+    setUp, campo, abrir = GinecologiaTest.setUp, GinecologiaTest.campo, GinecologiaTest.abrir
+
+    def ficha(self, **datos):
+        url = reverse('clinica:ficha_especialidad', args=[self.p.pk, 'ginecologia'])
+        self.cliente.post(url, {self.campo('go.gineco', k): v for k, v in datos.items()})
+        with self.en_tenant():
+            return RegistroSeccionPaciente.objects.get(paciente=self.p, seccion_id=self.s['go.gineco'],
+                                                       vigente=True).datos
+
+    def test_ciclo_no_aplica_con_histerectomia_y_conserva_la_fur(self):
+        datos = self.ficha(fur='2024-05-01', ciclo_dias='28', histerectomia='si', histerectomia_tipo='TOTAL')
+        self.assertEqual((datos['fur'], datos['histerectomia_tipo']), ('2024-05-01', 'TOTAL'))   # no se borra
+        r = self.cliente.get(reverse('clinica:ficha_especialidad', args=[self.p.pk, 'ginecologia']))
+        self.assertContains(r, 'data-no-aplica-si')
+        detalle = self.cliente.get(f'/pacientes/{self.p.pk}/')
+        self.assertContains(detalle, 'Histerectomía total')
+        self.assertNotContains(detalle, 'FUR 01/05/2024')                     # el ciclo no aplica
+        self.assertNotContains(detalle, 'Toca citología')
+
+    def test_histerectomia_subtotal_sigue_pidiendo_citologia(self):
+        self.ficha(histerectomia='si', histerectomia_tipo='SUBTOTAL')
+        self.assertContains(self.cliente.get(f'/pacientes/{self.p.pk}/'), 'Toca citología')
+
+    def test_consulta_sin_campos_de_ficha_no_borra_la_ficha(self):
+        self.ficha(gestas='2', partos='2')
+        c = self.abrir()
+        self.cliente.post(f'/consultas/{c.pk}/editar/', {self.campo('nucleo.motivo', 'motivo'): 'Control'})
+        with self.en_tenant():
+            datos = RegistroSeccionPaciente.objects.get(paciente=self.p, seccion_id=self.s['go.gineco'],
+                                                        vigente=True).datos
+        self.assertEqual(datos['gestas'], 2)

@@ -56,7 +56,9 @@ def _cerrar(texto):
 
 # ── Antecedentes personales ─────────────────────────────────────────────────────────────────────────────────────
 def antecedentes(d):
-    d = d or {}
+    d = {k: v for k, v in (d or {}).items() if k != 'texto_informe' and v not in (None, '', [])}
+    if not d:
+        return ''                     # sin datos no se afirma nada («Niega…» solo si se llenó la ficha)
     frases = []
     madre = f"Producto de madre de {num(d['edad_madre'], 0)} años" if d.get('edad_madre') else ''
     gestas = f"{romano(d['gestas'])}G" if d.get('gestas') else ''

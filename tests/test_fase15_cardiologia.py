@@ -82,8 +82,8 @@ class CardiologiaTest(BaseTest):
         with self.en_tenant():
             c = Consulta.objects.latest('id')
         codigos = [i['codigo'] for i in c.estructura]
-        self.assertEqual(codigos[:5], ['nucleo.motivo', 'nucleo.signos_vitales', 'nucleo.examen_fisico', 'cp.ekg',
-                                       'cp.eco'])
+        self.assertEqual(codigos[:6], ['nucleo.motivo', 'cp.antecedentes', 'nucleo.signos_vitales',
+                                       'nucleo.examen_fisico', 'cp.ekg', 'cp.eco'])
 
     def test_consulta_completa_informe_notas_panel_y_reporte(self):
         self.cliente.post(f'/pacientes/{self.p.pk}/ficha/cardiologia_pediatrica/',

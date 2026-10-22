@@ -16,6 +16,11 @@
 
 ---
 
+### Historia completa en una pantalla e histerectomía (2026-10-22)
+- Hecho: ficha dentro de la consulta (GO, pediatría, cardiología) con expandir/contraer recordado; ficha nunca se borra por llegar vacía; `no_aplica_si`; histerectomía (tipo, ooforectomía) con ciclo «No aplica», resumen y reporte ajustados.
+- Verificado: 219 tests en verde (SQLite + PostgreSQL), ruff limpio, capturas.
+- ADR: 047 · Requiere `sincronizar_especialidades` y `refrescar_plantillas` en cada consultorio existente.
+
 ### Dictado con Gemini y subir grabación (2026-10-22)
 - Hecho: proveedor Gemini Flash (una llamada: transcripción + campos), conversión a MP3 y duración real con ffmpeg, «Subir grabación» del teléfono, grabación pendiente guardada en el equipo con reintento.
 - Verificado: 216 tests en verde (SQLite + PostgreSQL), ruff limpio; en navegador: subir .m4a, grabar sin internet → queda guardada → recargar → enviar.

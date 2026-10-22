@@ -62,7 +62,7 @@ def datos_reporte(f):
             metodos[metodo[:1].upper() + metodo[1:].lower()] += 1     # texto libre (como en Ginea)
     for r in fichas.filter(seccion__codigo='go.familiares'):
         familiares.update(r.datos.get('antecedentes') or [])
-    vph_no = its = cito_alterada = 0
+    vph_no = its = cito_alterada = cito_no_aplica = 0
     condiciones = Counter()
     for r in fichas.filter(seccion__codigo='go.gineco'):
         d = r.datos
@@ -74,14 +74,17 @@ def datos_reporte(f):
         for clave, nombre in (('menopausia', 'Menopausia'), ('histerectomia', 'Histerectomía'),
                               ('dispareunia', 'Dispareunia'), ('ciclo_regular', None)):
             if clave == 'ciclo_regular':
-                if d.get(clave) is False:
+                if d.get(clave) is False and not d.get('histerectomia'):     # con histerectomía no aplica
                     condiciones['Ciclo irregular'] += 1
             elif d.get(clave):
                 condiciones[nombre] += 1
         if d.get('vih_resultado'):
             vih[d['vih_resultado']] += 1
         fecha = ob.a_fecha(d.get('citologia_fecha'))
-        if fecha:
+        if d.get('histerectomia') and d.get('histerectomia_tipo') != 'SUBTOTAL':
+            con_cito.add(r.paciente_id)                 # sin cuello: no cuenta como vencida ni «sin registro»
+            cito_no_aplica += 1
+        elif fecha:
             con_cito.add(r.paciente_id)
             if (hoy - fecha).days <= CITOLOGIA_VIGENTE_DIAS:
                 cito_al_dia += 1
@@ -124,7 +127,8 @@ def datos_reporte(f):
         'vih': rs._barras([(n, vih.get(k, 0)) for k, n in (('NEGATIVO', 'Negativo'), ('POSITIVO', 'Positivo'),
                                                           ('NO_REALIZADO', 'No realizada')) if vih.get(k)]),
         'citologia': rs._barras([('Al día (último año)', cito_al_dia), ('Vencida', cito_vencida),
-                                 ('Sin registro', cito_sin)]),
+                                 ('Sin registro', cito_sin)]
+                                + ([('No aplica (histerectomía total)', cito_no_aplica)] if cito_no_aplica else [])),
         'vph': {'vacunadas': vph_vacuna, 'diagnostico': vph_dx},
         'vph_barras': rs._barras([('Vacunadas', vph_vacuna), ('No vacunadas', vph_no),
                                   ('Sin dato', max(con_ficha - vph_vacuna - vph_no, 0))]),

@@ -28,6 +28,11 @@
     {% if consulta.lugar_id %}<input type="hidden" name="lugar" value="{{ consulta.lugar_id }}">{% endif %}
     {% if cita %}<input type="hidden" name="cita" value="{{ cita.pk }}">{% endif %}
   {% endif %}
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-2 small os-barra-secciones">
+    <span class="text-muted">{{ formularios|length }} secciones · la ficha del paciente <span class="os-chip">se conserva entre consultas</span></span>
+    <button type="button" class="btn btn-link btn-sm p-0 ms-auto" data-secciones="abrir"><i class="bi bi-arrows-expand me-1"></i>Expandir todo</button>
+    <button type="button" class="btn btn-link btn-sm p-0" data-secciones="cerrar"><i class="bi bi-arrows-collapse me-1"></i>Contraer todo</button>
+  </div>
   {% for item, form in formularios %}
     <div class="card os-seccion {% if item.ambito == 'PACIENTE' %}os-ambito-paciente{% endif %} mb-3" data-seccion data-codigo="{{ item.codigo }}">
       <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#s{{ item.seccion_id }}">
@@ -62,6 +67,32 @@
 {% endblock %}
 {% block extra_js %}
 <script src="{% static 'js/secciones.js' %}"></script>{% include 'clinica/_dictado.html' %}
+<script>
+// Historia completa en una pantalla: cada sección se contrae o se expande y el sistema lo recuerda (por médico y
+// equipo), así la ficha que ya está llena puede quedar contraída en las próximas consultas.
+(function () {
+  const guardar = function (codigo, cerrada) { try { localStorage.setItem('os-colapso:' + codigo, cerrada ? '1' : '0'); } catch (e) {} };
+  const leer = function (codigo) { try { return localStorage.getItem('os-colapso:' + codigo); } catch (e) { return null; } };
+  document.querySelectorAll('.os-seccion').forEach(function (card) {
+    const codigo = card.dataset.codigo, panel = card.querySelector('.collapse');
+    if (!panel) return;
+    const conError = !!card.querySelector('.bi-exclamation-circle-fill');
+    const estado = leer(codigo);
+    if (!conError && estado === '1') panel.classList.remove('show');
+    if (estado === '0') panel.classList.add('show');
+    panel.addEventListener('shown.bs.collapse', function () { guardar(codigo, false); });
+    panel.addEventListener('hidden.bs.collapse', function () { guardar(codigo, true); });
+  });
+  document.querySelectorAll('[data-secciones]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      const abrir = b.dataset.secciones === 'abrir';
+      document.querySelectorAll('.os-seccion .collapse').forEach(function (p) {
+        bootstrap.Collapse.getOrCreateInstance(p, {toggle: false})[abrir ? 'show' : 'hide']();
+      });
+    });
+  });
+})();
+</script>
 <script>
 // Hora real de la consulta: cuándo se abrió el formulario (aunque se envíe más tarde desde la cola sin conexión)
 document.querySelectorAll('[data-os-inicio]').forEach(function (el) { if (!el.value) el.value = new Date().toISOString(); });

@@ -30,6 +30,13 @@
       const caja = el.closest('[data-campo]');
       if (caja) caja.hidden = !ver;
     });
+    // «No aplica»: se atenúa y no se puede tocar, pero lo escrito se conserva (p. ej. ciclo con histerectomía)
+    seccion.querySelectorAll('[data-no-aplica-si]').forEach(function (el) {
+      const cond = JSON.parse(el.dataset.noAplicaSi);
+      const prefijo = el.name.indexOf('-') >= 0 ? el.name.slice(0, el.name.lastIndexOf('-') + 1) : '';
+      const caja = el.closest('[data-campo]');
+      if (caja) caja.classList.toggle('os-no-aplica', cumple(cond, valorDe(seccion, prefijo + cond.campo)));
+    });
   }
 
   document.querySelectorAll('[data-seccion]').forEach(function (s) {
