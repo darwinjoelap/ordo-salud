@@ -85,4 +85,5 @@ class PlanForm(FormBase, forms.ModelForm):
     class Meta:
         model = Plan
         fields = ['nombre', 'descripcion', 'precio_usd', 'precio_anual_usd', 'max_profesionales', 'max_usuarios',
-                  'dias_gracia', 'incluye_dictado', 'minutos_dictado_mes', 'activo']
+                  'dias_gracia', 'incluye_dictado', 'minutos_dictado_mes', 'precio_minuto_extra_usd',
+                  'tope_minutos_extra', 'activo']

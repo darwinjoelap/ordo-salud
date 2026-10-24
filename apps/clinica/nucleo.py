@@ -18,11 +18,12 @@ def imc(datos, contexto):
 
 
 def superficie_corporal(datos, contexto):
-    """Mosteller: √(talla cm × peso kg / 3600)."""
+    """Con la fórmula del consultorio (superficie.py): Mosteller por defecto, Haycock en cardiología pediátrica."""
+    from . import superficie
     peso, talla = datos.get('peso_kg'), datos.get('talla_cm')
     if not peso or not talla:
         return None
-    return round((float(peso) * float(talla) / 3600) ** 0.5, 2)
+    return superficie.calcular(peso, talla, contexto.get('formula_sc') or superficie.formula_actual())
 
 
 T = 'texto_largo'

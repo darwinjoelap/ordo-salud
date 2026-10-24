@@ -2,6 +2,7 @@
 Plataforma (sin tenant): consultorios/clínicas cliente, planes, renovaciones y catálogo de especialidades.
 """
 from datetime import timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
@@ -20,6 +21,12 @@ class Plan(models.Model):
     incluye_dictado = models.BooleanField('Incluye dictado por voz', default=False)
     minutos_dictado_mes = models.PositiveIntegerField('Minutos de dictado al mes', default=0,
                                                       help_text='Dictado con IA. 0 = sin límite.')
+    precio_minuto_extra_usd = models.DecimalField(
+        'Precio del minuto extra (USD)', max_digits=6, decimal_places=3, default=Decimal('0.040'),
+        help_text='Al pasar los minutos del plan se sigue dictando y se cobra este precio. 0 = se bloquea al agotarse.')
+    tope_minutos_extra = models.PositiveIntegerField(
+        'Tope de minutos extra al mes', default=600,
+        help_text='Freno de seguridad del costo: pasado este excedente se bloquea. 0 = sin tope.')
     dias_gracia = models.PositiveSmallIntegerField(
         'Días de gracia', default=3,
         help_text='Días después del vencimiento en que el consultorio sigue entrando (con aviso) antes del bloqueo.')

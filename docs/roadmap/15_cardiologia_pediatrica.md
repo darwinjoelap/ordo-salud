@@ -36,8 +36,8 @@
 | CAF del VD | (área diástole − área sístole) / área diástole | 12.8 y 6.5 → 49.2 % ✔ |
 | FEVI (Teichholz) | VFD = 7/(2.4+D)·D³ con D en cm; FE = (VFD − VFS)/VFD | 25.8 y 15.1 mm → 74 % ✔ (en el otro modelo escribe «> 60 %»: se puede poner a mano) |
 | FA | (DdVI − DsVI) / DdVI | — |
-| SC | Del núcleo (Mosteller). **Pendiente con la doctora**: sus SC no coinciden con una sola fórmula (0.48 ≈ Mosteller truncado; 0.85 = DuBois) | — |
-| Z-score | **Pendiente**: hay que saber qué calculadora usa (Detroit/Pettersen, Boston, PHN/Lopez, Cantinotti). Mientras, se escribe a mano. Sus casos sirven para validar: anillo pulmonar 7 mm con SC 0.48 → Z −4.15; TAP 7 mm → −3.81; RD 7 mm → −0.68; RI 6 mm → −0.84 | — |
+| SC | **Haycock** (ADR-048: fórmula por consultorio; cardiología pediátrica usa la de PHN/ParameterZ/PedZ) | 3.6 kg y 59 cm → 0.24 ✔ (captura de ParameterZ) |
+| Z-score | **PHN / Lopez 2017** (la que usa ahora en ParameterZ): Z = (medida/SC^α − media)/DE, tabla 2 del artículo. «Z manual» manda si lo escribe | Ejemplo del artículo (MVLAT 11 mm, SC 0.3 → −1.0) ✔. Sus informes viejos salieron de PedZ con otra referencia (anillo 7 mm, SC 0.48: ella −4.15, PHN −3.75): no se espera que coincidan |
 
 ## 4. Mapeo a Ordo Salud
 | Modelo | Ordo Salud |
@@ -62,7 +62,9 @@
 - [x] 15.5 Panel «Resumen cardiológico» y reporte de la especialidad
 - [x] 15.6 Dictado por voz opcional (apagado por defecto)
 - [x] 15.7 Tests, capturas, comparación con su Word
-- [ ] 15.8 Pendientes con la doctora: fórmula de SC, calculadora de Z-score, abreviaturas de ritmo, revisión del informe
+- [x] 15.8a SC (Haycock) y Z-score PHN/Lopez 2017 (ADR-048)
+- [x] 15.9 Comando `demo_cardiologia` (pacientes ficticios)
+- [ ] 15.8b Con la doctora: comparar Z con ParameterZ (eje del anillo pulmonar), abreviaturas de ritmo, revisión del informe, banner completo
 
 ## 6. Dictado de toda la consulta con IA (ADR-045, proveedor Gemini por ADR-046)
 1. «Dictar consulta» + casilla de autorización → graba (pausa, terminar, descartar).

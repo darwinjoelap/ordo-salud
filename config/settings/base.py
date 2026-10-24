@@ -13,6 +13,8 @@ SECRET_KEY = config('SECRET_KEY', default='dev-inseguro-cambiar')
 DEBUG = False
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv(), default='localhost,127.0.0.1')
 CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', cast=Csv(), default='')
+# Subdominio por consultorio (ADR-049): 'salud.ordove.com' → https://<slug>.salud.ordove.com. Vacío = solo por ruta.
+BASE_DOMAIN = config('BASE_DOMAIN', default='')
 
 PRODUCTO = 'Ordo Salud'
 # Versión visible y usada para invalidar la caché de la PWA en cada despliegue
@@ -63,6 +65,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'apps.core.subdominios.SubdominioMiddleware',       # <slug>.BASE_DOMAIN → consultorio (ADR-049)
     'apps.usuarios.middleware.CambioClaveObligatorioMiddleware',
     'apps.core.middleware.TenantActivoMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',

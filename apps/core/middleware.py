@@ -48,16 +48,28 @@ class TenantActivoMiddleware:
             ]
             request.membresias = membresias
             elegida = None
-            tenant_id = request.session.get(SESION_TENANT)
-            if tenant_id:
-                elegida = next((m for m in membresias if m.tenant_id == tenant_id), None)
-            soporte_id = request.session.get(SESION_SOPORTE) if request.user.is_superuser else None
-            if soporte_id:
-                tenant = Tenant.objects.select_related('configuracion').filter(pk=soporte_id).first()
-                elegida = membresia_soporte(request.user, tenant) if tenant else None
-            if elegida is None and len(membresias) == 1 and not request.user.is_superuser:
-                elegida = membresias[0]
-                request.session[SESION_TENANT] = elegida.tenant_id
+            tenant_host = getattr(request, 'tenant_host', None)
+            if tenant_host is not None:        # subdominio del consultorio: manda el host, no la sesión
+                elegida = next((m for m in membresias if m.tenant_id == tenant_host.pk), None)
+                if elegida is None and request.user.is_superuser:
+                    elegida = membresia_soporte(request.user, tenant_host)
+                suspendido = not tenant_host.esta_activo and not request.user.is_superuser
+                if (elegida is None or suspendido) and not request.path.startswith(('/static/', '/cuenta/salir/')):
+                    restaurar_usuario(token_u)
+                    from django.shortcuts import render
+                    plantilla = 'plataforma/suspendido.html' if suspendido else 'plataforma/sin_acceso.html'
+                    return render(request, plantilla, {'tenant_marca': tenant_host}, status=403)
+            else:
+                tenant_id = request.session.get(SESION_TENANT)
+                if tenant_id:
+                    elegida = next((m for m in membresias if m.tenant_id == tenant_id), None)
+                soporte_id = request.session.get(SESION_SOPORTE) if request.user.is_superuser else None
+                if soporte_id:
+                    tenant = Tenant.objects.select_related('configuracion').filter(pk=soporte_id).first()
+                    elegida = membresia_soporte(request.user, tenant) if tenant else None
+                if elegida is None and len(membresias) == 1 and not request.user.is_superuser:
+                    elegida = membresias[0]
+                    request.session[SESION_TENANT] = elegida.tenant_id
 
             if elegida:
                 request.membresia = elegida

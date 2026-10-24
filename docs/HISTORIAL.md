@@ -98,3 +98,10 @@
 
 ### Fase 00 — Diseño (2026-10-19, abierta hasta aprobar ADR)
 - Revisión de Ginea, Pediae, Ordo y Biolife; paquete de documentación inicial.
+
+### 2026-10-24 — SC/Z-score, subdominio, excedente, demo
+- ADR-048: fórmula de SC por consultorio (Haycock en cardiología pediátrica) y Z-score PHN/Lopez 2017 con «Z manual».
+- ADR-049: subdominio por consultorio (`<enlace>.salud.ordove.com`, `admin.` para plataforma) con respaldo por ruta.
+- ADR-050: excedente de dictado (precio por minuto extra, tope de seguridad, por cobrar del mes anterior).
+- `demo_cardiologia` (4 pacientes ficticios con eco, EKG, notas) y `docs/DESPLIEGUE_RAILWAY.md`.
+

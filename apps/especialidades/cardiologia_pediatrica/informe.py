@@ -169,8 +169,20 @@ def ekg_linea(d):
 
 
 # ── Ecocardiograma ────────────────────────────────────────────────────────────────────────────────────────────
+# Z manual → medida de la que sale el Z automático (zscore.py). El manual manda si está escrito.
+Z_MEDIDA = {'tric_z': 'tric_anillo', 'mit_z': 'mit_anillo', 'pulm_z': 'pulm_anillo', 'tap_z': 'tap_mm',
+            'rd_z': 'rd_mm', 'ri_z': 'ri_mm', 'ao_z': 'ao_anillo'}
+
+
+def z_de(d, clave):
+    if d.get(clave) not in (None, ''):
+        return d[clave]
+    return d.get(f'z_{Z_MEDIDA.get(clave, "")}')
+
+
 def _z(d, clave):
-    return f"(Zscore: {num(d[clave], 2)})" if d.get(clave) not in (None, '') else ''
+    valor = z_de(d, clave)
+    return f"(Zscore: {num(valor, 2)})" if valor not in (None, '') else ''
 
 
 def _flujo(d, vmax, gp_medido=None, texto='captándose v máx'):
@@ -219,6 +231,11 @@ def eco(d, sc=None):
     for p in ('ad', 'ai'):
         if d.get(f'{p}_vol') and sc and not d.get(f'{p}_vol_index'):
             d[f'{p}_vol_index'] = round(float(d[f'{p}_vol']) / float(sc), 1)
+    if sc:
+        from . import zscore
+        for medida in zscore.TABLA:
+            if d.get(f'z_{medida}') in (None, ''):
+                d[f'z_{medida}'] = zscore.z(medida, d.get(medida), sc)
     o = []
     situs = {'SOLITUS': 'Situs solitus', 'INVERSUS': 'Situs inversus', 'AMBIGUO': 'Situs ambiguo'}.get(d.get('situs'))
     apex = {'LEVO': 'levocardia', 'DEXTRO': 'dextrocardia', 'MESO': 'mesocardia'}.get(d.get('apex'))
@@ -457,7 +474,7 @@ def hallazgos(d):
     if d.get('derrame') in ('LEVE', 'MODERADO', 'SEVERO'):
         salida.append(f"Derrame pericárdico {d['derrame'].lower()}")
     for p, n in (('pulm', 'Anillo pulmonar'), ('tap', 'TAP'), ('ao', 'Anillo aórtico')):
-        z = d.get(f'{p}_z')
+        z = z_de(d, f'{p}_z')
         if z not in (None, '') and float(z) <= -2:
             salida.append(f'{n} hipoplásico (Z {num(z, 1)})')
     return salida

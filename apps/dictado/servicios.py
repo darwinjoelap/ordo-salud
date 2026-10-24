@@ -2,6 +2,7 @@
 Dictado de toda la consulta con IA (ADR-045): esquema para la IA, validación del resultado, minutos del plan y
 procesamiento (en segundo plano: la doctora espera con el formulario abierto y se llena al terminar).
 """
+import datetime
 import threading
 
 from django.conf import settings
@@ -49,12 +50,16 @@ Reglas:
 Paciente: {paciente}."""
 
 
-def minutos_usados(tenant, ahora=None):
-    ahora = ahora or timezone.now()
-    inicio = timezone.localtime(ahora).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    segundos = (SesionDictado.objects.filter(tenant=tenant, creado_en__gte=inicio)
-                .exclude(estado=SesionDictado.Estado.ERROR).aggregate(s=Sum('segundos'))['s'] or 0)
-    return round(segundos / 60, 1)
+def _inicio_mes(ahora):
+    return timezone.localtime(ahora).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+def minutos_usados(tenant, ahora=None, desde=None, hasta=None):
+    desde = desde or _inicio_mes(ahora or timezone.now())
+    qs = SesionDictado.todos.filter(tenant=tenant, creado_en__gte=desde).exclude(estado=SesionDictado.Estado.ERROR)
+    if hasta is not None:
+        qs = qs.filter(creado_en__lt=hasta)
+    return round((qs.aggregate(s=Sum('segundos'))['s'] or 0) / 60, 1)
 
 
 def limite_minutos(tenant):
@@ -63,13 +68,41 @@ def limite_minutos(tenant):
     return plan.minutos_dictado_mes if plan is not None else 0
 
 
+def uso(tenant, mes_anterior=False, ahora=None):
+    """
+    Minutos del mes (o del anterior, para facturar): usados, límite, extra y lo que se cobra de extra.
+    El excedente se factura por minuto completo (hacia arriba).
+    """
+    import math
+    from decimal import Decimal
+    inicio = _inicio_mes(ahora or timezone.now())
+    if mes_anterior:
+        desde, hasta = _inicio_mes(inicio - datetime.timedelta(days=1)), inicio
+    else:
+        desde, hasta = inicio, None
+    usados = minutos_usados(tenant, desde=desde, hasta=hasta)
+    limite = limite_minutos(tenant)
+    plan = getattr(tenant, 'plan', None)
+    precio = plan.precio_minuto_extra_usd if plan is not None else Decimal('0')
+    extra = math.ceil(max(0.0, usados - limite)) if limite else 0
+    return {'desde': desde, 'usados': usados, 'limite': limite, 'extra': extra, 'precio_extra': precio,
+            'monto_extra': (precio * extra).quantize(Decimal('0.01')),
+            'tope_extra': plan.tope_minutos_extra if plan is not None else 0,
+            'en_excedente': bool(limite and usados >= limite)}
+
+
 def puede_dictar(tenant, segundos=0):
-    """(sí/no, motivo)."""
+    """(sí/no, motivo). Pasado el plan sigue si el plan cobra el excedente, hasta el tope de seguridad."""
     if not tenant.configuracion.dictado_activo:
         return False, 'El dictado con IA no está activo para este consultorio.'
-    limite = limite_minutos(tenant)
-    if limite and minutos_usados(tenant) + segundos / 60 > limite:
-        return False, f'Se agotaron los {limite} minutos de dictado del mes.'
+    u = uso(tenant)
+    if not u['limite'] or u['usados'] + segundos / 60 <= u['limite']:
+        return True, ''
+    if not u['precio_extra']:
+        return False, f"Se agotaron los {u['limite']} minutos de dictado del mes."
+    if u['tope_extra'] and u['usados'] + segundos / 60 > u['limite'] + u['tope_extra']:
+        return False, (f"Se alcanzó el tope de {u['tope_extra']} minutos extra del mes. "
+                       'Escríbele a Ordo Salud para ampliarlo.')
     return True, ''
 
 

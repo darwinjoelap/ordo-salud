@@ -22,7 +22,7 @@ RESERVADOS = {
     'consultas', 'clinica', 'historia', 'plantillas', 'secciones', 'documentos', 'reportes', 'plataforma',
     'salud', 'offline', 'instalar', 'visor', 'static', 'media', 'favicon.ico', 'manifest.webmanifest', 'sw.js',
     '__debug__', 'ordo', 'ordo-salud', 'www', 'app', 'soporte', 'ayuda', 'login', 'entrar', 'dictado', 'cie10',
-    'adjuntos', 'citas', 'esp',
+    'adjuntos', 'citas', 'esp', 'mail',
 }
 PATRON = re.compile(r'^[a-z0-9]+(?:-[a-z0-9]+)*$')
 
@@ -46,6 +46,19 @@ def habilitar_especialidades(tenant, especialidades):
     with usando_tenant(tenant):
         for especialidad in especialidades:
             asegurar_plantillas_especialidad(especialidad)
+    _sugerir_formula_sc(tenant, especialidades)
+
+
+def _sugerir_formula_sc(tenant, especialidades):
+    """Cardiología pediátrica pide Haycock (Z-score PHN); solo cambia si el consultorio sigue en la de fábrica."""
+    from apps.clinica import registro
+    from apps.configuracion.models import ConfiguracionTenant
+    for especialidad in especialidades:
+        definicion = registro.especialidad(especialidad.codigo)
+        if definicion and definicion.formula_sc:
+            ConfiguracionTenant.objects.filter(tenant=tenant, formula_sc='MOSTELLER').update(
+                formula_sc=definicion.formula_sc)
+            return
 
 
 @transaction.atomic

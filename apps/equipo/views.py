@@ -7,6 +7,7 @@ from django.views.decorators.http import require_POST
 
 from apps.core.middleware import SESION_TENANT
 from apps.core.permisos import Rol, requiere
+from apps.core.subdominios import enlace
 
 from . import servicios
 from .forms import AgregarForm, PerfilProfesionalForm
@@ -82,7 +83,7 @@ def agregar(request):
         else:
             return render(request, 'equipo/credenciales.html', {
                 'titulo': 'Acceso creado', 'usuario': m.usuario, 'clave': clave, 'nuevo': True,
-                'enlace': request.build_absolute_uri(f'/{request.tenant.slug}/')})
+                'enlace': enlace(request, request.tenant.slug)})
         return redirect('equipo:lista')
     for campo, errores in form.errors.items():
         etiqueta = form.fields[campo].label if campo in form.fields else ''
@@ -116,7 +117,7 @@ def restablecer_clave(request, pk):
         return redirect('equipo:lista')
     return render(request, 'equipo/credenciales.html', {
         'titulo': 'Contraseña temporal', 'usuario': m.usuario, 'clave': clave, 'nuevo': False,
-        'enlace': request.build_absolute_uri(f'/{request.tenant.slug}/')})
+        'enlace': enlace(request, request.tenant.slug)})
 
 
 def _editar_perfil(request, m, volver, puede_cambiar_especialidad):

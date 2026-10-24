@@ -54,6 +54,28 @@ class ProsaTest(SimpleTestCase):
         self.assertTrue(texto.endswith('No se observa derrame pericárdico, trombos ni vegetaciones.'))
         self.assertIn('CIA ostium secundum · Qp:Qs 2.5:1', informe.hallazgos(ECO))
 
+    def test_superficie_corporal_por_formula(self):
+        from apps.clinica import superficie
+        self.assertEqual(superficie.calcular(3.6, 59, 'HAYCOCK'), 0.24)          # la captura de ParameterZ
+        self.assertEqual(superficie.calcular(10.4, 82, 'HAYCOCK'), 0.49)
+        self.assertEqual(superficie.calcular(21.1, 121, 'DUBOIS'), 0.85)        # su segundo informe
+        self.assertEqual(superficie.calcular(21.1, 121, 'MOSTELLER'), 0.84)
+        self.assertIsNone(superficie.calcular(None, 121))
+
+    def test_z_score_phn_lopez_2017(self):
+        from apps.especialidades.cardiologia_pediatrica import zscore
+        self.assertEqual(round(zscore.z('mit_anillo', 11, 0.3), 1), -1.0)     # ejemplo del artículo (MVLAT)
+        self.assertEqual(zscore.z('pulm_anillo', 7, 0.48), -3.75)
+        self.assertEqual(zscore.z('rd_mm', 7, 0.48), -0.33)
+        self.assertIsNone(zscore.z('pulm_anillo', None, 0.48))
+        self.assertIsNone(zscore.z('pulm_anillo', 7, None))
+        texto = informe.eco({'pulm_anillo': 7, 'tap_mm': 7, 'rd_mm': 7, 'ri_mm': 6}, 0.48)
+        self.assertIn('anillo: 7 mm (Zscore: -3.75)', texto)
+        self.assertIn('RD: 7 mm (Zscore: -0.33)', texto)
+        # el Z escrito a mano (otra calculadora) manda
+        self.assertIn('(Zscore: -4.15)', informe.eco({'pulm_anillo': 7, 'pulm_z': -4.15}, 0.48))
+        self.assertIn('Anillo pulmonar hipoplásico (Z -3.8)', informe.hallazgos({'z_pulm_anillo': -3.75}))
+
     def test_edad_del_encabezado(self):
         self.assertEqual(informe.edad_informe(date(2023, 10, 10), date(2026, 10, 7)), '2 AÑOS + 11 MESES')
         self.assertEqual(informe.edad_informe(date(2017, 1, 5), date(2026, 8, 28)), '9 AÑOS')
@@ -145,9 +167,50 @@ class CardiologiaTest(BaseTest):
         self.assertIn('74', datos['fevi_teichholz'])
         self.assertIn('FEVI: 74 %', datos['texto_informe'])
 
+    def test_consultorio_de_cardiologia_usa_haycock(self):
+        from apps.configuracion.models import ConfiguracionTenant
+        self.assertEqual(ConfiguracionTenant.objects.get(tenant=self.tenant).formula_sc, 'HAYCOCK')
+        p = f"s{self.s['cp.eco']}"
+        r = self.cliente.post('/consultas/calcular/', {'_prefijo': p, '_paciente': self.p.pk, '_sc': '0.48',
+                                                       f'{p}-pulm_anillo': '7', f'{p}-pulm_z': ''})
+        self.assertEqual(r.json()['z_pulm_anillo'], '-3,75')
+        sv = f"s{self.s['nucleo.signos_vitales']}"
+        r = self.cliente.post('/consultas/calcular/', {'_prefijo': sv, f'{sv}-peso_kg': '3.6', f'{sv}-talla_cm': '59'})
+        self.assertIn('0,24', r.json()['superficie_corporal'])
+
     def test_dictado_solo_si_la_plataforma_lo_activa(self):
         url = f'/pacientes/{self.p.pk}/consultas/nueva/'
         self.assertNotContains(self.cliente.get(url), 'js/dictado.js')
         from apps.configuracion.models import ConfiguracionTenant
         ConfiguracionTenant.objects.filter(tenant=self.tenant).update(dictado_activo=True)
         self.assertContains(self.cliente.get(url), 'js/dictado.js')
+
+
+class DemoCardiologiaTest(BaseTest):
+    def setUp(self):
+        pass
+
+    def test_carga_y_borra_pacientes_ficticios(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from apps.especialidades.cardiologia_pediatrica.documentos import datos_informe
+        from apps.plataforma.models import Tenant
+        call_command('demo_cardiologia', consultorio='demo-cardio', crear=True, usuario='lsierra',
+                     clave='Clave-de-prueba-123', stdout=StringIO())
+        call_command('demo_cardiologia', consultorio='demo-cardio', stdout=StringIO())      # no duplica
+        tenant = Tenant.objects.get(slug='demo-cardio')
+        self.assertEqual(tenant.configuracion.formula_sc, 'HAYCOCK')
+        with self.en_tenant(tenant):
+            self.assertEqual(Paciente.objects.filter(observaciones__startswith='[DEMO]').count(), 4)
+            c = Consulta.objects.get(paciente__nombres='Mateo')
+            eco = c.registros.get(seccion__codigo='cp.eco').datos
+            self.assertIsNotNone(eco.get('z_pulm_anillo'))
+            d = datos_informe(c)
+            self.assertIn('POP tardío', d['comentario'])
+            self.assertIn('(Zscore: ', d['eco'])
+            self.assertEqual(NotaEvolucion.objects.count(), 2)
+        call_command('demo_cardiologia', consultorio='demo-cardio', borrar=True, stdout=StringIO())
+        with self.en_tenant(tenant):
+            self.assertFalse(Paciente.objects.exists())

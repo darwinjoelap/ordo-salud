@@ -3,7 +3,7 @@
 > Se actualiza al **cerrar cada sesión** y es lo primero que se lee al abrir la siguiente.
 > Menos de 100 líneas: el detalle de fases cerradas va a `HISTORIAL.md`; las decisiones, a `DECISIONES.md`.
 
-**Última actualización:** 2026-10-21
+**Última actualización:** 2026-10-24
 **Fase actual:** 15 Cardiología pediátrica **primera entrega** (ver `roadmap/15_cardiologia_pediatrica.md`) · 13 Pediatría y 14 Ginecobstetricia hechas (faltan revisiones con especialistas) → siguiente: respuestas de la cardióloga o Railway staging
 **Repositorio:** `github.com/darwinjoelap/ordo-salud` (privado), rama `main` — código en `C:\proyectos\ordo-salud`
 **Último commit:** `c0155ed` cambio de marca a Ordo Salud (pusheado 2026-10-21 a `ordo-salud`) · entorno local: `venv\Scripts\Activate.ps1` (carpeta `venv`, no `.venv`; recreado con Python 3.14)
@@ -11,7 +11,14 @@
 
 ---
 
-## Retomar aquí (2026-10-22)
+## Retomar aquí (2026-10-24)
+- Tras actualizar: `python manage.py migrate` (formula_sc y excedente de dictado) y `python manage.py test`.
+- **Demo de la Dra. Sierra**: seguir `docs/DESPLIEGUE_RAILWAY.md` fase A (dirección de Railway, por ruta) y cargar
+  `demo_cardiologia` (pacientes ficticios). Después del ~31/10, fase B: `*.salud.ordove.com` (ADR-049).
+- Z-score PHN/Lopez 2017 con SC Haycock (ADR-048): pedirle a la doctora que compare 2–3 medidas con ParameterZ
+  (anillo pulmonar en eje corto = PVSAX; si ella mide en eje largo, se cambia a PVLAX).
+- Excedente de dictado (ADR-050): definir planes reales en la plataforma (minutos, precio del extra, tope).
+
 0. Tras actualizar (ADR-047): `python manage.py sincronizar_especialidades` y en cada consultorio
    `python manage.py refrescar_plantillas <especialidad> --consultorio <enlace>` (las copias propias de cada médico y
    las consultas ya abiertas no cambian). Revisar con la ginecóloga el criterio de histerectomía (tipo, citología).

@@ -1,5 +1,5 @@
 """Campos calculados de cardiología pediátrica (nunca fallan: sin datos devuelven None)."""
-from . import informe
+from . import informe, zscore
 
 GRADIENTES = ['tric_vmax', 'tsvd_vmax', 'pulm_vmax', 'tap_vmax', 'rd_vmax', 'ri_vmax', 'ao_vmax']
 
@@ -16,6 +16,12 @@ def _indexado(volumen):
         if not datos.get(volumen) or not sc:
             return None
         return round(float(datos[volumen]) / float(sc), 1)
+    return calcular
+
+
+def _z(medida):
+    def calcular(datos, contexto):
+        return zscore.z(medida, datos.get(medida), contexto.get('sc'))
     return calcular
 
 
@@ -52,4 +58,5 @@ CALCULOS = {
     'cp.fevi': fevi, 'cp.eco_texto': eco_texto,
     **{f'cp.gradiente:{v}': _gradiente(v) for v in GRADIENTES},
     **{f'cp.indexado:{v}': _indexado(v) for v in ('ad_vol', 'ai_vol')},
+    **{f'cp.z:{v}': _z(v) for v in zscore.TABLA},
 }

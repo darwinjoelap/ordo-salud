@@ -132,7 +132,9 @@ def contexto_calculo(consulta):
                 'edad_meses': edad_meses(p.fecha_nacimiento, timezone.localtime(consulta.fecha_hora).date())}
     signos = SignosVitales.objects.filter(consulta_id=consulta.pk).first() if consulta.pk else None
     if signos is not None and signos.peso_kg and signos.talla_cm:     # superficie corporal (volúmenes indexados)
-        contexto['sc'] = round((float(signos.peso_kg) * float(signos.talla_cm) / 3600) ** 0.5, 2)
+        from . import superficie
+        contexto['formula_sc'] = superficie.formula_actual()
+        contexto['sc'] = superficie.calcular(signos.peso_kg, signos.talla_cm, contexto['formula_sc'])
     return contexto
 
 

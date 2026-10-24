@@ -39,9 +39,9 @@ class DictadoTest(BaseTest):
             self.p = Paciente.objects.create(nombres='Ana', apellidos='Ruiz', sexo='F')
             self.plantilla = PlantillaHistoria.objects.get(nombre='Consulta de cardiología pediátrica')
 
-    def activar(self, minutos=0):
+    def activar(self, minutos=0, **plan):
         ConfiguracionTenant.objects.filter(tenant=self.tenant).update(dictado_activo=True)
-        plan = Plan.objects.create(nombre='Con dictado', incluye_dictado=True, minutos_dictado_mes=minutos)
+        plan = Plan.objects.create(nombre='Con dictado', incluye_dictado=True, minutos_dictado_mes=minutos, **plan)
         self.tenant.plan = plan
         self.tenant.save(update_fields=['plan'])
 
@@ -58,12 +58,24 @@ class DictadoTest(BaseTest):
                                             'plantilla': self.plantilla.pk})
         self.assertEqual(r.status_code, 400)
 
-    def test_minutos_del_plan(self):
-        self.activar(minutos=3)
+    def test_minutos_del_plan_sin_excedente_bloquea(self):
+        self.activar(minutos=3, precio_minuto_extra_usd=0)
         with mock.patch('apps.dictado.proveedores.en_prueba', return_value=True), \
              mock.patch('apps.dictado.audio._ffmpeg', return_value=None):
             self.assertEqual(self.subir(segundos=150).status_code, 200)
             self.assertEqual(self.subir(segundos=60).status_code, 403)          # 2.5 + 1 > 3
+
+    def test_excedente_se_cobra_hasta_el_tope(self):
+        from apps.dictado import servicios
+        self.activar(minutos=3, tope_minutos_extra=2)                         # US$0.04 el minuto extra
+        with mock.patch('apps.dictado.proveedores.en_prueba', return_value=True), \
+             mock.patch('apps.dictado.audio._ffmpeg', return_value=None):
+            self.assertEqual(self.subir(segundos=150).status_code, 200)
+            self.assertEqual(self.subir(segundos=60).status_code, 200)          # 3.5 min: excedente
+            u = servicios.uso(self.tenant)
+            self.assertEqual((u['extra'], str(u['monto_extra']), u['en_excedente']), (1, '0.04', True))
+            self.assertContains(self.cliente.get(f'/pacientes/{self.p.pk}/consultas/nueva/'), 'excedente: 1 min')
+            self.assertEqual(self.subir(segundos=120).status_code, 403)         # 5.5 > 3 + 2 de tope
 
     def test_esquema_y_llenado_validado(self):
         self.activar()

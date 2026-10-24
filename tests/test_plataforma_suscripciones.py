@@ -105,11 +105,14 @@ class TableroYPlanesTest(PanelBase):
 
     def test_crear_y_editar_plan(self):
         r = self.c.post('/plataforma/planes/nuevo/', {'nombre': 'Pro', 'precio_usd': '35', 'dias_gracia': 5,
-                                                      'minutos_dictado_mes': 0, 'activo': 'on'})
+                                                      'minutos_dictado_mes': 0, 'precio_minuto_extra_usd': '0.04',
+                                                      'tope_minutos_extra': 600,
+                                                      'activo': 'on'})
         self.assertRedirects(r, '/plataforma/planes/', fetch_redirect_response=False)
         p = Plan.objects.get(nombre='Pro')
         self.c.post(f'/plataforma/planes/{p.pk}/', {'nombre': 'Pro', 'precio_usd': '40', 'dias_gracia': 5,
-                                                    'minutos_dictado_mes': 0})
+                                                    'minutos_dictado_mes': 0, 'precio_minuto_extra_usd': '0.04',
+                                                    'tope_minutos_extra': 600})
         p.refresh_from_db()
         self.assertEqual(p.precio_usd, Decimal('40'))
         self.assertFalse(p.activo)

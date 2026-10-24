@@ -417,6 +417,6 @@ def _dictado(request):
     from apps.dictado import servicios as dictado
     if request.membresia.perfil_activo is None or not request.tenant.configuracion.dictado_activo:
         return None
-    limite = dictado.limite_minutos(request.tenant)
-    usados = dictado.minutos_usados(request.tenant)
-    return {'limite': limite, 'usados': usados, 'agotado': bool(limite and usados >= limite)}
+    u = dictado.uso(request.tenant)
+    u['agotado'] = not dictado.puede_dictar(request.tenant)[0]
+    return u

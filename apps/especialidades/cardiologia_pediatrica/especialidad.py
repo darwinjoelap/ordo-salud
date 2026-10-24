@@ -51,6 +51,7 @@ def _panel(request, paciente):
 registro.registrar(EspecialidadDef(
     codigo='cardiologia_pediatrica', nombre='Cardiología pediátrica',
     modulo='apps.especialidades.cardiologia_pediatrica', icono='bi-heart-pulse', color='#C0392B', orden=24,
+    formula_sc='HAYCOCK',
     secciones=[*FICHA, *CONSULTA], calculos=CALCULOS, plantillas=PLANTILLAS, documentos=DOCUMENTOS,
     paneles=[PanelDef('cp_resumen', 'Resumen cardiológico', 'cardiologia_pediatrica/panel_resumen.html', _panel,
                       orden=5)],

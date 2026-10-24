@@ -44,8 +44,9 @@ class EntrarPrincipal(auth_views.LoginView):
         from apps.plataforma.views_entrada import COOKIE_TENANT
         slug = request.COOKIES.get(COOKIE_TENANT)
         if (request.method == 'GET' and slug and 'plataforma' not in request.GET and not request.user.is_authenticated
-                and Tenant.objects.filter(slug=slug).exists()):
-            return redirect(f'/{slug}/')
+                and not getattr(request, 'es_admin_host', False) and Tenant.objects.filter(slug=slug).exists()):
+            from apps.core.subdominios import enlace
+            return redirect(enlace(request, slug))
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):

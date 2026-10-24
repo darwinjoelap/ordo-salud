@@ -14,7 +14,7 @@
     {% for t in tenants %}
       <tr onclick="location.href='{% url 'plataforma:editar' t.pk %}'" role="button">
         <td><div class="fw-semibold">{{ t.nombre }}</div><div class="small text-muted">{{ t.configuracion.rif|default:"" }}</div></td>
-        <td class="small"><a href="{{ t.enlace }}" target="_blank" onclick="event.stopPropagation()">/{{ t.slug }}/</a></td>
+        <td class="small"><a href="{{ t.enlace }}" target="_blank" onclick="event.stopPropagation()">{{ t.enlace|cut:"https://"|cut:"http://" }}</a></td>
         <td class="small">{% for e in t.especialidades.all %}<span class="os-chip me-1 mb-1">{{ e }}</span>{% empty %}—{% endfor %}</td>
         <td>{{ t.plan|default:"—" }}</td>
         <td class="small">{% if t.activo_hasta %}<span class="{% if t.dias_para_vencer < 0 %}text-danger fw-semibold{% elif t.dias_para_vencer <= 7 %}text-warning-emphasis fw-semibold{% endif %}">{{ t.activo_hasta|date:"d/m/Y" }}</span>{% else %}—{% endif %}</td>

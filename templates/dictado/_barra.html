@@ -10,7 +10,7 @@
       <button type="button" class="btn btn-outline-secondary btn-sm" data-accion="subir" {% if dictado.agotado %}disabled{% endif %} title="¿Sin luz o sin internet? Grabe con el teléfono y suba el audio después."><i class="bi bi-upload me-1"></i>Subir grabación</button>
       <input type="file" class="d-none" data-archivo accept="audio/*,.m4a,.mp3,.ogg,.opus,.wav,.aac,.amr,.3gp">
       <label class="small d-flex align-items-center gap-1 mb-0"><input type="checkbox" class="form-check-input mt-0" data-consentimiento> El paciente o su representante autoriza la grabación</label>
-      <span class="small text-muted ms-auto">{% if dictado.limite %}{{ dictado.usados }} de {{ dictado.limite }} min este mes{% else %}{{ dictado.usados }} min este mes{% endif %}{% if dictado.agotado %} · <span class="text-danger">agotados</span>{% endif %}</span>
+      <span class="small text-muted ms-auto">{% if dictado.limite %}{{ dictado.usados }} de {{ dictado.limite }} min este mes{% else %}{{ dictado.usados }} min este mes{% endif %}{% if dictado.agotado %} · <span class="text-danger">agotados</span>{% elif dictado.en_excedente %} · <span class="text-warning-emphasis" title="Pasó los minutos del plan: cada minuto extra se cobra a US$ {{ dictado.precio_extra }}">excedente: {{ dictado.extra }} min</span>{% endif %}</span>
     </div>
     <div class="os-dictado-grabando d-none align-items-center gap-2 flex-grow-1">
       <span class="os-punto-rec"></span><span class="fw-semibold font-monospace" data-reloj>00:00</span>

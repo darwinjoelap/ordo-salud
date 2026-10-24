@@ -66,4 +66,8 @@ class EntradaTenant(auth_views.LoginView):
 def entrada(request, slug):
     if slug != slug.lower():
         raise Http404
+    from apps.core import subdominios
+    if subdominios.base() and subdominios.host_de(request) in (subdominios.base(), f'www.{subdominios.base()}') \
+            and Tenant.objects.filter(slug=slug).exists():
+        return redirect(subdominios.enlace(request, slug))     # salud.ordove.com/<slug>/ → <slug>.salud.ordove.com
     return EntradaTenant.as_view()(request, slug=slug)

@@ -34,7 +34,8 @@ def solo_plataforma(vista):
 
 
 def _enlace(request, tenant):
-    return request.build_absolute_uri(f'/{tenant.slug}/')
+    from apps.core.subdominios import enlace
+    return enlace(request, tenant.slug)
 
 
 @solo_plataforma
@@ -93,8 +94,8 @@ def editar(request, pk):
 def _dictado_uso(tenant):
     from apps.dictado import servicios as dictado
     from apps.dictado.models import SesionDictado
-    return {'usados': dictado.minutos_usados(tenant), 'limite': dictado.limite_minutos(tenant),
-            'sesiones': SesionDictado.objects.filter(tenant=tenant).count()}
+    return {**dictado.uso(tenant), 'anterior': dictado.uso(tenant, mes_anterior=True),
+            'sesiones': SesionDictado.todos.filter(tenant=tenant).count()}
 
 
 @solo_plataforma

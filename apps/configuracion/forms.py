@@ -9,7 +9,8 @@ GRUPOS = {
     'identidad': ('Identidad', ['nombre_mostrar', 'rif', 'logo', 'color_primario']),
     'contacto': ('Contacto', ['direccion', 'telefono', 'email', 'whatsapp', 'mensaje_whatsapp']),
     'documentos': ('Documentos', ['membrete', 'pie_documentos']),
-    'historia': ('Historia clínica', ['visibilidad_historia', 'medicos_ven_todos_pacientes', 'horas_edicion_consulta']),
+    'historia': ('Historia clínica', ['visibilidad_historia', 'medicos_ven_todos_pacientes', 'horas_edicion_consulta',
+                                         'formula_sc']),
     'agenda': ('Agenda', ['hora_inicio_agenda', 'hora_fin_agenda', 'duracion_cita_min']),
 }
 

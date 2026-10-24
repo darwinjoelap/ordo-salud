@@ -26,9 +26,17 @@ def _vel(clave, etiqueta='Vmáx', ancho=2):
             'max': 8, 'ancho': ancho}
 
 
-def _z(clave):
-    return {'clave': clave, 'tipo': 'numero', 'etiqueta': 'Z-score', 'decimales': 2, 'min': -20, 'max': 20,
-            'ancho': 2}
+def _zphn(medida):
+    """Z-score automático (PHN/Lopez 2017, zscore.py) con la SC de la consulta."""
+    return {'clave': f'z_{medida}', 'tipo': 'calculado', 'etiqueta': 'Z (PHN)', 'decimales': 2,
+            'funcion': f'cp.z:{medida}', 'ancho': 2}
+
+
+def _z(clave, medida):
+    """Z automático + Z manual: si escribe uno a mano (otra calculadora), ese sale en el informe."""
+    return [_zphn(medida),
+            {'clave': clave, 'tipo': 'numero', 'etiqueta': 'Z manual', 'decimales': 2, 'min': -20, 'max': 20,
+             'ancho': 2, 'ayuda': 'Vacío = el Z (PHN).'}]
 
 
 def _gp(clave, de):
@@ -179,15 +187,16 @@ ECO = SeccionDef('cp.eco', 'Ecocardiograma transtorácico', orden=46,
     {'clave': 'ai_vol_index', 'tipo': 'calculado', 'etiqueta': 'Vol. index AI', 'unidad': 'ml/m²', 'decimales': 1,
      'funcion': 'cp.indexado:ai_vol', 'ancho': 2},
 
-    {'clave': 'sub_tric', 'tipo': 'subtitulo', 'etiqueta': 'Válvula tricúspide (los Z-score se escriben a mano por ahora)'},
-    _mm('tric_anillo', 'Anillo'), _z('tric_z'),
+    {'clave': 'sub_tric', 'tipo': 'subtitulo', 'etiqueta': 'Válvula tricúspide (Z-score: PHN/Lopez 2017 con SC Haycock)'},
+    _mm('tric_anillo', 'Anillo'), *_z('tric_z', 'tric_anillo'),
     _vel('tric_e', 'Onda E'), _vel('tric_a', 'Onda A'), _grado('tric_ir'),
     {'clave': 'tric_jets', 'tipo': 'texto', 'etiqueta': 'Jets', 'ancho': 4,
      'ayuda': 'Ej.: triple jet, 1 céntrico y 2 excéntricos, que ocupa 2/3 de la AD'},
     _vel('tric_vmax'), _gp('tric_gp', 'tric_vmax'), _gp_manual('tric_gp_medido'),
 
     {'clave': 'sub_mitral', 'tipo': 'subtitulo', 'etiqueta': 'Válvula mitral'},
-    _mm('mit_anillo', 'Anillo'), _z('mit_z'), _vel('mit_e', 'Onda E'), _vel('mit_a', 'Onda A'), _grado('mit_ir'),
+    _mm('mit_anillo', 'Anillo'), *_z('mit_z', 'mit_anillo'), _vel('mit_e', 'Onda E'), _vel('mit_a', 'Onda A'),
+    _grado('mit_ir'),
     {'clave': 'mit_detalle', 'tipo': 'texto', 'etiqueta': 'Detalle', 'ancho': 4},
 
     {'clave': 'sub_tiv', 'tipo': 'subtitulo', 'etiqueta': 'Tabique interventricular'},
@@ -218,8 +227,8 @@ ECO = SeccionDef('cp.eco', 'Ecocardiograma transtorácico', orden=46,
      'ancho': 2},
 
     {'clave': 'sub_vi', 'tipo': 'subtitulo', 'etiqueta': 'Ventrículo izquierdo'},
-    _mm('sivd', 'SIVd'), _mm('ddvi', 'DdVI'), _mm('ppd', 'PPd'), _mm('sivs', 'SIVs'), _mm('dsvi', 'DsVI'),
-    _mm('pps', 'PPs'),
+    _mm('sivd', 'SIVd'), _zphn('sivd'), _mm('ddvi', 'DdVI'), _zphn('ddvi'), _mm('ppd', 'PPd'), _zphn('ppd'),
+    _mm('sivs', 'SIVs'), _mm('dsvi', 'DsVI'), _mm('pps', 'PPs'),
     {'clave': 'fa', 'tipo': 'calculado', 'etiqueta': 'FA', 'unidad': '%', 'decimales': 0, 'funcion': 'cp.fa',
      'ancho': 2},
     {'clave': 'fevi_teichholz', 'tipo': 'calculado', 'etiqueta': 'FEVI (Teichholz)', 'unidad': '%', 'decimales': 0,
@@ -231,14 +240,14 @@ ECO = SeccionDef('cp.eco', 'Ecocardiograma transtorácico', orden=46,
     _mm('tsvd_mm', 'TSVD'), _vel('tsvd_vmax'), _gp('tsvd_gp', 'tsvd_vmax'),
     {'clave': 'tsvd_detalle', 'tipo': 'texto', 'etiqueta': 'Detalle TSVD', 'ancho': 6,
      'ayuda': 'Ej.: rodete muscular de 12 mm hacia el tracto de salida, sin gradiente obstructivo'},
-    _mm('pulm_anillo', 'Anillo pulmonar'), _z('pulm_z'), _vel('pulm_vmax'), _gp('pulm_gp', 'pulm_vmax'),
+    _mm('pulm_anillo', 'Anillo pulmonar'), *_z('pulm_z', 'pulm_anillo'), _vel('pulm_vmax'), _gp('pulm_gp', 'pulm_vmax'),
     _grado('pulm_ip', 'Insuficiencia'),
     {'clave': 'pulm_detalle', 'tipo': 'texto', 'etiqueta': 'Detalle pulmonar', 'ancho': 6,
      'ayuda': 'Ej.: con aliasing · jet excéntrico · TMP: 336 ms'},
-    _mm('tap_mm', 'TAP'), _z('tap_z'), _vel('tap_vmax'), _gp('tap_gp', 'tap_vmax'),
+    _mm('tap_mm', 'TAP'), *_z('tap_z', 'tap_mm'), _vel('tap_vmax'), _gp('tap_gp', 'tap_vmax'),
     {'clave': 'tap_detalle', 'tipo': 'texto', 'etiqueta': 'Detalle TAP', 'ancho': 4, 'ayuda': 'Ej.: hipoplásico y tortuoso'},
-    _mm('rd_mm', 'Rama derecha'), _z('rd_z'), _vel('rd_vmax'), _gp('rd_gp', 'rd_vmax'),
-    _mm('ri_mm', 'Rama izquierda'), _z('ri_z'), _vel('ri_vmax'), _gp('ri_gp', 'ri_vmax'),
+    _mm('rd_mm', 'Rama derecha'), *_z('rd_z', 'rd_mm'), _vel('rd_vmax'), _gp('rd_gp', 'rd_vmax'),
+    _mm('ri_mm', 'Rama izquierda'), *_z('ri_z', 'ri_mm'), _vel('ri_vmax'), _gp('ri_gp', 'ri_vmax'),
     {'clave': 'ramas', 'tipo': 'opcion', 'etiqueta': 'Ramas pulmonares', 'ancho': 3,
      'opciones': [['CONFLUENTES', 'Confluentes'], ['NO_CONFLUENTES', 'No confluentes']]},
     {'clave': 'ductus', 'tipo': 'opcion', 'etiqueta': 'Ductus', 'por_defecto': 'NO', 'ancho': 3,
@@ -250,9 +259,10 @@ ECO = SeccionDef('cp.eco', 'Ecocardiograma transtorácico', orden=46,
     {'clave': 'sub_aorta', 'tipo': 'subtitulo', 'etiqueta': 'Aorta'},
     {'clave': 'ao_valva', 'tipo': 'opcion', 'etiqueta': 'Válvula aórtica', 'por_defecto': 'TRIVALVA', 'ancho': 2,
      'opciones': [['TRIVALVA', 'Trivalva'], ['BIVALVA', 'Bivalva'], ['UNIVALVA', 'Univalva']]},
-    _mm('ao_anillo', 'Anillo'), _z('ao_z'), _vel('ao_vmax'), _gp('ao_gp', 'ao_vmax'),
+    _mm('ao_anillo', 'Anillo'), *_z('ao_z', 'ao_anillo'), _vel('ao_vmax'), _gp('ao_gp', 'ao_vmax'),
     _grado('ao_ia', 'Insuficiencia'),
-    _mm('ao_sv', 'Senos de Valsalva'), _mm('ao_ust', 'Unión sinotubular'), _mm('ao_asc', 'Aorta ascendente'),
+    _mm('ao_sv', 'Senos de Valsalva'), _zphn('ao_sv'), _mm('ao_ust', 'Unión sinotubular'), _zphn('ao_ust'),
+    _mm('ao_asc', 'Aorta ascendente'), _zphn('ao_asc'),
     {'clave': 'arco', 'tipo': 'opcion', 'etiqueta': 'Arco aórtico', 'por_defecto': 'IZQUIERDO', 'ancho': 2,
      'opciones': [['IZQUIERDO', 'Izquierdo'], ['DERECHO', 'Derecho']]},
     {'clave': 'arco_obstruccion', 'tipo': 'opcion', 'etiqueta': 'Obstrucción', 'por_defecto': 'NO', 'ancho': 2,

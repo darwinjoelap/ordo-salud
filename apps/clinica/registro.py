@@ -96,6 +96,7 @@ class EspecialidadDef:
     paginas_paciente: list = field(default_factory=list)
     extras_procedimiento: list = field(default_factory=list)   # ExtraProcedimientoDef
     accesos_consulta: list = field(default_factory=list)       # AccesoDef
+    formula_sc: str = ''         # fórmula de superficie corporal sugerida al habilitarla (superficie.py)
     basica: bool = False         # registrada por `general` sin módulo propio: un módulo real la reemplaza
 
 

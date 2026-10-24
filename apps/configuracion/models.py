@@ -46,6 +46,10 @@ class ConfiguracionTenant(models.Model):
     horas_edicion_consulta = models.PositiveSmallIntegerField(
         'Horas para editar una consulta', default=24,
         help_text='Pasado ese tiempo la consulta se cierra sola; después solo se corrige con una enmienda.')
+    formula_sc = models.CharField(
+        'Fórmula de superficie corporal', max_length=10, default='MOSTELLER',
+        choices=[('MOSTELLER', 'Mosteller'), ('HAYCOCK', 'Haycock (Z-score pediátricos, PHN)'), ('DUBOIS', 'DuBois')],
+        help_text='Haycock es la que usan ParameterZ, PedZ y las tablas PHN para los Z-score del eco.')
     # Agenda
     hora_inicio_agenda = models.TimeField('Inicio de la jornada', null=True, blank=True)
     hora_fin_agenda = models.TimeField('Fin de la jornada', null=True, blank=True)
