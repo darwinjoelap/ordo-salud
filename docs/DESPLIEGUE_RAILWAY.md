@@ -20,7 +20,9 @@
 | `ALLOWED_HOSTS` | `ordo-salud-production.up.railway.app,healthcheck.railway.app` |
 | `CSRF_TRUSTED_ORIGINS` | `https://ordo-salud-production.up.railway.app` |
 | `BASE_DOMAIN` | **vacío por ahora** (todo por ruta) |
-| `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET` | los de Cloudinary (logos, banner, imágenes del eco). Sin esto los archivos se pierden en cada despliegue |
+| `R2_BUCKET` | `ordo-salud-media` |
+| `R2_ACCOUNT_ID` | el ID de cuenta (lo que va antes de `.r2.cloudflarestorage.com` en el endpoint) |
+| `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | las del token **ordo-salud-prod**. Sin R2 los archivos se pierden en cada despliegue |
 | `GEMINI_API_KEY` | la clave **con facturación activa** (el nivel gratis usa los datos para entrenar). Sin clave, el dictado funciona en modo de prueba |
 | `SENTRY_DSN` | opcional |
 
@@ -29,6 +31,7 @@
 ### A3. Primer arranque
 Railway → servicio web → **⋯ → Shell** (o `railway run` desde tu PC):
 ```bash
+python manage.py probar_almacenamiento     # debe terminar en «Almacenamiento OK.»
 python manage.py sincronizar_especialidades
 python manage.py importar_cie10            # catálogo de diagnósticos
 python manage.py createsuperuser           # tu cuenta de plataforma

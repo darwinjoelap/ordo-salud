@@ -273,8 +273,8 @@ def adjunto(request, pk):
     if a.consulta and not srv.puede_ver(request.membresia, a.consulta):
         raise PermissionDenied
     auditoria.registrar(request, 'VER', a, paciente_id=a.paciente_id)
-    respuesta = FileResponse(a.archivo.open('rb'), content_type=a.tipo_contenido or 'application/octet-stream')
-    respuesta['Content-Disposition'] = f'inline; filename="{a.nombre}"'
+    respuesta = FileResponse(a.archivo.open('rb'), content_type=a.tipo_contenido or 'application/octet-stream',
+                             filename=a.nombre)          # inline y con tildes bien codificadas
     respuesta['Cache-Control'] = 'no-store'
     return respuesta
 

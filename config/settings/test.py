@@ -6,6 +6,8 @@ from .dev import *  # noqa: F401,F403
 PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 MEDIA_ROOT = tempfile.mkdtemp(prefix='ordo-media-')
 STORAGES = {**STORAGES, 'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'}}  # noqa: F405
+R2_BUCKET = ''          # los tests nunca tocan R2, aunque el .env de la PC tenga las claves
+USAR_R2 = False
 DEBUG_TOOLBAR = False
 
 # Tests silenciosos: los 403/404 esperados no llenan la salida de trazas

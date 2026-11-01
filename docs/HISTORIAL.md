@@ -105,3 +105,5 @@
 - ADR-050: excedente de dictado (precio por minuto extra, tope de seguridad, por cobrar del mes anterior).
 - `demo_cardiologia` (4 pacientes ficticios con eco, EKG, notas) y `docs/DESPLIEGUE_RAILWAY.md`.
 
+### 2026-10-31 — Archivos en R2
+- ADR-051: Cloudflare R2 privado reemplaza a Cloudinary; adjuntos con nombre aleatorio; comando `probar_almacenamiento`.

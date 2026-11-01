@@ -60,7 +60,7 @@ def _color(config):
 
 
 def archivo_bytes(archivo):
-    """Bytes de un ImageField (local o Cloudinary) o None. Nunca lanza: una imagen dañada no impide el PDF."""
+    """Bytes de un ImageField (local o R2) o None. Nunca lanza: una imagen dañada no impide el PDF."""
     if not archivo:
         return None
     try:

@@ -191,7 +191,11 @@ class Enmienda(TenantModel, Auditable):
 
 
 def _ruta_adjunto(instancia, archivo):
-    return f'ordo-salud/{instancia.tenant.slug}/pacientes/{instancia.paciente_id}/{archivo}'
+    """Nombre aleatorio: la ruta no revela al paciente ni el nombre original (que queda en `nombre`)."""
+    import uuid
+    from pathlib import Path
+    extension = Path(archivo).suffix.lower()[:10]
+    return f'ordo-salud/{instancia.tenant.slug}/pacientes/{instancia.paciente_id}/{uuid.uuid4().hex}{extension}'
 
 
 class Adjunto(TenantModel, Auditable):

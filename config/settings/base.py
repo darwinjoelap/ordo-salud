@@ -28,9 +28,6 @@ DJANGO_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # cloudinary_storage DESPUÉS de staticfiles (su collectstatic rompe el build en Django 5.x)
-    'cloudinary_storage',
-    'cloudinary',
 ]
 
 ORDO_APPS = [
@@ -122,7 +119,7 @@ TIME_ZONE = 'America/Caracas'
 USE_I18N = True
 USE_TZ = True
 
-# ── Estáticos (WhiteNoise) y media (Cloudinary) ───────────────────────────────
+# ── Estáticos (WhiteNoise) y archivos (Cloudflare R2, ADR-051) ──────────────────
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
@@ -130,21 +127,30 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME', default=''),
-    'API_KEY': config('CLOUDINARY_API_KEY', default=''),
-    'API_SECRET': config('CLOUDINARY_API_SECRET', default=''),
-}
-USAR_CLOUDINARY = bool(CLOUDINARY_STORAGE['CLOUD_NAME'])
-
+# Depósito PRIVADO: nada es público. Los adjuntos clínicos se sirven por una vista con permisos; logos, firmas y
+# banners con enlaces firmados que vencen. Sin R2_BUCKET (tests, desarrollo sin red) = carpeta media/ local.
+R2_BUCKET = config('R2_BUCKET', default='')
+USAR_R2 = bool(R2_BUCKET)
+_ARCHIVOS = {'BACKEND': 'django.core.files.storage.FileSystemStorage'}
+if USAR_R2:
+    _ARCHIVOS = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'bucket_name': R2_BUCKET,
+            'endpoint_url': f"https://{config('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com",
+            'access_key': config('R2_ACCESS_KEY_ID'),
+            'secret_key': config('R2_SECRET_ACCESS_KEY'),
+            'region_name': 'auto',
+            'signature_version': 's3v4',
+            'default_acl': None,                 # R2 no usa ACL; el depósito es privado
+            'querystring_auth': True,            # .url = enlace firmado
+            'querystring_expire': config('R2_URL_EXPIRA', default=3600, cast=int),
+            'file_overwrite': False,             # nunca pisar un archivo con el mismo nombre
+            'location': config('R2_PREFIJO', default=''),
+        },
+    }
 STORAGES = {
-    'default': {
-        'BACKEND': (
-            'cloudinary_storage.storage.MediaCloudinaryStorage'
-            if USAR_CLOUDINARY
-            else 'django.core.files.storage.FileSystemStorage'
-        ),
-    },
+    'default': _ARCHIVOS,
     'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
 }
 

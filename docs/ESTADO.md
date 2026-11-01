@@ -11,6 +11,11 @@
 
 ---
 
+## Retomar aquí (2026-10-31)
+- R2 (ADR-051): en el .env de la PC poner R2_* de «ordo-salud-dev», `pip install -r requirements.txt`,
+  `python manage.py probar_almacenamiento`. En Railway, R2_* de «ordo-salud-media» (guía actualizada).
+- Importadores de Ginea y Pediae: copiar archivos de su Cloudinary directo a R2; después borrar sus públicos.
+
 ## Retomar aquí (2026-10-24)
 - Tras actualizar: `python manage.py migrate` (formula_sc y excedente de dictado) y `python manage.py test`.
 - **Demo de la Dra. Sierra**: seguir `docs/DESPLIEGUE_RAILWAY.md` fase A (dirección de Railway, por ruta) y cargar
@@ -70,7 +75,7 @@ E2E con navegador: paciente → consulta → cierre → PDF; offline (servidor a
 - Dominio y correo de envío: por definir (`ordosalud…`); Railway aún con el nombre viejo si ya se hubiera creado (no lo está).
 - PDFs (ReportLab) siguen en Helvetica; solo cambian colores y nombre.
 - CIE-10: solo 136 códigos frecuentes; falta CSV oficial → `importar_cie10`.
-- Adjuntos: servidos por vista con login, pero aún no como `authenticated` en Cloudinary (ADR-017).
+- Adjuntos: R2 privado, servidos solo por vista con permiso (ADR-017, ADR-051) — resuelto.
 - Cierre automático de consultas: solo cuando corre el cron diario.
 - Récipe muy largo: si no cabe en una hoja, se parte en columnas (sin repetir encabezado).
 - Offline: cada dispositivo debe abrir Ordo Salud con señal al menos una vez (y la sesión debe seguir abierta); sin red no se crean pacientes nuevos, ni cobros, documentos/PDF o adjuntos; las filas dinámicas (diagnósticos, récipe) de un borrador se recuperan solo si ya existían en la página.

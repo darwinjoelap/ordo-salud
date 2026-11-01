@@ -31,7 +31,7 @@
 6. `CharField`/`TextField` con `blank=True, default=''`, no `null=True`.
 7. Una migración por cambio lógico con nombre descriptivo. Nunca editar una ya aplicada en producción.
 8. Fuera de un request: `with usando_tenant(t): ...` o `Modelo.todos`.
-9. `cloudinary_storage` DESPUÉS de `django.contrib.staticfiles` en `INSTALLED_APPS`.
+9. Archivos en Cloudflare R2 privado (ADR-051): adjuntos clínicos siempre por una vista con permisos; `.url` solo para marca (logo, banner, firma, sello) y da un enlace firmado que vence. Nunca `public` ni rutas con nombre o cédula del paciente.
 10. Los JS/CSS de `static/vendor/` sin `sourceMappingURL` (rompe `collectstatic` con manifest).
 
 ## Interfaz
