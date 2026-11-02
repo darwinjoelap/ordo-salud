@@ -6,27 +6,35 @@
 **Última actualización:** 2026-11-01
 **Fase actual:** 15 Cardiología pediátrica · **demo en producción** para la Dra. Lyna Sierra
 **Repositorio:** `github.com/darwinjoelap/ordo-salud` (privado), rama `main` — código en `C:\proyectos\ordo-salud`
-**Último commit:** archivos en Cloudflare R2 (ADR-051), pusheado 2026-10-31 · entorno: `venv\Scripts\Activate.ps1` (Python 3.14)
+**Último commit:** dictado con catálogo y lista plana (ADR-054), 2026-11-01 · entorno: `venv\Scripts\Activate.ps1` (Python 3.14)
 **Producción:** Railway proyecto `ordo-salud` (servicios `web` + `Postgres`) · `https://dra-sierra.salud.ordove.com` · respaldo `web-production-052d8.up.railway.app` · R2 `ordo-salud-media`
 
 ---
 
 ## Retomar aquí (2026-11-02)
-Desplegado el 2026-11-01: migraciones, `probar_almacenamiento` OK (R2 prod), especialidades, superusuario
-`darwinjoelap`, `demo_cardiologia` (4 pacientes ficticios), banner/logo, plan con dictado, `*.salud.ordove.com`
-(DNS only en Cloudflare, importado con archivo de zona). Pendiente:
-1. ~~Clave de `lsierra`, `BASE_DOMAIN`, dominio `salud.ordove.com`, `admin.salud.ordove.com`~~ hecho (2026-11-01).
-2. Dictado (ADR-052): clave de Gemini puesta (prepago US$30). Primera prueba: transcripción muy buena con voz real,
-   pero con micrófono en silencio **inventó un caso** → corregido (silencio detectado, transcribir y ordenar por
-   separado). Falta: volver a probar en producción, revisar el micrófono del navegador, y nota de voz del teléfono.
-   2.º intento: transcribió casi nada y el modelo «comentó» las reglas → reglas reforzadas (ADR-053). Revisar micrófono.
-   Tras el push de ADR-053, en Railway: `sincronizar_especialidades` y `refrescar_plantillas cardiologia_pediatrica`.
-3. **Antes del 2026-12-01**: Railway deja de leer `railway.json`/`railway.cron.json` (Config as Code) →
-   `railway config migrate` a `.railway/railway.ts` y revisar (igual en Ordo Lab).
-4. Servicio cron (`railway.cron.json`: cierre de consultas, tasa BCV, recordatorios) — no creado aún.
-5. Favicon (`/favicon.ico` da 404).
-6. Con la doctora: comparar Z-score con ParameterZ, revisión del informe, abreviaturas de ritmo.
-7. Antes de pacientes reales: `demo_cardiologia --consultorio dra-sierra --borrar`.
+En producción desde el 2026-11-01 (Railway + `*.salud.ordove.com` + R2 + Gemini prepago US$30, proyecto aparte).
+Dictado: tras ADR-052/053/054 **funciona mucho mejor** (transcripción fiel y reparte los datos en los campos). Pendiente:
+1. Confirmar que en Railway se corrió `sincronizar_especialidades` + `refrescar_plantillas cardiologia_pediatrica`
+   (eco sin valores por defecto, ADR-053).
+2. Afinar el dictado con más pruebas: eco completo dictado, signos vitales, diagnósticos; nota de voz del teléfono
+   («Subir grabación»); revisar lo que quede en «No se pudo ubicar». Ver costo real en AI Studio → Gasto.
+3. **Antes del 2026-12-01**: Railway deja de leer `railway.json`/`railway.cron.json` → `railway config migrate`
+   a `.railway/railway.ts` y revisar (igual en Ordo Lab).
+4. Servicio cron (cierre de consultas, tasa BCV, recordatorios) — no creado. Favicon da 404.
+5. Con la doctora: comparar Z-score con ParameterZ (anillo pulmonar = PVSAX), revisión del informe, abreviaturas de
+   ritmo. Luego pasarle el demo (`dra-sierra.salud.ordove.com`, usuario `lsierra`).
+6. Antes de pacientes reales: `demo_cardiologia --consultorio dra-sierra --borrar`.
+7. Negocio: definir precios (ver «Negocio»), con el costo real del dictado.
+
+## Hecho el 2026-11-01
+- Despliegue: proyecto Railway `ordo-salud`, R2 prod probado, carga inicial, demo, dominio `*.salud.ordove.com` y
+  `salud.ordove.com` (DNS only), `BASE_DOMAIN`, admin en `admin.salud.ordove.com`.
+- Gemini: clave en proyecto propio, facturación prepaga (saldo de la cuenta de facturación, compartible con otros
+  sistemas; vence a los 12 meses; en cero se detienen todas las claves).
+- ADR-052 Dictado en dos pasos (transcribir sin datos del paciente / ordenar el texto), detección de silencio
+  (ffmpeg, < −45 dB no se envía ni se cobra), 90 s por intento + reintento. Motivo: con silencio inventó un caso.
+- ADR-053 Eco y EKG sin valores por defecto + botón «Completar lo vacío como normal»; reglas para no comentar.
+- ADR-054 Ordenar con catálogo y lista plana `{campo, valor}` (antes llenaba solo «Motivo»).
 
 ## Hecho en esta etapa (2026-10-22 → 10-31)
 - ADR-045/046 Dictado de toda la consulta con IA (Gemini Flash), «Subir grabación» si se va la luz.
@@ -48,7 +56,7 @@ Desplegado el 2026-11-01: migraciones, `probar_almacenamiento` OK (R2 prod), esp
 - [x] 15 Cardiología pediátrica (informe en su formato, eco estructurado, EKG, notas de evolución, reporte).
 - [x] Marca Ordo Salud, suscripciones y planes, perfil profesional, alcance de pacientes por rol, procedimientos.
 
-**Verificación:** 237 tests en verde en SQLite y PostgreSQL 16 (y en la PC de Darwin) · `ruff` limpio ·
+**Verificación:** 246 tests en verde en SQLite y PostgreSQL 16 (y en la PC de Darwin) · `ruff` limpio ·
 `probar_almacenamiento` OK contra R2 `ordo-salud-dev`.
 
 ## Negocio (para decidir)
