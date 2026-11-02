@@ -15,9 +15,10 @@
 Desplegado el 2026-11-01: migraciones, `probar_almacenamiento` OK (R2 prod), especialidades, superusuario
 `darwinjoelap`, `demo_cardiologia` (4 pacientes ficticios), banner/logo, plan con dictado, `*.salud.ordove.com`
 (DNS only en Cloudflare, importado con archivo de zona). Pendiente:
-1. Confirmar: clave de `lsierra` cambiada (se creó con la de ejemplo); `BASE_DOMAIN=salud.ordove.com` en Railway;
-   segundo dominio `salud.ordove.com` (para redirigir `/dra-sierra/`); `admin.salud.ordove.com` entra a la plataforma.
-2. `GEMINI_API_KEY` con facturación → prueba de dictado real (2–3 min + nota de voz del teléfono) y costo.
+1. ~~Clave de `lsierra`, `BASE_DOMAIN`, dominio `salud.ordove.com`, `admin.salud.ordove.com`~~ hecho (2026-11-01).
+2. Dictado (ADR-052): clave de Gemini puesta (prepago US$30). Primera prueba: transcripción muy buena con voz real,
+   pero con micrófono en silencio **inventó un caso** → corregido (silencio detectado, transcribir y ordenar por
+   separado). Falta: volver a probar en producción, revisar el micrófono del navegador, y nota de voz del teléfono.
 3. **Antes del 2026-12-01**: Railway deja de leer `railway.json`/`railway.cron.json` (Config as Code) →
    `railway config migrate` a `.railway/railway.ts` y revisar (igual en Ordo Lab).
 4. Servicio cron (`railway.cron.json`: cierre de consultas, tasa BCV, recordatorios) — no creado aún.

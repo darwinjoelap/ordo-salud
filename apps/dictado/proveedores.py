@@ -1,9 +1,11 @@
 """
 Proveedores externos del dictado (ADR-045, ADR-046).
 
-- `gemini` (predeterminado, disponible en Venezuela): una sola llamada a Gemini Flash con el audio; devuelve la
-  transcripción y los campos ordenados (JSON con el esquema de la plantilla). Sin guardar la conversación (store=false);
-  si el audio es grande se sube con la Files API y se borra apenas termina.
+- `gemini` (predeterminado, disponible en Venezuela), en dos pasos (ADR-052):
+  1. transcribir: solo el audio, sin datos del paciente ni del formulario; si no hay voz responde [SIN VOZ];
+  2. ordenar: el TEXTO transcrito → campos del formulario (JSON con el esquema de la plantilla).
+  Así el modelo no tiene de dónde inventar un caso cuando el audio viene en silencio. Sin guardar la conversación
+  (store=false); si el audio es grande se sube con la Files API y se borra apenas termina.
 - `openai_claude` (alternativa, apagada): OpenAI transcribe y Claude ordena. Solo para operar desde un país admitido.
 
 Sin clave (o con DICTADO_MODO='prueba') funciona en modo de prueba, sin salir a internet.
@@ -23,9 +25,6 @@ URL_CLAUDE = 'https://api.anthropic.com/v1/messages'
 MAX_INLINE = 10 * 1024 * 1024           # más grande: Files API
 TEXTO_PRUEBA = ('Modo de prueba: no hay clave del proveedor de IA configurada, así que no se procesó el audio. '
                 'Configura GEMINI_API_KEY para usar el dictado real.')
-INSTRUCCION = ('Escucha el dictado de la consulta. Devuelve en `transcripcion` lo que se dijo, palabra por palabra '
-               '(con puntuación), y en `secciones` cada dato en su campo. Lo que no encaje va en `no_ubicado`.')
-
 
 class ErrorProveedor(Exception):
     pass
@@ -110,40 +109,98 @@ def _sin_additional(esquema):
     return esquema
 
 
-def esquema_gemini(herramienta):
+SIN_VOZ = '[SIN VOZ]'
+TRANSCRIPTOR = (
+    'Eres un transcriptor médico. Escribe en español, palabra por palabra, SOLO lo que realmente se oye en el audio, '
+    'con puntuación. Escribe los números con cifras (10.4, 99/60). No resumas, no corrijas el contenido, no agregues '
+    f'nada. Si el audio está en silencio, es solo ruido o no se entiende ninguna frase, responde exactamente {SIN_VOZ}.')
+
+
+def _parte_audio(audio, tipo):
+    """(parte para la petición, nombre del archivo subido o '')."""
+    if len(audio) > MAX_INLINE:
+        uri, nombre = _subir_archivo(audio, tipo)
+        return {'file_data': {'mime_type': tipo, 'file_uri': uri}}, nombre
+    return {'inline_data': {'mime_type': tipo, 'data': base64.b64encode(audio).decode()}}, ''
+
+
+def _texto(datos):
+    candidatos = datos.get('candidates') or []
+    if not candidatos:
+        motivo = (datos.get('promptFeedback') or {}).get('blockReason', 'sin respuesta')
+        raise ErrorProveedor(f'Gemini no devolvió resultado ({motivo}).')
+    partes = (candidatos[0].get('content') or {}).get('parts') or []
+    return ''.join(p.get('text', '') for p in partes if not p.get('thought'))
+
+
+def _uso(datos):
+    uso = datos.get('usageMetadata') or {}
+    audio_tokens = sum(d.get('tokenCount', 0) for d in uso.get('promptTokensDetails') or []
+                       if d.get('modality') == 'AUDIO')
+    return (uso.get('promptTokenCount', 0), uso.get('candidatesTokenCount', 0) + uso.get('thoughtsTokenCount', 0),
+            audio_tokens)
+
+
+def _url(modelo):
+    return f'{URL_GEMINI}/v1beta/models/{modelo}:generateContent'
+
+
+def transcribir_gemini(audio, tipo, vocabulario):
+    """Paso 1: solo el audio, sin datos del paciente ni del formulario (nada de dónde inventar)."""
+    modelo = settings.DICTADO_MODELO_GEMINI
+    parte, nombre_archivo = _parte_audio(audio, tipo)
+    try:
+        cuerpo = {
+            'system_instruction': {'parts': [{'text': f'{TRANSCRIPTOR}\nTérminos que pueden aparecer: {vocabulario}'}]},
+            'contents': [{'role': 'user', 'parts': [parte, {'text': 'Transcribe este audio.'}]}],
+            'generation_config': {'temperature': 0, 'thinking_config': {'thinking_level': 'minimal'}},
+            'store': False,
+        }
+        r = _llamar_gemini(_url(modelo), cuerpo, None)
+        if r.status_code != 200:
+            raise ErrorProveedor(f'Gemini no respondió bien ({r.status_code}): {r.text[:150]}')
+        datos = r.json()
+        texto = _texto(datos).strip()
+        if not texto or SIN_VOZ in texto:
+            raise ErrorProveedor('No se entendió voz en la grabación. Revisa el micrófono o sube una nota de voz '
+                                 'del teléfono.')
+        return texto, _uso(datos), modelo
+    finally:
+        _borrar_archivo(nombre_archivo)
+
+
+def ordenar_gemini(texto, sistema, herramienta):
+    """Paso 2: el texto (no el audio) → campos del formulario, con el esquema de la plantilla."""
+    modelo = settings.DICTADO_MODELO_GEMINI
     esquema = json.loads(json.dumps(herramienta['input_schema']))
-    esquema['properties'] = {'transcripcion': {'type': 'string', 'description': 'Lo dictado, palabra por palabra.'},
-                             **esquema['properties']}
-    esquema['required'] = ['transcripcion', 'secciones']
-    return esquema
+    cuerpo = {
+        'system_instruction': {'parts': [{'text': sistema}]},
+        'contents': [{'role': 'user', 'parts': [{'text': f'Texto dictado:\n"""\n{texto}\n"""'}]}],
+        'generation_config': {'response_mime_type': 'application/json', 'response_json_schema': esquema,
+                              'temperature': 0.1,
+                              # Ubicar datos dictados no necesita razonar mucho: es lo que más alarga la espera.
+                              'thinking_config': {'thinking_level': settings.DICTADO_RAZONAMIENTO}},
+        'store': False,
+    }
+    r = _llamar_gemini(_url(modelo), cuerpo, esquema)
+    if r.status_code != 200:
+        raise ErrorProveedor(f'Gemini no respondió bien ({r.status_code}): {r.text[:150]}')
+    datos = r.json()
+    try:
+        entrada = json.loads(_texto(datos))
+    except ValueError as e:
+        raise ErrorProveedor('Gemini devolvió un formato inesperado.') from e
+    return entrada, _uso(datos), modelo
 
 
 def gemini(audio, tipo, vocabulario, sistema, herramienta):
-    modelo = settings.DICTADO_MODELO_GEMINI
-    nombre_archivo = ''
-    try:
-        if len(audio) > MAX_INLINE:
-            uri, nombre_archivo = _subir_archivo(audio, tipo)
-            parte_audio = {'file_data': {'mime_type': tipo, 'file_uri': uri}}
-        else:
-            parte_audio = {'inline_data': {'mime_type': tipo, 'data': base64.b64encode(audio).decode()}}
-        esquema = esquema_gemini(herramienta)
-        cuerpo = {
-            'system_instruction': {'parts': [{'text': f'{sistema}\nVocabulario frecuente: {vocabulario}'}]},
-            'contents': [{'role': 'user', 'parts': [parte_audio, {'text': INSTRUCCION}]}],
-            'generation_config': {'response_mime_type': 'application/json', 'response_json_schema': esquema,
-                                  'temperature': 0.1,
-                                  # Ubicar datos dictados no necesita razonar mucho: es lo que más alarga la espera.
-                                  'thinking_config': {'thinking_level': settings.DICTADO_RAZONAMIENTO}},
-            'store': False,
-        }
-        url = f'{URL_GEMINI}/v1beta/models/{modelo}:generateContent'
-        r = _llamar_gemini(url, cuerpo, esquema)
-        if r.status_code != 200:
-            raise ErrorProveedor(f'Gemini no respondió bien ({r.status_code}): {r.text[:150]}')
-        return leer_respuesta(r.json(), modelo)
-    finally:
-        _borrar_archivo(nombre_archivo)
+    texto, (t_in1, t_out1, audio_tokens), modelo = transcribir_gemini(audio, tipo, vocabulario)
+    entrada, (t_in2, t_out2, _), _ = ordenar_gemini(texto, sistema, herramienta)
+    return Resultado(
+        transcripcion=texto, entrada=entrada if isinstance(entrada, dict) else {},
+        tokens_entrada=t_in1 + t_in2, tokens_salida=t_out1 + t_out2,
+        modelo_transcripcion=modelo, modelo_ia=modelo,
+        segundos_audio=round(audio_tokens / 32) if audio_tokens else None)     # 32 tokens por segundo de audio
 
 
 TIMEOUT_GEMINI = 90          # segundos por intento
@@ -182,28 +239,6 @@ def _llamar_gemini(url, cuerpo, esquema):
         return r
     raise ErrorProveedor(f'Gemini no respondió a tiempo ({ultimo.__class__.__name__}). Toca «Enviar ahora» para '
                          'reintentar; la grabación quedó guardada.') from ultimo
-
-
-def leer_respuesta(datos, modelo):
-    candidatos = datos.get('candidates') or []
-    if not candidatos:
-        motivo = (datos.get('promptFeedback') or {}).get('blockReason', 'sin respuesta')
-        raise ErrorProveedor(f'Gemini no devolvió resultado ({motivo}).')
-    partes = (candidatos[0].get('content') or {}).get('parts') or []
-    texto = ''.join(p.get('text', '') for p in partes if not p.get('thought'))
-    try:
-        entrada = json.loads(texto)
-    except ValueError as e:
-        raise ErrorProveedor('Gemini devolvió un formato inesperado.') from e
-    uso = datos.get('usageMetadata') or {}
-    audio_tokens = sum(d.get('tokenCount', 0) for d in uso.get('promptTokensDetails') or []
-                       if d.get('modality') == 'AUDIO')
-    return Resultado(
-        transcripcion=(entrada.pop('transcripcion', '') or '').strip(), entrada=entrada,
-        tokens_entrada=uso.get('promptTokenCount', 0),
-        tokens_salida=uso.get('candidatesTokenCount', 0) + uso.get('thoughtsTokenCount', 0),
-        modelo_transcripcion=modelo, modelo_ia=modelo,
-        segundos_audio=round(audio_tokens / 32) if audio_tokens else None)     # 32 tokens por segundo de audio
 
 
 # ── OpenAI + Claude (alternativa; no disponible desde Venezuela) ───────────────────────────────────────────────

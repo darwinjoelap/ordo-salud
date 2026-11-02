@@ -13,6 +13,8 @@ TIPOS = {'.webm': 'audio/webm', '.m4a': 'audio/m4a', '.mp4': 'audio/m4a', '.mp3'
          '.opus': 'audio/ogg', '.oga': 'audio/ogg', '.wav': 'audio/wav', '.aac': 'audio/aac', '.flac': 'audio/flac',
          '.aiff': 'audio/aiff', '.amr': 'audio/amr', '.3gp': 'audio/3gpp'}
 DURACION = re.compile(r'time=(\d+):(\d+):(\d+(?:\.\d+)?)')
+VOLUMEN_MAX = re.compile(r'max_volume:\s*(-?[\d.]+|-inf)\s*dB')
+SILENCIO_DB = -45.0          # pico más alto por debajo de esto = no hay voz (micrófono apagado o equivocado)
 
 
 def tipo_de(nombre, tipo=''):
@@ -30,9 +32,18 @@ def _ffmpeg():
 
 def convertir(datos, nombre, tipo=''):
     """(bytes, tipo MIME, segundos o None)."""
+    return convertir_y_medir(datos, nombre, tipo)[:3]
+
+
+def es_silencio(pico_db):
+    return pico_db is not None and pico_db < SILENCIO_DB
+
+
+def convertir_y_medir(datos, nombre, tipo=''):
+    """(bytes, tipo MIME, segundos o None, pico de volumen en dB o None). El pico sirve para detectar silencio."""
     ejecutable = _ffmpeg()
     if not ejecutable:
-        return datos, tipo_de(nombre, tipo), None
+        return datos, tipo_de(nombre, tipo), None, None
     extension = os.path.splitext(nombre or '')[1].lower() or '.webm'
     with tempfile.TemporaryDirectory(prefix='dictado_') as carpeta:
         entrada, salida = os.path.join(carpeta, 'entrada' + extension), os.path.join(carpeta, 'salida.mp3')
@@ -40,15 +51,19 @@ def convertir(datos, nombre, tipo=''):
             f.write(datos)
         try:
             proceso = subprocess.run([ejecutable, '-hide_banner', '-nostdin', '-y', '-i', entrada, '-vn', '-ac', '1',
-                                      '-ar', '16000', '-b:a', '32k', salida], capture_output=True, timeout=300)
+                                      '-ar', '16000', '-af', 'volumedetect', '-b:a', '32k', salida],
+                                     capture_output=True, timeout=300)
         except (OSError, subprocess.TimeoutExpired):
-            return datos, tipo_de(nombre, tipo), None
+            return datos, tipo_de(nombre, tipo), None, None
         if proceso.returncode != 0 or not os.path.exists(salida):
-            return datos, tipo_de(nombre, tipo), None
-        marcas = DURACION.findall(proceso.stderr.decode('utf-8', 'ignore'))
+            return datos, tipo_de(nombre, tipo), None, None
+        registro = proceso.stderr.decode('utf-8', 'ignore')
+        pico = VOLUMEN_MAX.findall(registro)
+        pico_db = (-200.0 if pico[-1] == '-inf' else float(pico[-1])) if pico else None
+        marcas = DURACION.findall(registro)
         segundos = None
         if marcas:
             h, m, s = marcas[-1]
             segundos = int(int(h) * 3600 + int(m) * 60 + float(s))
         with open(salida, 'rb') as f:
-            return f.read(), 'audio/mp3', segundos
+            return f.read(), 'audio/mp3', segundos, pico_db

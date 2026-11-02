@@ -35,11 +35,13 @@ VOCABULARIO = {
 }
 
 SISTEMA = """Eres el asistente de historia clínica de {especialidad} en un consultorio de Venezuela.
-Recibes la transcripción de lo que la doctora dictó en una consulta y debes ubicar cada dato en el campo correcto de
+Recibes la transcripción literal de lo que la doctora dictó en una consulta y debes ubicar cada dato en el campo correcto de
 la herramienta `llenar_historia`.
 
 Reglas:
-- Usa SOLO lo que se dijo. No inventes, no completes con valores normales ni con lo que «suele ser».
+- Usa SOLO lo que dice el texto dictado. No inventes, no completes con valores normales ni con lo que «suele ser».
+- El sexo y la edad del paciente son solo contexto: nunca escribas con ellos algo que no se haya dictado.
+- Si el texto está vacío o no trae datos clínicos, devuelve `secciones` vacío.
 - Si un dato no se mencionó, no incluyas ese campo.
 - Números con punto decimal y en la unidad del campo (si dicta «diez punto cuatro kilos», peso = 10.4).
 - En campos de opciones usa exactamente uno de los valores permitidos.
@@ -214,9 +216,14 @@ def procesar(sesion_id, audio, nombre, tipo, estructura, especialidad_codigo, es
     sesion = SesionDictado.todos.select_related('tenant', 'paciente').get(pk=sesion_id)
     with usando_tenant(sesion.tenant):
         try:
-            datos, tipo_mime, segundos = conversor.convertir(audio, nombre, tipo)
+            datos, tipo_mime, segundos, pico_db = conversor.convertir_y_medir(audio, nombre, tipo)
             if segundos:                                   # duración real (también para archivos subidos)
                 sesion.segundos = min(segundos, MAX_SEGUNDOS)
+            if conversor.es_silencio(pico_db):            # micrófono apagado o equivocado: la IA inventaría
+                sesion.segundos = 0                        # no se cobra
+                raise proveedores.ErrorProveedor(
+                    'No se escuchó voz en la grabación (está en silencio). Revisa que el navegador use el micrófono '
+                    'correcto (ícono del candado → Micrófono) o sube una nota de voz del teléfono.')
             vocabulario = VOCABULARIO[''] + ' ' + VOCABULARIO.get(especialidad_codigo, '')
             sistema = SISTEMA.format(especialidad=especialidad_nombre or 'medicina',
                                      paciente=contexto_paciente(sesion.paciente))

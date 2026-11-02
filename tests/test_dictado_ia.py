@@ -169,58 +169,74 @@ class DictadoTest(BaseTest):
 
 
 class GeminiTest(SimpleTestCase):
-    """La llamada a Gemini se arma y se lee bien (sin salir a internet)."""
+    """Dictado en dos pasos (ADR-052): transcribir el audio y después ordenar el texto (sin salir a internet)."""
 
     def respuesta(self, datos, estado=200, texto=''):
         r = mock.Mock(status_code=estado, text=texto or json.dumps(datos))
         r.json.return_value = datos
         return r
 
-    @override_settings(GEMINI_API_KEY='clave', DICTADO_MODELO_GEMINI='gemini-3.8-flash', DICTADO_PROVEEDOR='gemini')
-    def test_llamada_y_lectura(self):
+    def con_texto(self, texto, **uso):
+        return self.respuesta({'candidates': [{'content': {'parts': [{'text': 'pensando', 'thought': True},
+                                                                       {'text': texto}]}}],
+                               'usageMetadata': uso})
+
+    def transcrito(self, texto='EKG frecuencia 94'):
+        return self.con_texto(texto, promptTokenCount=2000, candidatesTokenCount=100,
+                              promptTokensDetails=[{'modality': 'AUDIO', 'tokenCount': 1920}])
+
+    def ordenado(self, secciones=None):
+        return self.con_texto(json.dumps({'secciones': secciones or {}, 'no_ubicado': ''}),
+                              promptTokenCount=800, candidatesTokenCount=300, thoughtsTokenCount=200)
+
+    @override_settings(GEMINI_API_KEY='clave', DICTADO_MODELO_GEMINI='gemini-3.8-flash', DICTADO_PROVEEDOR='gemini',
+                       DICTADO_RAZONAMIENTO='low')
+    def test_transcribe_sin_datos_del_paciente_y_ordena_el_texto(self):
         herramienta = servicios.herramienta([{'seccion_id': 7, 'codigo': 'cp.ekg', 'nombre': 'EKG', 'campos': [
             {'clave': 'fc', 'tipo': 'numero', 'etiqueta': 'FC', 'unidad': 'lpm'}]}])
-        salida = {'transcripcion': 'EKG frecuencia 94', 'secciones': {'cp.ekg': {'fc': 94}}, 'no_ubicado': ''}
-        ok = self.respuesta({'candidates': [{'content': {'parts': [{'text': 'pensando', 'thought': True},
-                                                                   {'text': json.dumps(salida)}]}}],
-                             'usageMetadata': {'promptTokenCount': 4000, 'candidatesTokenCount': 300,
-                                               'thoughtsTokenCount': 200,
-                                               'promptTokensDetails': [{'modality': 'AUDIO', 'tokenCount': 1920}]}})
-        with mock.patch('apps.dictado.proveedores.requests.post', return_value=ok) as post:
-            r = proveedores.procesar_audio(b'mp3', 'audio/mp3', 'TAPSE', 'sistema', herramienta)
-        cuerpo = json.loads(post.call_args.kwargs['data'])
+        with mock.patch('apps.dictado.proveedores.requests.post',
+                        side_effect=[self.transcrito(), self.ordenado({'cp.ekg': {'fc': 94}})]) as post:
+            r = proveedores.procesar_audio(b'mp3', 'audio/mp3', 'TAPSE', 'sistema con paciente masculino', herramienta)
+        paso1, paso2 = (json.loads(c.kwargs['data']) for c in post.call_args_list)
         self.assertIn('gemini-3.8-flash:generateContent', post.call_args.args[0])
-        self.assertFalse(cuerpo['store'])                                     # Google no guarda la conversación
-        self.assertEqual(cuerpo['contents'][0]['parts'][0]['inline_data']['mime_type'], 'audio/mp3')
-        self.assertIn('transcripcion', cuerpo['generation_config']['response_json_schema']['required'])
+        self.assertFalse(paso1['store'] or paso2['store'])                   # Google no guarda la conversación
+        # paso 1: audio y nada del paciente ni del formulario
+        self.assertEqual(paso1['contents'][0]['parts'][0]['inline_data']['mime_type'], 'audio/mp3')
+        self.assertNotIn('masculino', json.dumps(paso1))
+        self.assertNotIn('response_json_schema', paso1['generation_config'])
+        # paso 2: el texto transcrito (no el audio) con el esquema y razonamiento bajo
+        self.assertIn('EKG frecuencia 94', paso2['contents'][0]['parts'][0]['text'])
+        self.assertNotIn('inline_data', json.dumps(paso2))
+        self.assertEqual(paso2['generation_config']['thinking_config'], {'thinking_level': 'low'})
         self.assertEqual(r.entrada['secciones']['cp.ekg']['fc'], 94)
         self.assertEqual((r.transcripcion, r.tokens_entrada, r.tokens_salida, r.segundos_audio),
-                         ('EKG frecuencia 94', 4000, 500, 60))
+                         ('EKG frecuencia 94', 2800, 600, 60))
+
+    @override_settings(GEMINI_API_KEY='clave', DICTADO_PROVEEDOR='gemini')
+    def test_sin_voz_no_ordena_ni_inventa(self):
+        with mock.patch('apps.dictado.proveedores.requests.post', side_effect=[self.transcrito('[SIN VOZ]')]) as post, \
+             self.assertRaisesMessage(proveedores.ErrorProveedor, 'No se entendió voz'):
+            proveedores.procesar_audio(b'mp3', 'audio/mp3', '', 'sistema', servicios.herramienta([]))
+        self.assertEqual(post.call_count, 1)                                  # el paso 2 no se llama
 
     @override_settings(GEMINI_API_KEY='clave', DICTADO_PROVEEDOR='gemini')
     def test_si_no_admite_json_schema_usa_el_esquema_openapi(self):
-        herramienta = servicios.herramienta([])
         malo = self.respuesta({}, 400, 'Unknown name "response_json_schema": schema not supported')
-        vacio = '{"transcripcion": "", "secciones": {}}'
-        bueno = self.respuesta({'candidates': [{'content': {'parts': [{'text': vacio}]}}]})
-        with mock.patch('apps.dictado.proveedores.requests.post', side_effect=[malo, bueno]) as post:
-            proveedores.procesar_audio(b'mp3', 'audio/mp3', '', 'sistema', herramienta)
-        segundo = json.loads(post.call_args.kwargs['data'])['generation_config']
-        self.assertIn('response_schema', segundo)
-        self.assertNotIn('additionalProperties', json.dumps(segundo))
-
-    @override_settings(GEMINI_API_KEY='clave', DICTADO_PROVEEDOR='gemini', DICTADO_RAZONAMIENTO='low')
-    def test_razonamiento_bajo_y_reintento_si_no_responde(self):
-        import requests
-        vacio = '{"transcripcion": "ok", "secciones": {}}'
-        bueno = self.respuesta({'candidates': [{'content': {'parts': [{'text': vacio}]}}]})
         with mock.patch('apps.dictado.proveedores.requests.post',
-                        side_effect=[requests.ReadTimeout('lento'), bueno]) as post, \
+                        side_effect=[self.transcrito(), malo, self.ordenado()]) as post:
+            proveedores.procesar_audio(b'mp3', 'audio/mp3', '', 'sistema', servicios.herramienta([]))
+        ultimo = json.loads(post.call_args.kwargs['data'])['generation_config']
+        self.assertIn('response_schema', ultimo)
+        self.assertNotIn('additionalProperties', json.dumps(ultimo))
+
+    @override_settings(GEMINI_API_KEY='clave', DICTADO_PROVEEDOR='gemini')
+    def test_reintenta_si_no_responde(self):
+        import requests
+        with mock.patch('apps.dictado.proveedores.requests.post',
+                        side_effect=[requests.ReadTimeout('lento'), self.transcrito(), self.ordenado()]) as post, \
              mock.patch('apps.dictado.proveedores.time.sleep'):
             r = proveedores.procesar_audio(b'mp3', 'audio/mp3', '', 'sistema', servicios.herramienta([]))
-        self.assertEqual((post.call_count, r.transcripcion), (2, 'ok'))
-        config = json.loads(post.call_args.kwargs['data'])['generation_config']
-        self.assertEqual(config['thinking_config'], {'thinking_level': 'low'})
+        self.assertEqual((post.call_count, r.transcripcion), (3, 'EKG frecuencia 94'))
         self.assertEqual(post.call_args.kwargs['timeout'], proveedores.TIMEOUT_GEMINI)
 
     @override_settings(GEMINI_API_KEY='clave', DICTADO_PROVEEDOR='gemini')
@@ -234,21 +250,67 @@ class GeminiTest(SimpleTestCase):
     @override_settings(GEMINI_API_KEY='clave', DICTADO_PROVEEDOR='gemini')
     def test_modelo_sin_razonamiento_configurable_se_llama_sin_el(self):
         malo = self.respuesta({}, 400, 'Invalid JSON payload: unknown field thinking_level')
-        vacio = '{"transcripcion": "", "secciones": {}}'
-        bueno = self.respuesta({'candidates': [{'content': {'parts': [{'text': vacio}]}}]})
-        with mock.patch('apps.dictado.proveedores.requests.post', side_effect=[malo, bueno]) as post:
+        with mock.patch('apps.dictado.proveedores.requests.post', side_effect=[malo, self.transcrito(), self.ordenado()]) \
+                as post:
             proveedores.procesar_audio(b'mp3', 'audio/mp3', '', 'sistema', servicios.herramienta([]))
-        self.assertNotIn('thinking_config', json.loads(post.call_args.kwargs['data'])['generation_config'])
+        self.assertNotIn('thinking_config', json.loads(post.call_args_list[1].kwargs['data'])['generation_config'])
 
     @override_settings(GEMINI_API_KEY='clave', DICTADO_PROVEEDOR='gemini')
     def test_audio_grande_va_por_files_api_y_se_borra(self):
         inicio = mock.Mock(status_code=200, headers={'x-goog-upload-url': 'https://subida'})
         subida = self.respuesta({'file': {'name': 'files/abc', 'uri': 'https://archivo', 'state': 'ACTIVE'}})
-        texto = '{"transcripcion": "x", "secciones": {}}'
-        bueno = self.respuesta({'candidates': [{'content': {'parts': [{'text': texto}]}}]})
-        with mock.patch('apps.dictado.proveedores.requests.post', side_effect=[inicio, subida, bueno]) as post, \
+        with mock.patch('apps.dictado.proveedores.requests.post',
+                        side_effect=[inicio, subida, self.transcrito(), self.ordenado()]) as post, \
              mock.patch('apps.dictado.proveedores.requests.delete') as borrar:
             proveedores.procesar_audio(b'0' * (proveedores.MAX_INLINE + 1), 'audio/mp3', '', 's', servicios.herramienta([]))
-        cuerpo = json.loads(post.call_args.kwargs['data'])
+        cuerpo = json.loads(post.call_args_list[2].kwargs['data'])
         self.assertEqual(cuerpo['contents'][0]['parts'][0]['file_data']['file_uri'], 'https://archivo')
         self.assertIn('files/abc', borrar.call_args.args[0])                  # no queda en Google
+
+
+@override_settings(DICTADO_SINCRONO=True)
+class SilencioEnSesionTest(BaseTest):
+    def test_grabacion_en_silencio_no_llega_a_la_ia_ni_se_cobra(self):
+        if not conversor._ffmpeg():
+            self.skipTest('sin ffmpeg')
+        tenant, _ = crear_consultorio('Cardio', 'cardio3', especialidad='cardiologia_pediatrica')
+        cliente = self.entrar(tenant, 'titular')
+        ConfiguracionTenant.objects.filter(tenant=tenant).update(dictado_activo=True)
+        with self.en_tenant(tenant):
+            p = Paciente.objects.create(nombres='Ana', apellidos='Ruiz', sexo='F')
+            plantilla = PlantillaHistoria.objects.get(nombre='Consulta de cardiología pediátrica')
+        mudo = SilencioTest().generar('anullsrc=r=48000:cl=mono:d=4')
+        with mock.patch('apps.dictado.proveedores.procesar_audio') as ia:
+            r = cliente.post('/dictado/', {'audio': SimpleUploadedFile('g.webm', mudo, content_type='audio/webm'),
+                                           'segundos': 4, 'consentimiento': '1', 'paciente': p.pk,
+                                           'plantilla': plantilla.pk})
+        ia.assert_not_called()
+        with self.en_tenant(tenant):
+            s = SesionDictado.objects.get(pk=r.json()['id'])
+        self.assertEqual((s.estado, s.segundos), ('ERROR', 0))
+        self.assertIn('No se escuchó voz', s.error)
+
+
+class SilencioTest(SimpleTestCase):
+    """Una grabación sin voz (micrófono equivocado) se rechaza antes de llamar a la IA."""
+
+    def generar(self, filtro):
+        import os
+        import subprocess
+        import tempfile
+        ffmpeg = conversor._ffmpeg()
+        if not ffmpeg:
+            self.skipTest('sin ffmpeg')
+        with tempfile.TemporaryDirectory() as carpeta:
+            ruta = os.path.join(carpeta, 'g.webm')
+            subprocess.run([ffmpeg, '-y', '-f', 'lavfi', '-i', filtro, '-c:a', 'libopus', ruta],
+                           capture_output=True, check=True)
+            with open(ruta, 'rb') as f:
+                return f.read()
+
+    def test_mide_el_volumen(self):
+        _, _, segundos, pico = conversor.convertir_y_medir(self.generar('anullsrc=r=48000:cl=mono:d=5'), 'g.webm')
+        self.assertTrue(conversor.es_silencio(pico))
+        _, _, _, pico = conversor.convertir_y_medir(self.generar('sine=frequency=300:duration=5'), 'g.webm')
+        self.assertFalse(conversor.es_silencio(pico))
+        self.assertFalse(conversor.es_silencio(None))                         # sin ffmpeg no se bloquea
