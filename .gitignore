@@ -28,3 +28,6 @@ htmlcov/
 
 # Herramientas
 .ruff_cache/
+
+# Railway IaC (paquete de Node solo para `railway config plan/apply`)
+node_modules/

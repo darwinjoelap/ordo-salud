@@ -26,7 +26,20 @@
 | `GEMINI_API_KEY` | la clave **con facturación activa** (el nivel gratis usa los datos para entrenar). Sin clave, el dictado funciona en modo de prueba |
 | `SENTRY_DSN` | opcional |
 
-`railway.json` ya trae: build con `Dockerfile`, `migrate` antes de desplegar y healthcheck en `/salud/`.
+La configuración del servicio vive en **`.railway/railway.ts`** (ADR-055; `railway.json` dejó de leerse el
+2026-12-01): build con `Dockerfile`, `migrate` antes de desplegar, healthcheck en `/salud/` (60 s) y el dominio
+`*.salud.ordove.com`. Variables **unmanaged**: se manejan solo en el panel de Railway.
+
+### Cambiar la configuración del servicio (IaC)
+```powershell
+# Windows: el paquete `railway` no encuentra el CLI sin la ruta del .exe (una vez por terminal)
+$env:_ = Join-Path (npm root -g) '@railway\cli\bin\railway.exe'
+railway config plan      # ver cambios: nunca aplicar si muestra «to destroy» inesperado
+railway config apply
+```
+- `partial = "web"`: el archivo solo administra el servicio web (no toca Postgres).
+- Lo que no esté en el archivo (p. ej. un dominio) se **borra** al aplicar: agregar dominios primero al archivo.
+- `npm install` instala el paquete `railway` (solo en la PC; `node_modules/` no va a git ni a la imagen).
 
 ### A3. Primer arranque
 Railway → servicio web → **⋯ → Shell** (o `railway run` desde tu PC):
@@ -43,7 +56,7 @@ python manage.py demo_cardiologia --consultorio dra-sierra --crear --usuario lsi
 - [ ] Configuración del consultorio: banner (membrete) y **Fórmula de SC = Haycock** (ya viene así por la especialidad).
 
 ### A4. Tareas programadas (opcional en el demo)
-Segundo servicio con el mismo repo y **Config file path = `railway.cron.json`** (corre `tareas_programadas` a las 07:00 de Venezuela: cierra consultas vencidas, tasa del BCV, recordatorios).
+Segundo servicio con el mismo repo que corre `python manage.py tareas_programadas` a las 07:00 de Venezuela (cron `0 11 * * *` UTC: cierra consultas vencidas, tasa del BCV, recordatorios). **Pendiente:** declararlo en `.railway/railway.ts` (la referencia de IaC no documenta aún el cron; `railway.cron.json` queda solo como referencia de los valores).
 
 ### A5. Antes de pasarle el demo
 - [ ] Los pacientes del demo son **ficticios** (marcados `[DEMO]`). Se borran con

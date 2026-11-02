@@ -9,3 +9,7 @@ media/
 staticfiles/
 docs/
 tests/
+node_modules/
+.railway/
+package.json
+package-lock.json

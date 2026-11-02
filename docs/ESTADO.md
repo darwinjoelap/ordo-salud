@@ -18,8 +18,8 @@ Dictado: tras ADR-052/053/054 **funciona mucho mejor** (transcripción fiel y re
    (eco sin valores por defecto, ADR-053).
 2. Afinar el dictado con más pruebas: eco completo dictado, signos vitales, diagnósticos; nota de voz del teléfono
    («Subir grabación»); revisar lo que quede en «No se pudo ubicar». Ver costo real en AI Studio → Gasto.
-3. **Antes del 2026-12-01**: Railway deja de leer `railway.json`/`railway.cron.json` → `railway config migrate`
-   a `.railway/railway.ts` y revisar (igual en Ordo Lab).
+3. ~~Migrar `railway.json` a `.railway/railway.ts`~~ hecho 2026-11-02 (ADR-055). **Ordo Lab**: hacer lo mismo
+   antes del 2026-12-01 (`railway config migrate --service <web>`, variables unmanaged, plan sin «destroy»).
 4. Servicio cron (cierre de consultas, tasa BCV, recordatorios) — no creado. Favicon da 404.
 5. Con la doctora: comparar Z-score con ParameterZ (anillo pulmonar = PVSAX), revisión del informe, abreviaturas de
    ritmo. Luego pasarle el demo (`dra-sierra.salud.ordove.com`, usuario `lsierra`).
