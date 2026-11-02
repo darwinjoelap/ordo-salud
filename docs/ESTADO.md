@@ -6,7 +6,7 @@
 **Última actualización:** 2026-11-01
 **Fase actual:** 15 Cardiología pediátrica · **demo en producción** para la Dra. Lyna Sierra
 **Repositorio:** `github.com/darwinjoelap/ordo-salud` (privado), rama `main` — código en `C:\proyectos\ordo-salud`
-**Último commit:** dictado con catálogo y lista plana (ADR-054), 2026-11-01 · entorno: `venv\Scripts\Activate.ps1` (Python 3.14)
+**Último commit:** `fae3dee` servicio de tareas en Railway IaC (ADR-056), 2026-11-02 · entorno: `venv\Scripts\Activate.ps1` (Python 3.14)
 **Producción:** Railway proyecto `ordo-salud` (servicios `web` + `Postgres`) · `https://dra-sierra.salud.ordove.com` · respaldo `web-production-052d8.up.railway.app` · R2 `ordo-salud-media`
 
 ---
@@ -16,11 +16,12 @@ En producción desde el 2026-11-01 (Railway + `*.salud.ordove.com` + R2 + Gemini
 Dictado: tras ADR-052/053/054 **funciona mucho mejor** (transcripción fiel y reparte los datos en los campos). Pendiente:
 1. Confirmar que en Railway se corrió `sincronizar_especialidades` + `refrescar_plantillas cardiologia_pediatrica`
    (eco sin valores por defecto, ADR-053).
-2. Afinar el dictado con más pruebas: eco completo dictado, signos vitales, diagnósticos; nota de voz del teléfono
-   («Subir grabación»); revisar lo que quede en «No se pudo ubicar». Ver costo real en AI Studio → Gasto.
+2. Dictado probado OK también con eco y con archivo adjunto (2026-11-02). Ajustes finos: **después de que la
+   doctora lo pruebe**. Ver costo real en AI Studio → Gasto.
 3. ~~Migrar `railway.json` a `.railway/railway.ts`~~ hecho 2026-11-02 (ADR-055). **Ordo Lab**: hacer lo mismo
    antes del 2026-12-01 (`railway config migrate --service <web>`, variables unmanaged, plan sin «destroy»).
-4. Servicio `tareas` (ADR-056) declarado en `.railway/railway.ts`: aplicar, cargar sus variables, probar «Run now». Favicon da 404.
+4. ~~Servicio `tareas`~~ hecho 2026-11-02 (ADR-056): primera corrida OK (tasa BCV 889,5754, 1 consulta cerrada).
+   Revisar mañana que corrió solo a las 07:00. Favicon da 404.
 5. Con la doctora: comparar Z-score con ParameterZ (anillo pulmonar = PVSAX), revisión del informe, abreviaturas de
    ritmo. Luego pasarle el demo (`dra-sierra.salud.ordove.com`, usuario `lsierra`).
 6. Antes de pacientes reales: `demo_cardiologia --consultorio dra-sierra --borrar`.
