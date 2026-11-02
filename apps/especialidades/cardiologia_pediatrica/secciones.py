@@ -4,6 +4,9 @@ Secciones de cardiología pediátrica, tomadas del modelo de informe de la Dra. 
 
 Ámbito PACIENTE = ficha (antecedentes, se llenan una vez). Ámbito CONSULTA = EKG y ecocardiograma de cada consulta.
 El informe arma la prosa con estos campos (informe.py), igual que la doctora la redacta en Word.
+
+Sin valores por defecto (ADR-053): un eco no evaluado no puede salir «normal» en el informe. `normal` marca el valor
+normal de cada campo; el botón «Completar lo vacío como normal» los pone solo cuando la doctora lo toca.
 """
 from apps.clinica.registro import SeccionDef
 
@@ -50,7 +53,7 @@ def _gp_manual(clave):
 
 
 def _grado(clave, etiqueta='Regurgitación'):
-    return {'clave': clave, 'tipo': 'opcion', 'etiqueta': etiqueta, 'opciones': GRADOS, 'ancho': 2}
+    return {'clave': clave, 'tipo': 'opcion', 'etiqueta': etiqueta, 'opciones': GRADOS, 'normal': 'NO', 'ancho': 2}
 
 
 # ── Ficha: antecedentes personales (perinatales y patológicos) ──────────────────────────────────────────────────
@@ -106,7 +109,7 @@ RITMOS = [['RS', 'Ritmo sinusal (RS)'], ['RU', 'Ritmo de la unión (RU)'], ['FA'
           ['OTRO', 'Otro (ver trazo)']]
 
 EKG = SeccionDef('cp.ekg', 'Electrocardiograma (EKG)', orden=44, esquema={'campos': [
-    {'clave': 'ritmo', 'tipo': 'opcion', 'etiqueta': 'Ritmo', 'opciones': RITMOS, 'por_defecto': 'RS', 'ancho': 3},
+    {'clave': 'ritmo', 'tipo': 'opcion', 'etiqueta': 'Ritmo', 'opciones': RITMOS, 'normal': 'RS', 'ancho': 3},
     {'clave': 'fc', 'tipo': 'numero', 'etiqueta': 'FC', 'unidad': 'lpm', 'decimales': 0, 'min': 20, 'max': 330,
      'ancho': 2},
     {'clave': 'pr', 'tipo': 'numero', 'etiqueta': 'PR', 'unidad': 's', 'decimales': 2, 'min': 0, 'max': 1, 'ancho': 2},
@@ -130,30 +133,30 @@ ECO = SeccionDef('cp.eco', 'Ecocardiograma transtorácico', orden=46,
                  descripcion='Un campo por medida; el informe arma la prosa. Lo normal viene marcado.',
                  esquema={'campos': [
     {'clave': 'sub_situs', 'tipo': 'subtitulo', 'etiqueta': 'Situs, retornos y conexiones'},
-    {'clave': 'situs', 'tipo': 'opcion', 'etiqueta': 'Situs', 'por_defecto': 'SOLITUS', 'ancho': 3,
+    {'clave': 'situs', 'tipo': 'opcion', 'etiqueta': 'Situs', 'normal': 'SOLITUS', 'ancho': 3,
      'opciones': [['SOLITUS', 'Situs solitus'], ['INVERSUS', 'Situs inversus'], ['AMBIGUO', 'Situs ambiguo']]},
-    {'clave': 'apex', 'tipo': 'opcion', 'etiqueta': 'Ápex', 'por_defecto': 'LEVO', 'ancho': 3,
+    {'clave': 'apex', 'tipo': 'opcion', 'etiqueta': 'Ápex', 'normal': 'LEVO', 'ancho': 3,
      'opciones': [['LEVO', 'Levocardia'], ['DEXTRO', 'Dextrocardia'], ['MESO', 'Mesocardia']]},
-    {'clave': 'rvs', 'tipo': 'opcion', 'etiqueta': 'Retornos venosos sistémicos', 'por_defecto': 'NORMALES',
+    {'clave': 'rvs', 'tipo': 'opcion', 'etiqueta': 'Retornos venosos sistémicos', 'normal': 'NORMALES',
      'ancho': 3, 'opciones': [['NORMALES', 'Normales'], ['ANOMALOS', 'Anómalos']]},
     {'clave': 'rvs_detalle', 'tipo': 'texto', 'etiqueta': 'Detalle', 'ancho': 3,
      'visible_si': {'campo': 'rvs', 'igual': 'ANOMALOS'}},
     _mm('vci', 'VCI'),
     {'clave': 'vci_colapso', 'tipo': 'opcion', 'etiqueta': 'Colapso inspiratorio', 'ancho': 3,
      'opciones': [['MAYOR', '> 50 %'], ['MENOR', '< 50 %']]},
-    {'clave': 'rvp', 'tipo': 'opcion', 'etiqueta': 'Retornos venosos pulmonares', 'por_defecto': 'NORMALES',
+    {'clave': 'rvp', 'tipo': 'opcion', 'etiqueta': 'Retornos venosos pulmonares', 'normal': 'NORMALES',
      'ancho': 3, 'opciones': [['NORMALES', 'Normales'], ['ANOMALOS', 'Anómalos']]},
     {'clave': 'rvp_detalle', 'tipo': 'texto', 'etiqueta': 'Detalle', 'ancho': 4,
      'visible_si': {'campo': 'rvp', 'igual': 'ANOMALOS'}},
-    {'clave': 'conexion_av', 'tipo': 'opcion', 'etiqueta': 'Conexión AV', 'por_defecto': 'CONCORDANTE', 'ancho': 3,
+    {'clave': 'conexion_av', 'tipo': 'opcion', 'etiqueta': 'Conexión AV', 'normal': 'CONCORDANTE', 'ancho': 3,
      'opciones': [['CONCORDANTE', 'Concordante'], ['DISCORDANTE', 'Discordante'], ['UNIVENTRICULAR', 'Univentricular'],
                   ['AUSENTE', 'Ausente (atresia)']]},
-    {'clave': 'conexion_va', 'tipo': 'opcion', 'etiqueta': 'Conexión VA', 'por_defecto': 'CONCORDANTE', 'ancho': 3,
+    {'clave': 'conexion_va', 'tipo': 'opcion', 'etiqueta': 'Conexión VA', 'normal': 'CONCORDANTE', 'ancho': 3,
      'opciones': [['CONCORDANTE', 'Concordante'], ['DISCORDANTE', 'Discordante'], ['DSVD', 'Doble salida del VD'],
                   ['UNICA', 'Salida única']]},
 
     {'clave': 'sub_tia', 'tipo': 'subtitulo', 'etiqueta': 'Tabique interatrial'},
-    {'clave': 'tia', 'tipo': 'opcion', 'etiqueta': 'Tabique interatrial', 'por_defecto': 'INTACTO', 'ancho': 3,
+    {'clave': 'tia', 'tipo': 'opcion', 'etiqueta': 'Tabique interatrial', 'normal': 'INTACTO', 'ancho': 3,
      'opciones': [['INTACTO', 'Intacto'], ['FOP', 'Foramen oval permeable'], ['DEFECTO', 'Defecto (CIA)']]},
     {'clave': 'cia_tipo', 'tipo': 'opcion', 'etiqueta': 'Tipo de defecto', 'ancho': 3, 'visible_si': DEFECTO,
      'opciones': [['OS', 'Ostium secundum'], ['OP', 'Ostium primum'], ['SV', 'Seno venoso'],
@@ -170,7 +173,7 @@ ECO = SeccionDef('cp.eco', 'Ecocardiograma transtorácico', orden=46,
      'ayuda': '2.5 → «2.5:1»'},
 
     {'clave': 'sub_auriculas', 'tipo': 'subtitulo', 'etiqueta': 'Aurículas'},
-    {'clave': 'ad_estado', 'tipo': 'opcion', 'etiqueta': 'Aurícula derecha', 'por_defecto': 'NO', 'ancho': 3,
+    {'clave': 'ad_estado', 'tipo': 'opcion', 'etiqueta': 'Aurícula derecha', 'normal': 'NO', 'ancho': 3,
      'opciones': [['NO', 'No dilatada'], ['DILATADA', 'Dilatada']]},
     {'clave': 'ad_area', 'tipo': 'numero', 'etiqueta': 'Área AD', 'unidad': 'cm²', 'decimales': 2, 'min': 0,
      'max': 80, 'ancho': 2},
@@ -178,7 +181,7 @@ ECO = SeccionDef('cp.eco', 'Ecocardiograma transtorácico', orden=46,
      'max': 300, 'ancho': 2},
     {'clave': 'ad_vol_index', 'tipo': 'calculado', 'etiqueta': 'Vol. index AD', 'unidad': 'ml/m²', 'decimales': 1,
      'funcion': 'cp.indexado:ad_vol', 'ancho': 2},
-    {'clave': 'ai_estado', 'tipo': 'opcion', 'etiqueta': 'Aurícula izquierda', 'por_defecto': 'NO', 'ancho': 3,
+    {'clave': 'ai_estado', 'tipo': 'opcion', 'etiqueta': 'Aurícula izquierda', 'normal': 'NO', 'ancho': 3,
      'opciones': [['NO', 'No dilatada'], ['DILATADA', 'Dilatada']]},
     {'clave': 'ai_area', 'tipo': 'numero', 'etiqueta': 'Área AI', 'unidad': 'cm²', 'decimales': 2, 'min': 0,
      'max': 80, 'ancho': 2},
@@ -200,7 +203,7 @@ ECO = SeccionDef('cp.eco', 'Ecocardiograma transtorácico', orden=46,
     {'clave': 'mit_detalle', 'tipo': 'texto', 'etiqueta': 'Detalle', 'ancho': 4},
 
     {'clave': 'sub_tiv', 'tipo': 'subtitulo', 'etiqueta': 'Tabique interventricular'},
-    {'clave': 'tiv', 'tipo': 'opcion', 'etiqueta': 'Tabique interventricular', 'por_defecto': 'INTACTO', 'ancho': 3,
+    {'clave': 'tiv', 'tipo': 'opcion', 'etiqueta': 'Tabique interventricular', 'normal': 'INTACTO', 'ancho': 3,
      'opciones': [['INTACTO', 'Intacto'], ['DEFECTO', 'Defecto (CIV)'], ['CERRADO', 'Cierre quirúrgico (parche)']]},
     {'clave': 'civ_tipo', 'tipo': 'opcion', 'etiqueta': 'Tipo de CIV', 'ancho': 3,
      'visible_si': {'campo': 'tiv', 'igual': 'DEFECTO'},
@@ -209,14 +212,14 @@ ECO = SeccionDef('cp.eco', 'Ecocardiograma transtorácico', orden=46,
     {**_mm('civ_mm', 'Tamaño'), 'visible_si': {'campo': 'tiv', 'igual': 'DEFECTO'}},
     {'clave': 'civ_shunt', 'tipo': 'opcion', 'etiqueta': 'Shunt', 'opciones': SHUNT, 'ancho': 2,
      'visible_si': {'campo': 'tiv', 'igual': 'DEFECTO'}},
-    {'clave': 'tiv_movimiento', 'tipo': 'opcion', 'etiqueta': 'Movimiento septal', 'ancho': 2,
+    {'clave': 'tiv_movimiento', 'tipo': 'opcion', 'etiqueta': 'Movimiento septal', 'normal': 'NORMAL', 'ancho': 2,
      'opciones': [['NORMAL', 'Normal'], ['PARADOJICO', 'Paradójico']]},
     {'clave': 'tiv_detalle', 'tipo': 'texto', 'etiqueta': 'Detalle', 'ancho': 4,
      'ayuda': 'Ej.: sin shunt residual. Parche normoposicionado.'},
 
     {'clave': 'sub_vd', 'tipo': 'subtitulo', 'etiqueta': 'Ventrículo derecho'},
     {'clave': 'vd_estado', 'tipo': 'opcion', 'etiqueta': 'Ventrículo derecho', 'opciones': DILATACION,
-     'por_defecto': 'NO', 'ancho': 3},
+     'normal': 'NO', 'ancho': 3},
     _mm('vd_db', 'DB'), _mm('vd_dm', 'DM'), _mm('vd_dl', 'DL'), _mm('tapse', 'TAPSE'),
     _vel('vd_s', "s'"),
     {'clave': 'vd_area_d', 'tipo': 'numero', 'etiqueta': 'Área diástole', 'unidad': 'cm²', 'decimales': 2,
@@ -248,32 +251,32 @@ ECO = SeccionDef('cp.eco', 'Ecocardiograma transtorácico', orden=46,
     {'clave': 'tap_detalle', 'tipo': 'texto', 'etiqueta': 'Detalle TAP', 'ancho': 4, 'ayuda': 'Ej.: hipoplásico y tortuoso'},
     _mm('rd_mm', 'Rama derecha'), *_z('rd_z', 'rd_mm'), _vel('rd_vmax'), _gp('rd_gp', 'rd_vmax'),
     _mm('ri_mm', 'Rama izquierda'), *_z('ri_z', 'ri_mm'), _vel('ri_vmax'), _gp('ri_gp', 'ri_vmax'),
-    {'clave': 'ramas', 'tipo': 'opcion', 'etiqueta': 'Ramas pulmonares', 'ancho': 3,
+    {'clave': 'ramas', 'tipo': 'opcion', 'etiqueta': 'Ramas pulmonares', 'normal': 'CONFLUENTES', 'ancho': 3,
      'opciones': [['CONFLUENTES', 'Confluentes'], ['NO_CONFLUENTES', 'No confluentes']]},
-    {'clave': 'ductus', 'tipo': 'opcion', 'etiqueta': 'Ductus', 'por_defecto': 'NO', 'ancho': 3,
+    {'clave': 'ductus', 'tipo': 'opcion', 'etiqueta': 'Ductus', 'normal': 'NO', 'ancho': 3,
      'opciones': [['NO', 'No se capta flujo'], ['PERMEABLE', 'Permeable'], ['LIGADO', 'Ligado']]},
     {**_mm('ductus_mm', 'Ductus'), 'visible_si': {'campo': 'ductus', 'igual': 'PERMEABLE'}},
     {'clave': 'ductus_shunt', 'tipo': 'opcion', 'etiqueta': 'Shunt ductal', 'opciones': SHUNT, 'ancho': 2,
      'visible_si': {'campo': 'ductus', 'igual': 'PERMEABLE'}},
 
     {'clave': 'sub_aorta', 'tipo': 'subtitulo', 'etiqueta': 'Aorta'},
-    {'clave': 'ao_valva', 'tipo': 'opcion', 'etiqueta': 'Válvula aórtica', 'por_defecto': 'TRIVALVA', 'ancho': 2,
+    {'clave': 'ao_valva', 'tipo': 'opcion', 'etiqueta': 'Válvula aórtica', 'normal': 'TRIVALVA', 'ancho': 2,
      'opciones': [['TRIVALVA', 'Trivalva'], ['BIVALVA', 'Bivalva'], ['UNIVALVA', 'Univalva']]},
     _mm('ao_anillo', 'Anillo'), *_z('ao_z', 'ao_anillo'), _vel('ao_vmax'), _gp('ao_gp', 'ao_vmax'),
     _grado('ao_ia', 'Insuficiencia'),
     _mm('ao_sv', 'Senos de Valsalva'), _zphn('ao_sv'), _mm('ao_ust', 'Unión sinotubular'), _zphn('ao_ust'),
     _mm('ao_asc', 'Aorta ascendente'), _zphn('ao_asc'),
-    {'clave': 'arco', 'tipo': 'opcion', 'etiqueta': 'Arco aórtico', 'por_defecto': 'IZQUIERDO', 'ancho': 2,
+    {'clave': 'arco', 'tipo': 'opcion', 'etiqueta': 'Arco aórtico', 'normal': 'IZQUIERDO', 'ancho': 2,
      'opciones': [['IZQUIERDO', 'Izquierdo'], ['DERECHO', 'Derecho']]},
-    {'clave': 'arco_obstruccion', 'tipo': 'opcion', 'etiqueta': 'Obstrucción', 'por_defecto': 'NO', 'ancho': 2,
+    {'clave': 'arco_obstruccion', 'tipo': 'opcion', 'etiqueta': 'Obstrucción', 'normal': 'NO', 'ancho': 2,
      'opciones': [['NO', 'Sin obstrucción'], ['COARTACION', 'Coartación'], ['HIPOPLASIA', 'Hipoplasia']]},
     _vel('ao_desc_vmax', 'Vmáx Ao descendente'),
 
     {'clave': 'sub_pericardio', 'tipo': 'subtitulo', 'etiqueta': 'Pericardio y otros'},
-    {'clave': 'derrame', 'tipo': 'opcion', 'etiqueta': 'Derrame pericárdico', 'por_defecto': 'NO', 'ancho': 3,
+    {'clave': 'derrame', 'tipo': 'opcion', 'etiqueta': 'Derrame pericárdico', 'normal': 'NO', 'ancho': 3,
      'opciones': [['NO', 'No'], ['LEVE', 'Leve'], ['MODERADO', 'Moderado'], ['SEVERO', 'Severo']]},
-    {'clave': 'trombos', 'tipo': 'si_no', 'etiqueta': 'Trombos', 'por_defecto': False, 'ancho': 2},
-    {'clave': 'vegetaciones', 'tipo': 'si_no', 'etiqueta': 'Vegetaciones', 'por_defecto': False, 'ancho': 2},
+    {'clave': 'trombos', 'tipo': 'si_no', 'etiqueta': 'Trombos', 'normal': False, 'ancho': 2},
+    {'clave': 'vegetaciones', 'tipo': 'si_no', 'etiqueta': 'Vegetaciones', 'normal': False, 'ancho': 2},
     {'clave': 'otros', 'tipo': T, 'etiqueta': 'Otros hallazgos', 'filas': 2},
     {'clave': 'texto_informe', 'tipo': 'calculado', 'etiqueta': 'Así sale en el informe', 'funcion': 'cp.eco_texto',
      'filas': 8, 'ancho': 12},

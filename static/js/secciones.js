@@ -208,3 +208,33 @@
     bloque.addEventListener('change', function () { clearTimeout(espera); espera = setTimeout(calcular, 150); });
   });
 })();
+
+// «Completar lo vacío como normal» (ADR-053): pone el valor normal solo donde no hay nada marcado o escrito.
+(function () {
+  document.addEventListener('click', function (ev) {
+    const boton = ev.target.closest('[data-normales]');
+    if (!boton) return;
+    const prefijo = boton.dataset.prefijoNormales;
+    const normales = JSON.parse(boton.dataset.normales || '{}');
+    let marcados = 0;
+    Object.keys(normales).forEach(function (clave) {
+      const valor = String(normales[clave]);
+      const campos = document.querySelectorAll('[name="' + prefijo + '-' + clave + '"]');
+      if (!campos.length) return;
+      const primero = campos[0];
+      if (primero.type === 'radio') {
+        if (Array.prototype.some.call(campos, function (r) { return r.checked; })) return;
+        const elegido = Array.prototype.find.call(campos, function (r) { return r.value === valor; });
+        if (!elegido) return;
+        elegido.checked = true;
+        elegido.dispatchEvent(new Event('change', {bubbles: true}));
+      } else {
+        if (primero.value) return;
+        primero.value = valor;
+        primero.dispatchEvent(new Event('change', {bubbles: true}));
+      }
+      marcados += 1;
+    });
+    boton.innerHTML = '<i class="bi bi-check2-all me-1"></i>' + (marcados ? marcados + ' campos completados como normales' : 'No quedaba nada vacío');
+  });
+})();

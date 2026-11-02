@@ -45,7 +45,9 @@ Reglas:
 - Si un dato no se mencionó, no incluyas ese campo.
 - Números con punto decimal y en la unidad del campo (si dicta «diez punto cuatro kilos», peso = 10.4).
 - En campos de opciones usa exactamente uno de los valores permitidos.
-- Los campos de texto van en prosa médica clara, como la doctora lo dictó (corrige solo puntuación y muletillas).
+- En los campos de texto copia las palabras dictadas (quita solo muletillas y arregla la puntuación). Nunca
+  expliques, comentes estas reglas, repitas una idea ni agregues frases propias. Si algo se dijo una vez, va una vez.
+- Cada dato va en un solo campo: el más específico que exista (un peso va en el peso, no en un texto).
 - La tensión arterial «99 sobre 60» es sistólica 99 y diastólica 60.
 - Lo que no encaje en ningún campo va completo en `no_ubicado`, para que ella lo ubique.
 - No incluyas el nombre ni datos de identificación del paciente.

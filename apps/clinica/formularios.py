@@ -112,6 +112,20 @@ class FormularioSeccion(forms.Form):
                 self.fields[c['clave']].widget.attrs['data-no-aplica-si'] = _json(c['no_aplica_si'])
 
     @property
+    def normales(self):
+        """{clave: valor normal} de los campos con `normal` (botón «Completar lo vacío como normal», ADR-053)."""
+        salida = {}
+        for c in self.campos_def:
+            if 'normal' in c and c['clave'] in self.fields:
+                valor = c['normal']
+                salida[c['clave']] = ('si' if valor else 'no') if c['tipo'] == 'si_no' else valor
+        return salida
+
+    @property
+    def normales_json(self):
+        return _json(self.normales) if self.normales else ''
+
+    @property
     def tiene_calculados(self):
         return any(c['tipo'] == 'calculado' for c in self.campos_def)
 

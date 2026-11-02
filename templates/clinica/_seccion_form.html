@@ -1,5 +1,6 @@
 {# Formulario de una sección clínica construido desde su esquema. Recibe: form (FormularioSeccion) #}
 {% for e in form.non_field_errors %}<div class="alert alert-danger py-1 small">{{ e }}</div>{% endfor %}
+{% if form.normales %}<div class="d-flex justify-content-end mb-1"><button type="button" class="btn btn-sm btn-outline-success" data-normales="{{ form.normales_json }}" data-prefijo-normales="{{ form.prefix }}" title="Marca el valor normal solo en los campos que siguen vacíos; lo ya marcado o dictado no se toca"><i class="bi bi-check2-all me-1"></i>Completar lo vacío como normal</button></div>{% endif %}
 <div class="row g-2"{% if form.tiene_calculados and form.prefix %} data-calculo="{% url 'clinica:calcular' %}" data-prefijo="{{ form.prefix }}"{% if form.contexto.paciente %} data-paciente="{{ form.contexto.paciente.pk }}" data-fecha="{{ form.contexto.fecha|date:'Y-m-d' }}"{% endif %}{% endif %}>
 {% for it in form.items %}
   {% with c=it.def %}

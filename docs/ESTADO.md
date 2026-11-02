@@ -19,6 +19,8 @@ Desplegado el 2026-11-01: migraciones, `probar_almacenamiento` OK (R2 prod), esp
 2. Dictado (ADR-052): clave de Gemini puesta (prepago US$30). Primera prueba: transcripción muy buena con voz real,
    pero con micrófono en silencio **inventó un caso** → corregido (silencio detectado, transcribir y ordenar por
    separado). Falta: volver a probar en producción, revisar el micrófono del navegador, y nota de voz del teléfono.
+   2.º intento: transcribió casi nada y el modelo «comentó» las reglas → reglas reforzadas (ADR-053). Revisar micrófono.
+   Tras el push de ADR-053, en Railway: `sincronizar_especialidades` y `refrescar_plantillas cardiologia_pediatrica`.
 3. **Antes del 2026-12-01**: Railway deja de leer `railway.json`/`railway.cron.json` (Config as Code) →
    `railway config migrate` a `.railway/railway.ts` y revisar (igual en Ordo Lab).
 4. Servicio cron (`railway.cron.json`: cierre de consultas, tasa BCV, recordatorios) — no creado aún.

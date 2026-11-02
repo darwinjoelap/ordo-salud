@@ -214,3 +214,28 @@ class DemoCardiologiaTest(BaseTest):
         call_command('demo_cardiologia', consultorio='demo-cardio', borrar=True, stdout=StringIO())
         with self.en_tenant(tenant):
             self.assertFalse(Paciente.objects.exists())
+
+
+class EcoSinDefectoTest(BaseTest):
+    """ADR-053: el eco no trae nada marcado; «Completar lo vacío como normal» lo hace solo si la doctora lo pide."""
+
+    def setUp(self):
+        self.tenant, _ = crear_consultorio('Cardio', 'cardio4', especialidad='cardiologia_pediatrica')
+        self.cliente = self.entrar(self.tenant, 'titular')
+        with self.en_tenant():
+            self.p = Paciente.objects.create(nombres='Luis', apellidos='Mora', sexo='M', fecha_nacimiento=date(2024, 1, 5))
+
+    def test_eco_vacio_no_sale_en_el_informe(self):
+        from apps.especialidades.cardiologia_pediatrica.secciones import ECO, EKG
+        self.assertFalse([c['clave'] for c in ECO.esquema['campos'] + EKG.esquema['campos'] if 'por_defecto' in c])
+        r = self.cliente.get(f'/pacientes/{self.p.pk}/consultas/nueva/')
+        self.assertContains(r, 'Completar lo vacío como normal')
+        self.assertNotContains(r, 'value="SOLITUS" checked')
+        self.assertEqual(informe.eco({}, 0.5), '')
+
+    def test_valores_normales_del_boton(self):
+        from apps.clinica.formularios import FormularioSeccion
+        from apps.especialidades.cardiologia_pediatrica.secciones import ECO
+        normales = FormularioSeccion(ECO.esquema['campos'], prefix='s1').normales
+        self.assertEqual((normales['situs'], normales['tia'], normales['mit_ir'], normales['trombos']),
+                         ('SOLITUS', 'INTACTO', 'NO', 'no'))
