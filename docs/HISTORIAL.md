@@ -110,3 +110,9 @@
 - Darwin creó en Cloudflare los depósitos `ordo-salud-media` y `ordo-salud-dev` con un token cada uno; prueba OK desde su PC.
 - Los tests fuerzan almacenamiento local (`USAR_R2 = False` en settings de test).
 - Análisis de la competencia (Umia Salud, US$25 con 50 h de IA) y propuesta de precios en evaluación (ver ESTADO).
+
+### 2026-11-01 — Despliegue en Railway
+- Proyecto `ordo-salud` (web + Postgres), variables de producción, R2 `ordo-salud-media` probado, carga inicial y demo.
+- Dominio `*.salud.ordove.com` (CNAME + `_acme-challenge` + TXT de verificación, DNS only), junto a `*.lab.ordove.com`.
+- Aviso de Railway: Config as Code (`railway.json`) deja de funcionar el 2026-12-01.
+
