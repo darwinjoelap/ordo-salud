@@ -169,12 +169,74 @@ def transcribir_gemini(audio, tipo, vocabulario):
         _borrar_archivo(nombre_archivo)
 
 
+REGLAS_LISTA = """
+Cómo responder:
+- Recorre el texto de principio a fin y crea un elemento en `datos` por CADA dato clínico mencionado.
+- `campo` es el identificador exacto del catálogo; `valor` es lo dictado para ese campo.
+- Opciones: el código (lo que va antes del «=»). Sí/No: «si» o «no» («niega» = «no»). Números: solo la cifra en la
+  unidad del campo. Fechas: AAAA-MM-DD.
+- Un dato que no tenga campo en el catálogo va completo en `no_ubicado`."""
+
+
+def catalogo(herramienta):
+    """El esquema anidado de la plantilla → (líneas «sección.campo — descripción», identificadores, tipos)."""
+    secciones = herramienta['input_schema']['properties']['secciones']['properties']
+    lineas, ids, tipos = [], [], {}
+    for codigo, seccion in secciones.items():
+        lineas.append(f"\n## {seccion.get('description', codigo)}")
+        for clave, prop in seccion['properties'].items():
+            ident = f'{codigo}.{clave}'
+            tipo = prop.get('type')
+            if tipo == 'array' and (prop.get('items') or {}).get('type') == 'object':
+                tipo = 'tabla'
+            nombre = {'number': 'número', 'boolean': 'si/no', 'tabla': 'lista: un elemento por fila',
+                      'array': 'varias opciones separadas por coma'}.get(tipo, 'texto')
+            if prop.get('enum'):
+                nombre = 'opción'
+            lineas.append(f"- {ident} ({nombre}): {prop.get('description', '')}")
+            ids.append(ident)
+            tipos[ident] = (tipo, prop)
+    return '\n'.join(lineas), ids, tipos
+
+
+def a_secciones(datos, tipos):
+    """La lista [{campo, valor}] → {'secciones': {codigo: {clave: valor}}} (lo que valida servicios.validar)."""
+    secciones = {}
+    for d in datos or []:
+        if not isinstance(d, dict) or d.get('campo') not in tipos:
+            continue
+        valor = d.get('valor')
+        if valor in (None, ''):
+            continue
+        codigo, clave = d['campo'].rsplit('.', 1)
+        tipo, prop = tipos[d['campo']]
+        actual = secciones.setdefault(codigo, {})
+        if tipo == 'tabla':
+            subcampos = list((prop.get('items') or {}).get('properties') or {})
+            destino = 'descripcion' if 'descripcion' in subcampos else (subcampos[0] if subcampos else 'texto')
+            actual.setdefault(clave, []).append({destino: str(valor)})
+        elif tipo == 'array':
+            actual[clave] = [x.strip() for x in str(valor).split(',') if x.strip()]
+        elif tipo == 'string' and not prop.get('enum') and clave in actual:
+            actual[clave] = f'{actual[clave]} {valor}'.strip()        # dos frases para el mismo texto: se juntan
+        else:
+            actual[clave] = valor
+    return secciones
+
+
 def ordenar_gemini(texto, sistema, herramienta):
-    """Paso 2: el texto (no el audio) → campos del formulario, con el esquema de la plantilla."""
+    """
+    Paso 2: el texto (no el audio) → campos. En vez del formulario anidado (≈150 campos opcionales, con el que el
+    modelo llenaba el primero y cortaba), se le da un catálogo y devuelve una LISTA plana de {campo, valor}.
+    """
     modelo = settings.DICTADO_MODELO_GEMINI
-    esquema = json.loads(json.dumps(herramienta['input_schema']))
+    lineas, ids, tipos = catalogo(herramienta)
+    esquema = {'type': 'object', 'required': ['datos'], 'properties': {
+        'datos': {'type': 'array', 'items': {'type': 'object', 'required': ['campo', 'valor'], 'properties': {
+            'campo': {'type': 'string', 'enum': ids}, 'valor': {'type': 'string'}}}},
+        'no_ubicado': {'type': 'string'}}}
     cuerpo = {
-        'system_instruction': {'parts': [{'text': sistema}]},
+        'system_instruction': {'parts': [{'text': f'{sistema}\n{REGLAS_LISTA}\n\nCatálogo de campos:{lineas}'}]},
         'contents': [{'role': 'user', 'parts': [{'text': f'Texto dictado:\n"""\n{texto}\n"""'}]}],
         'generation_config': {'response_mime_type': 'application/json', 'response_json_schema': esquema,
                               'temperature': 0.1,
@@ -187,9 +249,12 @@ def ordenar_gemini(texto, sistema, herramienta):
         raise ErrorProveedor(f'Gemini no respondió bien ({r.status_code}): {r.text[:150]}')
     datos = r.json()
     try:
-        entrada = json.loads(_texto(datos))
+        salida = json.loads(_texto(datos))
     except ValueError as e:
         raise ErrorProveedor('Gemini devolvió un formato inesperado.') from e
+    if not isinstance(salida, dict):
+        salida = {}
+    entrada = {'secciones': a_secciones(salida.get('datos'), tipos), 'no_ubicado': salida.get('no_ubicado') or ''}
     return entrada, _uso(datos), modelo
 
 

@@ -186,7 +186,9 @@ class GeminiTest(SimpleTestCase):
                               promptTokensDetails=[{'modality': 'AUDIO', 'tokenCount': 1920}])
 
     def ordenado(self, secciones=None):
-        return self.con_texto(json.dumps({'secciones': secciones or {}, 'no_ubicado': ''}),
+        datos = [{'campo': f'{codigo}.{clave}', 'valor': str(valor)}
+                 for codigo, campos in (secciones or {}).items() for clave, valor in campos.items()]
+        return self.con_texto(json.dumps({'datos': datos, 'no_ubicado': ''}),
                               promptTokenCount=800, candidatesTokenCount=300, thoughtsTokenCount=200)
 
     @override_settings(GEMINI_API_KEY='clave', DICTADO_MODELO_GEMINI='gemini-3.8-flash', DICTADO_PROVEEDOR='gemini',
@@ -208,9 +210,39 @@ class GeminiTest(SimpleTestCase):
         self.assertIn('EKG frecuencia 94', paso2['contents'][0]['parts'][0]['text'])
         self.assertNotIn('inline_data', json.dumps(paso2))
         self.assertEqual(paso2['generation_config']['thinking_config'], {'thinking_level': 'low'})
-        self.assertEqual(r.entrada['secciones']['cp.ekg']['fc'], 94)
+        # lista plana de {campo, valor} con catálogo (no el formulario anidado)
+        self.assertEqual(paso2['generation_config']['response_json_schema']['properties']['datos']['items']
+                         ['properties']['campo']['enum'], ['cp.ekg.fc'])
+        self.assertIn('cp.ekg.fc (número): FC', paso2['system_instruction']['parts'][0]['text'])
+        self.assertEqual(r.entrada['secciones']['cp.ekg']['fc'], '94')
         self.assertEqual((r.transcripcion, r.tokens_entrada, r.tokens_salida, r.segundos_audio),
                          ('EKG frecuencia 94', 2800, 600, 60))
+
+    def test_la_lista_se_reparte_en_las_secciones(self):
+        estructura = [{'seccion_id': 3, 'codigo': 'cp.antecedentes', 'nombre': 'Antecedentes', 'campos': [
+            {'clave': 'edad_madre', 'tipo': 'numero', 'etiqueta': 'Edad de la madre', 'min': 10, 'max': 60},
+            {'clave': 'via_parto', 'tipo': 'opcion', 'etiqueta': 'Vía', 'opciones': [['EUTOCICO', 'Parto eutócico'],
+                                                                                    ['CESAREA', 'Cesárea']]},
+            {'clave': 'asma', 'tipo': 'si_no', 'etiqueta': 'Asma'},
+            {'clave': 'alergias', 'tipo': 'texto', 'etiqueta': 'Alergias'}]},
+            {'seccion_id': 9, 'codigo': 'nucleo.diagnosticos', 'nombre': 'Diagnósticos', 'campos': [
+                {'clave': 'diagnosticos', 'tipo': 'tabla', 'etiqueta': 'Diagnósticos', 'subcampos': [
+                    {'clave': 'codigo', 'etiqueta': 'Código'}, {'clave': 'descripcion', 'etiqueta': 'Descripción'}]}]}]
+        _, _, tipos = proveedores.catalogo(servicios.herramienta(estructura))
+        datos = [{'campo': 'cp.antecedentes.edad_madre', 'valor': '23'},
+                 {'campo': 'cp.antecedentes.via_parto', 'valor': 'EUTOCICO'},
+                 {'campo': 'cp.antecedentes.asma', 'valor': 'si'},
+                 {'campo': 'cp.antecedentes.alergias', 'valor': 'Acetaminofén.'},
+                 {'campo': 'cp.antecedentes.alergias', 'valor': 'Penicilina.'},
+                 {'campo': 'nucleo.diagnosticos.diagnosticos', 'valor': 'Taquicardia supraventricular'},
+                 {'campo': 'cp.inventado.x', 'valor': '1'}]
+        secciones = proveedores.a_secciones(datos, tipos)
+        resultado, avisos = servicios.validar({'secciones': secciones}, estructura)
+        valores = {c['clave']: c['valor'] for c in resultado['campos']}
+        self.assertEqual(valores, {'edad_madre': 23, 'via_parto': 'EUTOCICO', 'asma': True,
+                                   'alergias': 'Acetaminofén. Penicilina.'})
+        self.assertEqual(resultado['tablas'][0]['filas'], [{'descripcion': 'Taquicardia supraventricular'}])
+        self.assertEqual(avisos, [])
 
     @override_settings(GEMINI_API_KEY='clave', DICTADO_PROVEEDOR='gemini')
     def test_sin_voz_no_ordena_ni_inventa(self):
