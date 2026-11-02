@@ -209,6 +209,37 @@ class GeminiTest(SimpleTestCase):
         self.assertIn('response_schema', segundo)
         self.assertNotIn('additionalProperties', json.dumps(segundo))
 
+    @override_settings(GEMINI_API_KEY='clave', DICTADO_PROVEEDOR='gemini', DICTADO_RAZONAMIENTO='low')
+    def test_razonamiento_bajo_y_reintento_si_no_responde(self):
+        import requests
+        vacio = '{"transcripcion": "ok", "secciones": {}}'
+        bueno = self.respuesta({'candidates': [{'content': {'parts': [{'text': vacio}]}}]})
+        with mock.patch('apps.dictado.proveedores.requests.post',
+                        side_effect=[requests.ReadTimeout('lento'), bueno]) as post, \
+             mock.patch('apps.dictado.proveedores.time.sleep'):
+            r = proveedores.procesar_audio(b'mp3', 'audio/mp3', '', 'sistema', servicios.herramienta([]))
+        self.assertEqual((post.call_count, r.transcripcion), (2, 'ok'))
+        config = json.loads(post.call_args.kwargs['data'])['generation_config']
+        self.assertEqual(config['thinking_config'], {'thinking_level': 'low'})
+        self.assertEqual(post.call_args.kwargs['timeout'], proveedores.TIMEOUT_GEMINI)
+
+    @override_settings(GEMINI_API_KEY='clave', DICTADO_PROVEEDOR='gemini')
+    def test_dos_veces_sin_respuesta_avisa_que_se_puede_reenviar(self):
+        import requests
+        with mock.patch('apps.dictado.proveedores.requests.post', side_effect=requests.ReadTimeout('lento')), \
+             mock.patch('apps.dictado.proveedores.time.sleep'), \
+             self.assertRaisesMessage(proveedores.ErrorProveedor, 'Enviar ahora'):
+            proveedores.procesar_audio(b'mp3', 'audio/mp3', '', 'sistema', servicios.herramienta([]))
+
+    @override_settings(GEMINI_API_KEY='clave', DICTADO_PROVEEDOR='gemini')
+    def test_modelo_sin_razonamiento_configurable_se_llama_sin_el(self):
+        malo = self.respuesta({}, 400, 'Invalid JSON payload: unknown field thinking_level')
+        vacio = '{"transcripcion": "", "secciones": {}}'
+        bueno = self.respuesta({'candidates': [{'content': {'parts': [{'text': vacio}]}}]})
+        with mock.patch('apps.dictado.proveedores.requests.post', side_effect=[malo, bueno]) as post:
+            proveedores.procesar_audio(b'mp3', 'audio/mp3', '', 'sistema', servicios.herramienta([]))
+        self.assertNotIn('thinking_config', json.loads(post.call_args.kwargs['data'])['generation_config'])
+
     @override_settings(GEMINI_API_KEY='clave', DICTADO_PROVEEDOR='gemini')
     def test_audio_grande_va_por_files_api_y_se_borra(self):
         inicio = mock.Mock(status_code=200, headers={'x-goog-upload-url': 'https://subida'})

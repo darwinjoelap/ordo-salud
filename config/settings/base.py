@@ -188,6 +188,7 @@ LOGGING = {
 # Sin claves funciona en modo de prueba (no sale a internet). El audio nunca se guarda.
 DICTADO_PROVEEDOR = config('DICTADO_PROVEEDOR', default='gemini')    # gemini | openai_claude
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
+DICTADO_RAZONAMIENTO = config('DICTADO_RAZONAMIENTO', default='low')   # minimal | low | medium | high
 DICTADO_MODELO_GEMINI = config('DICTADO_MODELO_GEMINI', default='gemini-3.8-flash')
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')

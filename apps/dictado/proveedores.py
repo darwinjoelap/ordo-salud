@@ -132,26 +132,56 @@ def gemini(audio, tipo, vocabulario, sistema, herramienta):
             'system_instruction': {'parts': [{'text': f'{sistema}\nVocabulario frecuente: {vocabulario}'}]},
             'contents': [{'role': 'user', 'parts': [parte_audio, {'text': INSTRUCCION}]}],
             'generation_config': {'response_mime_type': 'application/json', 'response_json_schema': esquema,
-                                  'temperature': 0.1},
+                                  'temperature': 0.1,
+                                  # Ubicar datos dictados no necesita razonar mucho: es lo que más alarga la espera.
+                                  'thinking_config': {'thinking_level': settings.DICTADO_RAZONAMIENTO}},
             'store': False,
         }
         url = f'{URL_GEMINI}/v1beta/models/{modelo}:generateContent'
-        try:
-            r = requests.post(url, headers={**_cabeceras(), 'Content-Type': 'application/json'},
-                              data=json.dumps(cuerpo), timeout=170)
-            if r.status_code == 400 and 'schema' in r.text.lower():
-                # Versión de la API sin `response_json_schema`: se usa el esquema OpenAPI (sin additionalProperties).
-                cuerpo['generation_config'].pop('response_json_schema')
-                cuerpo['generation_config']['response_schema'] = _sin_additional(esquema)
-                r = requests.post(url, headers={**_cabeceras(), 'Content-Type': 'application/json'},
-                                  data=json.dumps(cuerpo), timeout=170)
-        except requests.RequestException as e:
-            raise ErrorProveedor(f'No se pudo conectar con Gemini ({e.__class__.__name__}).') from e
+        r = _llamar_gemini(url, cuerpo, esquema)
         if r.status_code != 200:
             raise ErrorProveedor(f'Gemini no respondió bien ({r.status_code}): {r.text[:150]}')
         return leer_respuesta(r.json(), modelo)
     finally:
         _borrar_archivo(nombre_archivo)
+
+
+TIMEOUT_GEMINI = 90          # segundos por intento
+REINTENTABLES = (429, 500, 502, 503, 504)
+
+
+def _llamar_gemini(url, cuerpo, esquema):
+    """
+    POST con dos intentos (si Google no responde a tiempo o está saturado) y dos ajustes automáticos si la versión
+    del modelo no admite algo: `response_json_schema` → esquema OpenAPI; `thinking_config` → sin él.
+    """
+    cabeceras = {**_cabeceras(), 'Content-Type': 'application/json'}
+    ultimo = None
+    for intento in range(2):
+        try:
+            r = requests.post(url, headers=cabeceras, data=json.dumps(cuerpo), timeout=TIMEOUT_GEMINI)
+        except (requests.Timeout, requests.ConnectionError) as e:
+            ultimo = e
+            time.sleep(2)
+            continue
+        except requests.RequestException as e:
+            raise ErrorProveedor(f'No se pudo conectar con Gemini ({e.__class__.__name__}).') from e
+        if r.status_code == 400:
+            texto = r.text.lower()
+            config = cuerpo['generation_config']
+            if 'thinking' in texto and 'thinking_config' in config:
+                config.pop('thinking_config')
+                return _llamar_gemini(url, cuerpo, esquema)
+            if 'schema' in texto and 'response_json_schema' in config:
+                config.pop('response_json_schema')
+                config['response_schema'] = _sin_additional(esquema)
+                return _llamar_gemini(url, cuerpo, esquema)
+        if r.status_code in REINTENTABLES and intento == 0:
+            time.sleep(3)
+            continue
+        return r
+    raise ErrorProveedor(f'Gemini no respondió a tiempo ({ultimo.__class__.__name__}). Toca «Enviar ahora» para '
+                         'reintentar; la grabación quedó guardada.') from ultimo
 
 
 def leer_respuesta(datos, modelo):

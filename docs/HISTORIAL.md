@@ -107,3 +107,6 @@
 
 ### 2026-10-31 — Archivos en R2
 - ADR-051: Cloudflare R2 privado reemplaza a Cloudinary; adjuntos con nombre aleatorio; comando `probar_almacenamiento`.
+- Darwin creó en Cloudflare los depósitos `ordo-salud-media` y `ordo-salud-dev` con un token cada uno; prueba OK desde su PC.
+- Los tests fuerzan almacenamiento local (`USAR_R2 = False` en settings de test).
+- Análisis de la competencia (Umia Salud, US$25 con 50 h de IA) y propuesta de precios en evaluación (ver ESTADO).
