@@ -20,7 +20,7 @@ Dictado: tras ADR-052/053/054 **funciona mucho mejor** (transcripción fiel y re
    («Subir grabación»); revisar lo que quede en «No se pudo ubicar». Ver costo real en AI Studio → Gasto.
 3. ~~Migrar `railway.json` a `.railway/railway.ts`~~ hecho 2026-11-02 (ADR-055). **Ordo Lab**: hacer lo mismo
    antes del 2026-12-01 (`railway config migrate --service <web>`, variables unmanaged, plan sin «destroy»).
-4. Servicio cron (cierre de consultas, tasa BCV, recordatorios) — no creado. Favicon da 404.
+4. Servicio `tareas` (ADR-056) declarado en `.railway/railway.ts`: aplicar, cargar sus variables, probar «Run now». Favicon da 404.
 5. Con la doctora: comparar Z-score con ParameterZ (anillo pulmonar = PVSAX), revisión del informe, abreviaturas de
    ritmo. Luego pasarle el demo (`dra-sierra.salud.ordove.com`, usuario `lsierra`).
 6. Antes de pacientes reales: `demo_cardiologia --consultorio dra-sierra --borrar`.

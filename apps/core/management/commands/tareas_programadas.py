@@ -1,5 +1,5 @@
 """
-Tareas periódicas de Ordo Salud. En Railway: servicio Cron con este comando (railway.cron.json).
+Tareas periódicas de Ordo Salud. En Railway: servicio «tareas» (cron 07:00 y 18:00 de Venezuela) en .railway/railway.ts.
   python manage.py tareas_programadas              → todo
   python manage.py tareas_programadas --solo tasa
 """

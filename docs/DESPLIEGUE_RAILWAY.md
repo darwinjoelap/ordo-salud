@@ -56,7 +56,11 @@ python manage.py demo_cardiologia --consultorio dra-sierra --crear --usuario lsi
 - [ ] Configuración del consultorio: banner (membrete) y **Fórmula de SC = Haycock** (ya viene así por la especialidad).
 
 ### A4. Tareas programadas (opcional en el demo)
-Segundo servicio con el mismo repo que corre `python manage.py tareas_programadas` a las 07:00 de Venezuela (cron `0 11 * * *` UTC: cierra consultas vencidas, tasa del BCV, recordatorios). **Pendiente:** declararlo en `.railway/railway.ts` (la referencia de IaC no documenta aún el cron; `railway.cron.json` queda solo como referencia de los valores).
+Servicio **`tareas`** declarado en `.railway/railway.ts` (ADR-056): mismo repo y Dockerfile, corre
+`python manage.py tareas_programadas` (tasa BCV, cierre de consultas vencidas, limpiezas) con cron `0 11,22 * * *` UTC
+= **07:00 y 18:00 de Venezuela**, sin reinicios. Sus variables se cargan en el panel (el archivo no maneja variables):
+`DJANGO_SETTINGS_MODULE=config.settings.prod`, `SECRET_KEY=${{web.SECRET_KEY}}`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`
+y las de R2 con referencia a `web`. Probar a mano: servicio tareas → **Run now** (o `railway ssh` en web y correr el comando).
 
 ### A5. Antes de pasarle el demo
 - [ ] Los pacientes del demo son **ficticios** (marcados `[DEMO]`). Se borran con
