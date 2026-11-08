@@ -26,7 +26,7 @@
         <div class="tab-pane fade {% if clave == tab %}show active{% endif %}" id="tab-{{ clave }}" role="tabpanel">
           <div class="row g-3">
             {% for campo in campos %}
-              <div class="{% if campo.name in 'direccion mensaje_whatsapp pie_documentos visibilidad_historia membrete' %}col-12{% else %}col-md-6{% endif %}">
+              <div class="{% if campo.name in 'direccion plantilla_whatsapp pie_documentos visibilidad_historia membrete' %}col-12{% else %}col-md-6{% endif %}">
                 {% if campo.name == 'logo' and form.instance.logo %}
                   <div class="d-flex align-items-center gap-3 mb-2"><img src="{{ form.instance.logo.url }}" alt="Logo actual" class="os-logo-actual">{% include 'partials/campo.html' with campo=form.quitar_logo %}</div>
                 {% endif %}
@@ -34,6 +34,10 @@
                   <div class="d-flex align-items-center gap-3 mb-2"><img src="{{ form.instance.membrete.url }}" alt="Membrete actual" class="os-logo-actual" style="max-width:320px">{% include 'partials/campo.html' with campo=form.quitar_membrete %}</div>
                 {% endif %}
                 {% include 'partials/campo.html' with campo=campo %}
+                {% if campo.name == 'plantilla_whatsapp' and form.vista_previa_whatsapp %}
+                  <div class="small text-muted mt-1"><i class="bi bi-whatsapp me-1"></i>Así se verá (ejemplo):
+                    <div class="border rounded p-2 mt-1 bg-body-tertiary" style="white-space:pre-line">{{ form.vista_previa_whatsapp }}</div></div>
+                {% endif %}
               </div>
             {% endfor %}
             {% if clave == 'historia' %}

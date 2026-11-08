@@ -210,8 +210,12 @@ class PlataformaTest(TestCase):
                          - timedelta(days=1))
         self.assertEqual(t.suscripciones.count(), 1)
 
-    def test_soporte_entra_sin_ver_historias(self):
+    def test_soporte_entra_con_control_total(self):
+        """ADR-057: el soporte ve historias y gestiona todo; no crea consultas (las firma un profesional)."""
         t, _ = crear_consultorio('S', 'soporte-x', usuario='s')
         self.c.post(f'/plataforma/{t.pk}/entrar/')
         self.assertEqual(self.c.get('/pacientes/').status_code, 200)
-        self.assertNotIn('historia.ver', self.c.get('/pacientes/').context['permisos'])
+        permisos = self.c.get('/pacientes/').context['permisos']
+        self.assertIn('historia.ver', permisos)
+        self.assertIn('tenant.configurar', permisos)
+        self.assertNotIn('consultas.crear', permisos)

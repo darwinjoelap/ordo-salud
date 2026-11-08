@@ -26,7 +26,7 @@ def usd(valor):
 
 @register.filter
 def bs(valor_usd, tasa=1):
-    """Monto en USD convertido con la tasa: '{{ precio|bs:tasa.bs_por_usd }}' → 'Bs 1.234,50'.
+    """Monto en divisa convertido con la tasa del consultorio: '{{ precio|bs:tasa.valor }}' → 'Bs 1.234,50'.
     Sin tasa formatea un monto que ya está en bolívares: '{{ pago.monto|bs }}'."""
     try:
         numero = (Decimal(valor_usd or 0) * Decimal(tasa)).quantize(Decimal('0.01'))

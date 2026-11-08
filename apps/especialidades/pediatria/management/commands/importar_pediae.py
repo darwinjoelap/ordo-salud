@@ -246,7 +246,11 @@ class Command(BaseCommand):
         c.telefono = (cfg.get('telefono') or '')[:40]
         c.email = cfg.get('email') or ''
         c.whatsapp = re.sub(r'\D', '', cfg.get('whatsapp_numero') or '')[:20]
-        c.mensaje_whatsapp = cfg.get('whatsapp_mensaje') or ''
+        extra = (cfg.get('whatsapp_mensaje') or '').strip()     # en el origen era un texto que se agregaba al final
+        if extra:
+            from apps.configuracion.whatsapp import PLANTILLA
+            c.plantilla_whatsapp = PLANTILLA.replace(' Por favor confirme su asistencia. Gracias.', '') + '\n\n' + \
+                extra.replace('{', '(').replace('}', ')')
         if re.match(r'^#[0-9A-Fa-f]{6}$', cfg.get('color_primario') or ''):
             c.color_primario = cfg['color_primario']
         c.hora_inicio_agenda, c.hora_fin_agenda = cfg.get('horario_inicio'), cfg.get('horario_fin')

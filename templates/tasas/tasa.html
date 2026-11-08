@@ -4,9 +4,12 @@
   <div><h1 class="h3 mb-0">Tasa del día</h1>
     <div class="small text-muted">Ordo Salud consulta el BCV cada mañana. Si no se actualizó, carga la tasa de hoy para tu consultorio.</div></div>
   {% if vigente %}<div class="text-end"><div class="small text-muted">En uso</div>
-    <div class="fs-4 fw-bold {% if vigente.fecha != hoy %}text-warning-emphasis{% endif %}">Bs {{ vigente.bs_por_usd|floatformat:"4g" }}</div>
+    <div class="fs-4 fw-bold {% if vigente.fecha != hoy %}text-warning-emphasis{% endif %}">Bs {{ vigente.valor|floatformat:"4g" }} <span class="fs-6 fw-normal">por {{ vigente.moneda }}</span></div>
+    <div class="small text-muted">{% if vigente.moneda == 'EUR' %}Dólar: Bs {{ vigente.bs_por_usd|floatformat:"4g" }}{% elif vigente.bs_por_eur %}Euro: Bs {{ vigente.bs_por_eur|floatformat:"4g" }}{% endif %}</div>
     <div class="small text-muted">{{ vigente.fecha|date:"d/m/Y" }} · {% if vigente.fuente == 'TENANT' %}cargada por tu consultorio{% else %}{{ vigente.get_fuente_display }}{% endif %}</div></div>{% endif %}
 </div>
+<div class="small mb-2">Tu consultorio calcula los bolívares con la tasa del <b>{% if referencia == 'EUR' %}euro{% else %}dólar{% endif %}</b> BCV{% if 'tenant.configurar' in permisos %} · <a href="{% url 'configuracion:editar' %}?tab=cobros">cambiar</a>{% endif %}.</div>
+{% if vigente.sin_euro %}<div class="alert alert-warning py-2"><i class="bi bi-exclamation-triangle me-1"></i>Elegiste el euro, pero no hay tasa del euro registrada: mientras tanto se usa la del dólar. Cárgala abajo o consulta el BCV.</div>{% endif %}
 {% if vigente and vigente.fecha != hoy %}<div class="alert alert-warning py-2"><i class="bi bi-exclamation-triangle me-1"></i>La tasa en uso no es de hoy. Consulta el BCV o cárgala a mano.</div>{% endif %}
 <div class="row g-3">
   <div class="col-lg-4">
@@ -14,28 +17,30 @@
       <div class="fw-semibold mb-2">Cargar la tasa de hoy ({{ hoy|date:"d/m/Y" }})</div>
       <label class="form-label small" for="valor">Bs por USD</label>
       <input id="valor" name="valor" inputmode="decimal" required class="form-control mb-2" placeholder="Ej.: 36,5021">
+      <label class="form-label small" for="valor_eur">Bs por EUR {% if referencia != 'EUR' %}<span class="text-muted">(opcional)</span>{% endif %}</label>
+      <input id="valor_eur" name="valor_eur" inputmode="decimal" {% if referencia == 'EUR' %}required{% endif %} class="form-control mb-2" placeholder="Ej.: 42,1187">
       <div class="small text-muted mb-2">Solo aplica a tu consultorio. Cada cobro guarda la tasa del momento; los ya registrados no cambian.</div>
       <button class="btn btn-primary btn-sm" onclick="return confirm('¿Usar esta tasa hoy en tu consultorio?')"><i class="bi bi-save me-1"></i>Guardar tasa</button>
     </form>
     <form method="post" class="card card-body">{% csrf_token %}<input type="hidden" name="accion" value="bcv">
       <div class="fw-semibold mb-1">Reintentar con el BCV</div>
-      <div class="small text-muted mb-2">Última del BCV: {% if bcv %}Bs {{ bcv.bs_por_usd|floatformat:"4g" }} ({{ bcv.fecha|date:"d/m/Y" }}){% else %}ninguna{% endif %}</div>
+      <div class="small text-muted mb-2">Última del BCV: {% if bcv %}Bs {{ bcv.bs_por_usd|floatformat:"4g" }}/USD{% if bcv.bs_por_eur %} · {{ bcv.bs_por_eur|floatformat:"4g" }}/EUR{% endif %} ({{ bcv.fecha|date:"d/m/Y" }}){% else %}ninguna{% endif %}</div>
       <button class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-repeat me-1"></i>Consultar BCV</button>
     </form>
   </div>
   <div class="col-lg-8">
     <div class="card mb-3"><div class="card-header bg-white fw-semibold">Tasas cargadas por tu consultorio</div>
       {% if propias %}<div class="table-responsive"><table class="table table-sm align-middle mb-0">
-        <thead class="table-light"><tr><th>Fecha</th><th class="text-end">Bs por USD</th><th class="d-none d-sm-table-cell">Registró</th><th></th></tr></thead>
-        <tbody>{% for t in propias %}<tr><td>{{ t.fecha|date:"d/m/Y" }}</td><td class="text-end">{{ t.bs_por_usd|floatformat:"4g" }}</td>
+        <thead class="table-light"><tr><th>Fecha</th><th class="text-end">Bs por USD</th><th class="text-end">Bs por EUR</th><th class="d-none d-sm-table-cell">Registró</th><th></th></tr></thead>
+        <tbody>{% for t in propias %}<tr><td>{{ t.fecha|date:"d/m/Y" }}</td><td class="text-end">{{ t.bs_por_usd|floatformat:"4g" }}</td><td class="text-end">{{ t.bs_por_eur|floatformat:"4g"|default:"—" }}</td>
           <td class="d-none d-sm-table-cell small">{{ t.registrada_por.nombre_visible|default:"—" }}</td>
           <td class="text-end">{% if t.fecha == hoy %}<form method="post" onsubmit="return confirm('¿Quitar tu tasa de hoy y usar la del BCV?')">{% csrf_token %}<input type="hidden" name="accion" value="borrar"><input type="hidden" name="fecha" value="{{ t.fecha|date:'Y-m-d' }}"><button class="btn btn-link btn-sm p-0 text-danger">Usar la del BCV</button></form>{% endif %}</td></tr>{% endfor %}</tbody>
       </table></div>{% else %}<div class="card-body text-muted small">Tu consultorio no ha cargado tasas: usa la del BCV.</div>{% endif %}
     </div>
     <div class="card"><div class="card-header bg-white fw-semibold">Historial BCV</div>
       {% if historial_bcv %}<div class="table-responsive"><table class="table table-sm align-middle mb-0">
-        <thead class="table-light"><tr><th>Fecha</th><th class="text-end">Bs por USD</th><th>Fuente</th></tr></thead>
-        <tbody>{% for t in historial_bcv %}<tr><td>{{ t.fecha|date:"d/m/Y" }}</td><td class="text-end">{{ t.bs_por_usd|floatformat:"4g" }}</td><td class="small">{{ t.get_fuente_display }}</td></tr>{% endfor %}</tbody>
+        <thead class="table-light"><tr><th>Fecha</th><th class="text-end">Bs por USD</th><th class="text-end">Bs por EUR</th><th>Fuente</th></tr></thead>
+        <tbody>{% for t in historial_bcv %}<tr><td>{{ t.fecha|date:"d/m/Y" }}</td><td class="text-end">{{ t.bs_por_usd|floatformat:"4g" }}</td><td class="text-end">{{ t.bs_por_eur|floatformat:"4g"|default:"—" }}</td><td class="small">{{ t.get_fuente_display }}</td></tr>{% endfor %}</tbody>
       </table></div>{% else %}<div class="card-body text-muted small">Sin registros.</div>{% endif %}
     </div>
   </div>

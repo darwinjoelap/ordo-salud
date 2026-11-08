@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import ssl
@@ -41,24 +42,46 @@ def tasa_del_tenant(tenant):
     return tasa or None
 
 
+def referencia(tenant):
+    """'USD' o 'EUR': con qué tasa calcula bolívares el consultorio (ADR-059)."""
+    if tenant is None:
+        return 'USD'
+    config = getattr(tenant, 'configuracion', None)
+    return getattr(config, 'tasa_referencia', 'USD') or 'USD'
+
+
+def _con_valor(tasa, moneda, pedida):
+    """Copia de la tasa con .valor (Bs por la divisa usada), .moneda y .sin_euro (pidió EUR y no hay)."""
+    t = copy.copy(tasa)
+    t.moneda = moneda
+    t.valor = t.bs_por_eur if moneda == 'EUR' else t.bs_por_usd
+    t.sin_euro = pedida == 'EUR' and moneda != 'EUR'
+    return t
+
+
 def tasa_vigente(tenant=None):
     """
     Tasa que usa el consultorio: la más reciente entre la global y la suya; si son del mismo día, la suya.
-    Sin tenant (plataforma, comandos), la global.
+    Sin tenant (plataforma, comandos), la global. Devuelve una copia con `.valor` (Bs por la divisa elegida por el
+    consultorio), `.moneda` ('USD'/'EUR') y `.sin_euro` (eligió euro pero no hay tasa en euros: se usa el dólar).
     """
+    pedida = referencia(tenant)
     global_ = tasa_global()
-    if tenant is None:
-        return global_
-    propia = tasa_del_tenant(tenant)
-    if propia and (global_ is None or propia.fecha >= global_.fecha):
-        return propia
-    return global_
+    propia = tasa_del_tenant(tenant) if tenant is not None else None
+    candidatas = [t for t in (propia, global_) if t]          # propia primero: gana a igual fecha
+    if pedida == 'EUR':
+        con_euro = [t for t in candidatas if t.bs_por_eur]
+        if con_euro:
+            return _con_valor(max(con_euro, key=lambda t: t.fecha), 'EUR', pedida)
+    if not candidatas:
+        return None
+    return _con_valor(max(candidatas, key=lambda t: t.fecha), 'USD', pedida)
 
 
-def registrar_del_tenant(tenant, valor, usuario, fecha=None):
+def registrar_del_tenant(tenant, valor, usuario, fecha=None, eur=None):
     tasa, _ = TasaTenant.todos.update_or_create(
         tenant=tenant, fecha=fecha or timezone.localdate(),
-        defaults={'bs_por_usd': valor, 'registrada_por': usuario})
+        defaults={'bs_por_usd': valor, 'bs_por_eur': eur, 'registrada_por': usuario})
     cache.delete(_clave_tenant(tenant.pk))
     return tasa
 
@@ -72,13 +95,13 @@ def limpiar_cache():
     cache.delete(CLAVE_CACHE)
 
 
-def leer_tasa_html(html):
-    """Extrae la tasa USD del HTML del BCV (bloque con id="dolar")."""
+def leer_tasa_html(html, bloque_id='dolar'):
+    """Extrae una tasa del HTML del BCV (bloque con id="dolar" o id="euro")."""
     soup = BeautifulSoup(html, 'lxml')
-    bloque = soup.find(id='dolar')
+    bloque = soup.find(id=bloque_id)
     fuerte = bloque.find('strong') if bloque else None
     if not fuerte:
-        raise ValueError('No se encontró el bloque del dólar en la página del BCV.')
+        raise ValueError(f'No se encontró el bloque «{bloque_id}» en la página del BCV.')
     texto = fuerte.get_text(strip=True).replace('.', '').replace(',', '.')
     try:
         valor = Decimal(texto).quantize(Decimal('0.0001'))
@@ -198,12 +221,18 @@ def actualizar_desde_bcv():
     respuesta = descargar_bcv()
     respuesta.raise_for_status()
     valor = leer_tasa_html(respuesta.text)
-    return registrar(valor, TasaCambio.Fuente.BCV)
+    try:
+        eur = leer_tasa_html(respuesta.text, 'euro')
+    except ValueError as e:        # sin euro igual se registra el dólar
+        log.warning('BCV sin tasa del euro: %s', e)
+        eur = None
+    return registrar(valor, TasaCambio.Fuente.BCV, eur=eur)
 
 
-def registrar(valor, fuente, usuario=None, fecha=None):
-    tasa, _ = TasaCambio.objects.update_or_create(
-        fecha=fecha or timezone.localdate(),
-        defaults={'bs_por_usd': valor, 'fuente': fuente, 'registrada_por': usuario})
+def registrar(valor, fuente, usuario=None, fecha=None, eur=None):
+    defaults = {'bs_por_usd': valor, 'fuente': fuente, 'registrada_por': usuario}
+    if eur is not None:
+        defaults['bs_por_eur'] = eur
+    tasa, _ = TasaCambio.objects.update_or_create(fecha=fecha or timezone.localdate(), defaults=defaults)
     limpiar_cache()
     return tasa

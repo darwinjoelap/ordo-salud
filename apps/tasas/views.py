@@ -33,19 +33,25 @@ def tasa(request):
         elif accion == 'bcv':
             try:
                 t = servicios.actualizar_desde_bcv()
-                messages.success(request, f'BCV consultado: Bs {t.bs_por_usd} ({t.fecha:%d/%m/%Y}).')
+                eur = f' · EUR {t.bs_por_eur}' if t.bs_por_eur else ' (sin euro)'
+                messages.success(request, f'BCV consultado: USD {t.bs_por_usd}{eur} ({t.fecha:%d/%m/%Y}).')
             except Exception as e:  # noqa: BLE001 - el sitio del BCV falla seguido
                 logging.getLogger('apps.tasas').warning('Consulta al BCV desde %s falló: %s', tenant, e)
                 messages.error(request, 'El BCV no respondió. Puedes cargar la tasa del día a mano.')
         else:
             valor = numero(request.POST.get('valor', ''))
-            if valor is None or valor <= 0:
-                messages.error(request, 'Indica una tasa mayor que cero (ej.: 36,5021).')
+            eur = numero(request.POST.get('valor_eur', '')) if (request.POST.get('valor_eur') or '').strip() else None
+            if valor is None or valor <= 0 or (eur is not None and eur <= 0):
+                messages.error(request, 'Indica tasas mayores que cero (ej.: 36,5021).')
+            elif eur is None and servicios.referencia(tenant) == 'EUR':
+                messages.error(request, 'Tu consultorio trabaja con la tasa del euro: indica también Bs por EUR.')
             else:
-                servicios.registrar_del_tenant(tenant, valor.quantize(Decimal('0.0001')), request.user, hoy)
-                messages.success(request, f'Tasa de hoy guardada: Bs {valor}.')
+                servicios.registrar_del_tenant(tenant, valor.quantize(Decimal('0.0001')), request.user, hoy,
+                                               eur=eur.quantize(Decimal('0.0001')) if eur else None)
+                messages.success(request, f'Tasa de hoy guardada: USD {valor}' + (f' · EUR {eur}' if eur else '') + '.')
         return redirect('tasas:tasa')
     return render(request, 'tasas/tasa.html', {
         'titulo': 'Tasa del día', 'hoy': hoy, 'vigente': servicios.tasa_vigente(tenant),
+        'referencia': servicios.referencia(tenant),
         'bcv': servicios.tasa_global(), 'propias': TasaTenant.objects.select_related('registrada_por')[:30],
         'historial_bcv': TasaCambio.objects.all()[:15]})

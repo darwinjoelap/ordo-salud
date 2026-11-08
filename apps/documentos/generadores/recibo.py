@@ -17,7 +17,8 @@ def generar(doc, con_firma=True):
     monto = bs(pago.monto) if pago.moneda == Pago.Moneda.BS else usd(pago.monto)
     texto = f'Recibimos de <b>{pago.paciente.nombre_completo}</b> la cantidad de <b>{monto}</b>'
     if pago.moneda == Pago.Moneda.BS and pago.tasa:
-        texto += f' (equivalente a {usd(pago.monto_usd)} a la tasa de Bs {pago.tasa:.2f} por dólar)'
+        divisa = 'euro' if getattr(pago, 'tasa_ref', 'USD') == 'EUR' else 'dólar'
+        texto += f' (equivalente a {usd(pago.monto_usd)} a la tasa de Bs {pago.tasa:.2f} por {divisa})'
     texto += f' por medio de {pago.get_metodo_display().lower()}'
     texto += f', referencia {pago.referencia}.' if pago.referencia else '.'
     if pago.anulado:

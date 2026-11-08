@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block contenido %}
 <h1 class="h3 mb-1">Servicios y precios</h1>
-<p class="text-muted">Precios en USD; el monto en bolívares se calcula con la tasa del día{% if tasa %} (Bs {{ tasa.bs_por_usd|floatformat:"2g" }}){% endif %}.</p>
+<p class="text-muted">Precios en USD; el monto en bolívares se calcula con la tasa del día{% if tasa %} (Bs {{ tasa.valor|floatformat:"2g" }} por {{ tasa.moneda }}){% endif %}.</p>
 <div class="row g-3">
   <div class="col-lg-7">
     <div class="card"><div class="table-responsive"><table class="table align-middle mb-0 os-tabla">
@@ -11,7 +11,7 @@
           <td><div class="fw-semibold">{{ s.nombre }}{% if not s.activo %} <span class="badge text-bg-secondary">Inactivo</span>{% endif %}</div>
             <div class="small text-muted">{{ s.especialidad|default:"Cualquier especialidad" }}{% if s.descripcion %} · {{ s.descripcion }}{% endif %}</div></td>
           <td class="text-end">{{ s.precio_usd|usd }}</td>
-          <td class="text-end small">{% if tasa %}{{ s.precio_usd|bs:tasa.bs_por_usd }}{% else %}—{% endif %}</td>
+          <td class="text-end small">{% if tasa %}{{ s.precio_usd|bs:tasa.valor }}{% else %}—{% endif %}</td>
           <td class="text-end"><i class="bi bi-chevron-right text-muted"></i></td>
         </tr>
       {% empty %}<tr><td colspan="4" class="text-muted text-center py-4">Aún no hay servicios. Agrega «Consulta», «Control», procedimientos…</td></tr>{% endfor %}</tbody>

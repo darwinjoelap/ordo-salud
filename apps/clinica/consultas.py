@@ -34,7 +34,10 @@ CAMPOS_ANTECEDENTES = ['alergias', 'medicacion_actual', 'enfermedades_cronicas',
 # ── Permisos sobre una consulta ───────────────────────────────────────────────
 
 def puede_ver(membresia, consulta):
-    """Visibilidad configurable por consultorio (ADR-008)."""
+    """Visibilidad configurable por consultorio (ADR-008). El soporte ve todo (ADR-057)."""
+    from apps.core.permisos import es_soporte
+    if es_soporte(membresia):
+        return True
     perfil = membresia.perfil_activo if membresia else None
     if perfil is None:
         return False
@@ -49,6 +52,9 @@ def puede_ver(membresia, consulta):
 
 
 def puede_editar(membresia, consulta):
+    from apps.core.permisos import es_soporte
+    if es_soporte(membresia):
+        return consulta.editable
     perfil = membresia.perfil_activo if membresia else None
     return perfil is not None and consulta.profesional_id == perfil.pk and consulta.editable
 

@@ -11,7 +11,7 @@
     {% if saldo > 0 %}<div class="h4 mb-0 text-danger">Debe {{ saldo|usd }}</div>
     {% elif saldo < 0 %}<div class="h4 mb-0 text-success">A favor {{ a_favor|usd }}</div>
     {% else %}<div class="h4 mb-0 text-success">Al día</div>{% endif %}
-    {% if tasa and saldo > 0 %}<div class="small text-muted">{{ saldo|bs:tasa.bs_por_usd }} a la tasa de hoy</div>{% endif %}
+    {% if tasa and saldo > 0 %}<div class="small text-muted">{{ saldo|bs:tasa.valor }} a la tasa {% if tasa.moneda == 'EUR' %}euro{% else %}dólar{% endif %} de hoy</div>{% endif %}
   </div>
 </div>
 
@@ -71,7 +71,7 @@
             <td data-label="Fecha">{{ p.fecha|date:"d/m/Y" }}</td>
             <td data-label="Método">{{ p.get_metodo_display }}{% if p.referencia %} · {{ p.referencia }}{% endif %}
               {% if p.anulado %}<div class="small">Anulado: {{ p.motivo_anulacion }}</div>{% endif %}</td>
-            <td data-label="Monto" class="text-end">{% if p.moneda == 'BS' %}{{ p.monto|bs }}<div class="small text-muted">tasa {{ p.tasa|floatformat:"2g" }}</div>{% else %}{{ p.monto|usd }}{% endif %}</td>
+            <td data-label="Monto" class="text-end">{% if p.moneda == 'BS' %}{{ p.monto|bs }}<div class="small text-muted">tasa {{ p.tasa_ref }} {{ p.tasa|floatformat:"2g" }}</div>{% else %}{{ p.monto|usd }}{% endif %}</td>
             <td data-label="USD" class="text-end">{{ p.monto_usd|usd }}</td>
             <td class="text-end text-nowrap"><a href="{% url 'documentos:recibo' p.pk %}" target="_blank" data-pdf class="btn btn-link btn-sm p-0 me-2" title="Recibo"><i class="bi bi-receipt"></i></a>{% if not p.anulado %}
               <form method="post" class="d-inline" action="{% url 'cobros:pago_anular' p.pk %}" onsubmit="var m=prompt('Motivo de la anulación');if(!m)return false;this.motivo.value=m;">{% csrf_token %}<input type="hidden" name="motivo"><button class="btn btn-link btn-sm text-danger p-0" title="Anular pago"><i class="bi bi-x-circle"></i></button></form>{% endif %}</td>

@@ -42,6 +42,9 @@ def emitir(request, codigo):
     if definicion is None or definicion.extra.get('interno'):
         raise Http404
     perfil = request.membresia.perfil_activo
+    if perfil is None:                    # p. ej. soporte de Ordo Salud: los documentos los firma un profesional
+        messages.error(request, f'«{definicion.nombre}» lo emite y firma un profesional del consultorio.')
+        return redirect(request.META.get('HTTP_REFERER') or 'core:inicio')
     consulta = _consulta(request, request.GET.get('consulta') or request.POST.get('consulta')) \
         if (request.GET.get('consulta') or request.POST.get('consulta')) else None
     paciente = consulta.paciente if consulta else get_object_or_404(Paciente.objects.all(), pk=request.GET.get('paciente')

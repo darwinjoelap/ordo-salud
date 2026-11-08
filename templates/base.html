@@ -47,7 +47,7 @@
       {% if 'tasa.cargar' in permisos %}<a href="{% url 'tasas:tasa' %}" class="text-decoration-none">{% endif %}
       {% if tasa %}
         <span class="os-tasa {% if tasa_desactualizada %}os-tasa-alerta{% endif %}" title="{% if tasa.fuente == 'TENANT' %}Tasa cargada por el consultorio{% else %}Tasa BCV{% endif %} del {{ tasa.fecha|date:'d/m/Y' }}{% if tasa_desactualizada %} (no es de hoy){% endif %}">
-          <i class="bi bi-currency-exchange me-1"></i>{{ tasa.bs_por_usd|floatformat:"2g" }}<span class="d-none d-sm-inline"> Bs/USD</span>{% if tasa.fuente == 'TENANT' %} <i class="bi bi-pencil-square" aria-label="manual"></i>{% endif %}{% if tasa_desactualizada %} <i class="bi bi-exclamation-triangle"></i>{% endif %}</span>
+          <i class="bi bi-currency-exchange me-1"></i>{{ tasa.valor|floatformat:"2g" }}<span class="d-none d-sm-inline"> Bs/{{ tasa.moneda }}</span><span class="d-none d-lg-inline opacity-75 small"> · {% if tasa.moneda == 'EUR' %}{{ tasa.bs_por_usd|floatformat:'2g' }} USD{% elif tasa.bs_por_eur %}{{ tasa.bs_por_eur|floatformat:'2g' }} EUR{% endif %}</span>{% if tasa.sin_euro %} <i class="bi bi-exclamation-circle" title="Elegiste el euro, pero no hay tasa en euros: se usa la del dólar"></i>{% endif %}{% if tasa.fuente == 'TENANT' %} <i class="bi bi-pencil-square" aria-label="manual"></i>{% endif %}{% if tasa_desactualizada %} <i class="bi bi-exclamation-triangle"></i>{% endif %}</span>
       {% else %}
         <span class="os-tasa os-tasa-alerta" title="No hay tasa registrada"><i class="bi bi-currency-exchange me-1"></i>Sin tasa</span>
       {% endif %}

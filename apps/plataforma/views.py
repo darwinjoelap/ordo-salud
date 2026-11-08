@@ -188,20 +188,25 @@ def tasas(request):
         if request.POST.get('accion') == 'bcv':
             try:
                 t = tasas_srv.actualizar_desde_bcv()
-                messages.success(request, f'Tasa BCV registrada: Bs {t.bs_por_usd} ({t.fecha:%d/%m/%Y}).')
+                eur = f' · EUR {t.bs_por_eur}' if t.bs_por_eur else ' (sin euro)'
+                messages.success(request, f'Tasa BCV registrada: USD {t.bs_por_usd}{eur} ({t.fecha:%d/%m/%Y}).')
             except Exception as e:  # noqa: BLE001 - el BCV falla seguido: se informa y se carga a mano
                 logging.getLogger('apps.tasas').warning('Consulta manual al BCV falló: %s', e)
                 messages.error(request, f'No se pudo consultar el BCV ({e.__class__.__name__}). Cárgala a mano.')
         else:
             try:
                 valor = numero(request.POST.get('valor', ''))
+                eur = numero(request.POST.get('valor_eur', '')) if (request.POST.get('valor_eur') or '').strip() else None
+                if eur is not None and eur <= 0:
+                    raise ValueError
                 fecha = date.fromisoformat(request.POST.get('fecha') or timezone.localdate().isoformat())
                 if valor is None or valor <= 0 or fecha > timezone.localdate():
                     raise ValueError
             except (InvalidOperation, ValueError):
                 messages.error(request, 'Indica una tasa mayor que cero y una fecha que no sea futura.')
             else:
-                tasas_srv.registrar(valor.quantize(Decimal('0.0001')), TasaCambio.Fuente.MANUAL, request.user, fecha)
+                tasas_srv.registrar(valor.quantize(Decimal('0.0001')), TasaCambio.Fuente.MANUAL, request.user, fecha,
+                                    eur=eur.quantize(Decimal('0.0001')) if eur else None)
                 messages.success(request, f'Tasa del {fecha:%d/%m/%Y} guardada: Bs {valor}.')
         return redirect('plataforma:tasas')
     return render(request, 'plataforma/tasas.html', {

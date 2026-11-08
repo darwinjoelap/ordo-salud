@@ -30,8 +30,10 @@ class ConfiguracionTenant(models.Model):
     telefono = models.CharField('Teléfono', max_length=40, blank=True)
     email = models.EmailField('Correo', blank=True)
     whatsapp = models.CharField('WhatsApp', max_length=20, blank=True, help_text='Formato internacional: 584121234567')
-    mensaje_whatsapp = models.TextField('Mensaje adicional en recordatorios', blank=True,
-                                        help_text='Se agrega al final del recordatorio de cita.')
+    plantilla_whatsapp = models.TextField(
+        'Mensaje del recordatorio por WhatsApp', blank=True,
+        help_text='Marcadores: {saludo} {paciente} {de_paciente} {profesional} {consultorio} {fecha} {hora} {lugar}. '
+                  'Vacío = mensaje estándar.')
     # Documentos
     membrete = models.ImageField('Membrete (banner)', upload_to=_ruta, blank=True,
                                  help_text='Imagen horizontal que reemplaza el encabezado de los PDF.')
@@ -50,6 +52,12 @@ class ConfiguracionTenant(models.Model):
         'Fórmula de superficie corporal', max_length=10, default='MOSTELLER',
         choices=[('MOSTELLER', 'Mosteller'), ('HAYCOCK', 'Haycock (Z-score pediátricos, PHN)'), ('DUBOIS', 'DuBois')],
         help_text='Haycock es la que usan ParameterZ, PedZ y las tablas PHN para los Z-score del eco.')
+    # Cobros (ADR-059)
+    tasa_referencia = models.CharField(
+        'Tasa para calcular bolívares', max_length=3, default='USD',
+        choices=[('USD', 'Dólar BCV'), ('EUR', 'Euro BCV')],
+        help_text='Los precios siguen en divisa; los bolívares se calculan con esta tasa. Cada cobro guarda la tasa '
+                  'que usó: cambiarla no afecta lo ya registrado.')
     # Agenda
     hora_inicio_agenda = models.TimeField('Inicio de la jornada', null=True, blank=True)
     hora_fin_agenda = models.TimeField('Fin de la jornada', null=True, blank=True)

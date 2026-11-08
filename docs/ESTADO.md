@@ -11,7 +11,17 @@
 
 ---
 
-## Retomar aquí (2026-11-08) — Migración de Pediae (Fase 18a)
+## 2026-11-08 tarde — ADR-057/058/059 (código listo, falta push)
+Soporte con control total (ve y edita historias; no crea consultas ni firma documentos) · plantilla editable del
+recordatorio de WhatsApp · tasa euro BCV y elección USD/EUR por consultorio. 265 tests OK (SQLite y Postgres).
+Tras desplegar: Plataforma → Tasa BCV → «Consultar BCV» para que la de hoy traiga el euro.
+
+## Retomar aquí (2026-11-08) — Migraciones hechas (Fase 18)
+**Ginea → Ordo Salud en producción** (`dra-pereira`, `sinergia-femenina`; `importar_ginea`, todo cuadra). Pendiente:
+plan con 2 profesionales para Sinergia, avisos a usuarios, quitar proxy TCP de Ginea y de Pediae, en 2–4 semanas
+apagar Pediae/Ginea y borrar Cloudinary. Detalle: `docs/roadmap/18_migracion_pediae.md` §7.
+
+### Pediae (Fase 18a)
 **Importada a producción el 2026-11-08** (`importar_pediae`, todo cuadra). Antes: ensayado con el respaldo real (conteos y montos cuadran; ver
 `docs/roadmap/18_migracion_pediae.md` §4). Nombres aprobados; Dylan Zheng se une (`--unir 49=109`). Falta: día del cambio (§5, en
 Railway por `railway ssh`) → aviso a la Dra. Báez (`dra-anaisbaez.salud.ordove.com`, misma clave).

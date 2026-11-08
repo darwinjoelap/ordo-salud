@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from apps.configuracion.models import Lugar
 from apps.core import auditoria
 from apps.core.excepciones import ErrorDeNegocio
-from apps.core.permisos import requiere
+from apps.core.permisos import es_soporte, requiere
 from apps.dictado.views import vincular as vincular_dictado
 from apps.pacientes.models import Paciente, normalizar_texto
 
@@ -179,6 +179,14 @@ def editar(request, pk):
         **_glosario(request, consulta.paciente)})
 
 
+def _es_autor(request, consulta):
+    """Quien atendió la consulta (o el soporte de Ordo Salud, ADR-057) puede enmendarla o anularla."""
+    if es_soporte(request.membresia):
+        return True
+    perfil = request.membresia.perfil_activo
+    return perfil is not None and consulta.profesional_id == perfil.pk
+
+
 @login_required
 @requiere('historia.ver')
 def detalle(request, pk):
@@ -189,7 +197,7 @@ def detalle(request, pk):
     return render(request, 'clinica/consulta.html', {
         'titulo': f'Consulta · {consulta.paciente}', 'consulta': consulta, 'lectura': lectura,
         'vacias': [i for i in consulta.estructura if i['seccion_id'] not in con_datos],
-        'es_autor': request.membresia.perfil_activo and consulta.profesional_id == request.membresia.perfil_activo.pk,
+        'es_autor': _es_autor(request, consulta),
         'enmiendas': consulta.enmiendas.select_related('seccion', 'creado_por'),
         'adjuntos': consulta.adjuntos.all(), 'notas': consulta.notas_evolucion.select_related('creado_por'),
         'hoy': timezone.localdate()})
@@ -210,8 +218,7 @@ def imprimir(request, pk):
 @requiere('historia.ver')
 def enmendar(request, pk, seccion_id):
     consulta = _consulta_visible(request, pk)
-    perfil = request.membresia.perfil_activo
-    if consulta.profesional_id != perfil.pk or consulta.estado != Consulta.Estado.CERRADA:
+    if not _es_autor(request, consulta) or consulta.estado != Consulta.Estado.CERRADA:
         raise PermissionDenied
     item = next((i for i in consulta.estructura if i['seccion_id'] == seccion_id), None)
     if item is None:
@@ -238,7 +245,7 @@ def enmendar(request, pk, seccion_id):
 @require_POST
 def anular(request, pk):
     consulta = _consulta_visible(request, pk)
-    if consulta.profesional_id != request.membresia.perfil_activo.pk:
+    if not _es_autor(request, consulta):
         raise PermissionDenied
     srv.anular_consulta(consulta, request.POST.get('motivo'))
     auditoria.registrar(request, 'ANULAR', consulta, paciente_id=consulta.paciente_id,
@@ -307,7 +314,7 @@ def ficha_especialidad(request, paciente_pk, codigo):
     items = srv.items_ficha(codigo)
     if not items:
         raise Http404
-    puede_editar = request.membresia.perfil_activo is not None
+    puede_editar = request.membresia.perfil_activo is not None or es_soporte(request.membresia)
     guardados = srv.datos_ficha(paciente, items)
     datos = request.POST if request.method == 'POST' and puede_editar else None
     formularios = [(i, FormularioSeccion(i['campos'], datos, initial=guardados.get(i['seccion_id']) or {},

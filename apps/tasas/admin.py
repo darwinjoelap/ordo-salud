@@ -8,7 +8,7 @@ from .models import TasaCambio, TasaTenant
 
 @admin.register(TasaCambio)
 class TasaCambioAdmin(admin.ModelAdmin):
-    list_display = ['fecha', 'bs_por_usd', 'fuente', 'registrada_por', 'actualizado_en']
+    list_display = ['fecha', 'bs_por_usd', 'bs_por_eur', 'fuente', 'registrada_por', 'actualizado_en']
     readonly_fields = ['registrada_por']
 
     def save_model(self, request, obj, form, change):
@@ -21,5 +21,5 @@ class TasaCambioAdmin(admin.ModelAdmin):
 
 @admin.register(TasaTenant)
 class TasaTenantAdmin(TenantModelAdmin):
-    list_display = ['fecha', 'tenant', 'bs_por_usd', 'registrada_por', 'actualizado_en']
+    list_display = ['fecha', 'tenant', 'bs_por_usd', 'bs_por_eur', 'registrada_por', 'actualizado_en']
     list_filter = ['tenant']

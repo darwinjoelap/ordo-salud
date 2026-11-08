@@ -32,7 +32,7 @@ class ConfiguracionTest(BaseTest):
         r = self.cliente.post('/configuracion/', {
             'tab': 'identidad', 'nombre_mostrar': 'Consultorio Pérez', 'color_primario': '#2AACA8',
             'visibilidad_historia': 'PRIVADA', 'horas_edicion_consulta': 12, 'duracion_cita_min': 20, 'formula_sc': 'DUBOIS',
-            'logo': png('logo.png')})
+            'tasa_referencia': 'USD', 'logo': png('logo.png')})
         self.assertEqual(r.status_code, 302)
         self.tenant.configuracion.refresh_from_db()
         self.assertEqual(self.tenant.configuracion.visibilidad_historia, 'PRIVADA')

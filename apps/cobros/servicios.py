@@ -15,9 +15,10 @@ DOS = Decimal('0.01')
 
 
 def _tasa():
+    """(Bs por divisa, 'USD'|'EUR') con la tasa que eligió el consultorio (ADR-059), o (None, 'USD')."""
     from apps.tasas.servicios import tasa_vigente
     t = tasa_vigente(tenant_actual())
-    return t.bs_por_usd if t else None
+    return (t.valor, t.moneda) if t else (None, 'USD')
 
 
 def _actualizar_estado(cargo):
@@ -65,12 +66,13 @@ def crear_cargo(*, paciente, descripcion, precio_usd, descuento_usd=CERO, exoner
     descuento_usd = Decimal(descuento_usd or 0).quantize(DOS)
     if precio_usd < 0 or descuento_usd < 0 or descuento_usd > precio_usd:
         raise ErrorDeNegocio('El descuento no puede ser mayor que el precio.')
+    tasa, tasa_ref = _tasa()
     cargo = Cargo.objects.create(
         paciente=paciente, descripcion=(descripcion or (servicio.nombre if servicio else 'Servicio'))[:200],
         precio_usd=precio_usd, descuento_usd=descuento_usd, exonerado=exonerado, servicio=servicio,
         costo_usd=servicio.costo_usd if servicio else None, consulta=consulta, cita=cita,
         profesional=profesional or (consulta.profesional if consulta else None),
-        fecha=fecha or timezone.localdate(), tasa=_tasa())
+        fecha=fecha or timezone.localdate(), tasa=tasa, tasa_ref=tasa_ref)
     _actualizar_estado(cargo)
     conciliar(paciente)
     return cargo
@@ -81,7 +83,11 @@ def registrar_pago(*, paciente, monto, moneda, metodo, referencia='', notas='', 
     monto = Decimal(monto).quantize(DOS)
     if monto <= 0:
         raise ErrorDeNegocio('El monto debe ser mayor que cero.')
-    tasa = Decimal(tasa) if tasa else _tasa()
+    tasa_ref = 'USD'
+    if tasa:
+        tasa = Decimal(tasa)
+    else:
+        tasa, tasa_ref = _tasa()
     if moneda == Pago.Moneda.BS:
         if not tasa:
             raise ErrorDeNegocio('No hay tasa del día: cárgala antes de registrar un pago en bolívares.')
@@ -89,7 +95,7 @@ def registrar_pago(*, paciente, monto, moneda, metodo, referencia='', notas='', 
     else:
         monto_usd = monto
     pago = Pago.objects.create(paciente=paciente, fecha=fecha or timezone.localdate(), moneda=moneda, monto=monto,
-                               tasa=tasa, monto_usd=monto_usd, metodo=metodo, referencia=referencia[:60],
+                               tasa=tasa, tasa_ref=tasa_ref, monto_usd=monto_usd, metodo=metodo, referencia=referencia[:60],
                                notas=notas[:200])
     conciliar(paciente)
     return pago

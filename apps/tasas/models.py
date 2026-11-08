@@ -1,5 +1,5 @@
 """
-Tasa oficial BCV (Bs por USD).
+Tasa oficial BCV (Bs por USD y Bs por EUR, ADR-059).
 - TasaCambio es GLOBAL: la consulta el cron cada día (o la carga a mano la plataforma).
 - TasaTenant: el consultorio puede cargar su propia tasa del día si el BCV no respondió; solo lo afecta a él.
 La que se usa es la más reciente de las dos (`servicios.tasa_vigente(tenant)`).
@@ -17,6 +17,7 @@ class TasaCambio(models.Model):
 
     fecha = models.DateField('Fecha', unique=True)
     bs_por_usd = models.DecimalField('Bs por USD', max_digits=14, decimal_places=4)
+    bs_por_eur = models.DecimalField('Bs por EUR', max_digits=14, decimal_places=4, null=True, blank=True)
     fuente = models.CharField('Fuente', max_length=8, choices=Fuente.choices, default=Fuente.BCV)
     registrada_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                        related_name='+')
@@ -38,6 +39,7 @@ class TasaTenant(TenantModel):
     """
     fecha = models.DateField('Fecha')
     bs_por_usd = models.DecimalField('Bs por USD', max_digits=14, decimal_places=4)
+    bs_por_eur = models.DecimalField('Bs por EUR', max_digits=14, decimal_places=4, null=True, blank=True)
     registrada_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                        related_name='+')
     actualizado_en = models.DateTimeField(auto_now=True)

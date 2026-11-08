@@ -49,10 +49,21 @@ PERMISOS = {
 }
 
 
+# Lo que exige un perfil profesional propio (firma la consulta o el reporte): el soporte no lo tiene
+SOLO_CON_PERFIL = {'consultas.crear', 'plantillas.propias', 'reportes.propios'}
+
+
+def es_soporte(membresia):
+    """Superusuario de Ordo Salud dentro de un consultorio (membresía virtual, ADR-057)."""
+    return bool(getattr(membresia, 'soporte', False))
+
+
 def permisos_de(membresia):
     """Conjunto de códigos que tiene una membresía (o vacío si no hay)."""
     if membresia is None:
         return set()
+    if es_soporte(membresia):             # control total, incluidas las historias (ADR-057)
+        return set(PERMISOS) - SOLO_CON_PERFIL
     claves = {membresia.rol}
     if getattr(membresia, 'es_profesional', False):
         claves.add(PROFESIONAL)

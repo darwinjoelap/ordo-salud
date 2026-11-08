@@ -9,6 +9,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from apps.configuracion import whatsapp
 from apps.core.excepciones import ErrorDeNegocio
 from apps.core.fechas import hora12
 from apps.core.tenancy import tenant_actual
@@ -236,13 +237,13 @@ def url_whatsapp(cita):
         return None
     config = cita.tenant.configuracion
     saludo = (representante.nombre if representante else paciente.nombres).split()[0]
-    cuando = f'el {cita.fecha:%d/%m/%Y}' + (f' a las {hora12(cita.hora_inicio)}' if cita.hora_inicio else '')
-    lugar = f' en {cita.lugar.nombre}' + (f' ({cita.lugar.direccion})' if cita.lugar and cita.lugar.direccion else '') \
-        if cita.lugar else ''
-    de_quien = f'de {paciente.nombres} ' if representante else ''
-    texto = (f'Hola {saludo}, le recordamos la cita {de_quien}con {cita.profesional.nombre_con_titulo} '
-             f'({config.nombre_display}) {cuando}{lugar}.')
-    texto += f'\n\n{config.mensaje_whatsapp}' if config.mensaje_whatsapp else ' Por favor confirme su asistencia. Gracias.'
+    lugar = (cita.lugar.nombre + (f' ({cita.lugar.direccion})' if cita.lugar.direccion else '')) if cita.lugar else ''
+    texto = whatsapp.armar(config.plantilla_whatsapp, {
+        'saludo': saludo, 'paciente': paciente.nombre_completo,
+        'de_paciente': f'de {paciente.nombres} ' if representante else '',
+        'profesional': cita.profesional.nombre_con_titulo, 'consultorio': config.nombre_display,
+        'fecha': f'{cita.fecha:%d/%m/%Y}', 'hora': hora12(cita.hora_inicio) if cita.hora_inicio else '',
+        'lugar': lugar})
     return f'https://wa.me/{numero}?text={urllib.parse.quote(texto)}'
 
 

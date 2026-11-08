@@ -7,11 +7,12 @@ from .models import ConfiguracionTenant, Lugar
 
 GRUPOS = {
     'identidad': ('Identidad', ['nombre_mostrar', 'rif', 'logo', 'color_primario']),
-    'contacto': ('Contacto', ['direccion', 'telefono', 'email', 'whatsapp', 'mensaje_whatsapp']),
+    'contacto': ('Contacto', ['direccion', 'telefono', 'email', 'whatsapp', 'plantilla_whatsapp']),
     'documentos': ('Documentos', ['membrete', 'pie_documentos']),
     'historia': ('Historia clínica', ['visibilidad_historia', 'medicos_ven_todos_pacientes', 'horas_edicion_consulta',
                                          'formula_sc']),
     'agenda': ('Agenda', ['hora_inicio_agenda', 'hora_fin_agenda', 'duracion_cita_min']),
+    'cobros': ('Cobros', ['tasa_referencia']),
 }
 
 
@@ -24,13 +25,32 @@ class ConfiguracionForm(FormBase, forms.ModelForm):
         fields = [c for _, campos in GRUPOS.values() for c in campos]
         widgets = {
             'direccion': forms.Textarea(attrs={'rows': 2}),
-            'mensaje_whatsapp': forms.Textarea(attrs={'rows': 2}),
+            'plantilla_whatsapp': forms.Textarea(attrs={'rows': 4}),
             'color_primario': forms.TextInput(attrs={'type': 'color', 'class': 'form-control form-control-color'}),
             'logo': forms.FileInput(attrs={'accept': 'image/png,image/jpeg'}),
             'membrete': forms.FileInput(attrs={'accept': 'image/png,image/jpeg'}),
             'hora_inicio_agenda': forms.TimeInput(attrs={'type': 'time'}, format='%H:%M'),
             'hora_fin_agenda': forms.TimeInput(attrs={'type': 'time'}, format='%H:%M'),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from . import whatsapp
+        if not (self.instance.plantilla_whatsapp or '').strip():
+            self.initial['plantilla_whatsapp'] = whatsapp.PLANTILLA
+
+    def clean_plantilla_whatsapp(self):
+        from . import whatsapp
+        valor = (self.cleaned_data.get('plantilla_whatsapp') or '').strip()
+        whatsapp.validar(valor)
+        return '' if valor == whatsapp.PLANTILLA else valor
+
+    def vista_previa_whatsapp(self):
+        from . import whatsapp
+        valor = self.data.get('plantilla_whatsapp') if self.is_bound else self.initial.get('plantilla_whatsapp')
+        if whatsapp.desconocidos(valor):
+            return ''
+        return whatsapp.armar(valor or self.instance.plantilla_whatsapp, whatsapp.EJEMPLO)
 
     def grupos(self):
         return [(clave, titulo, [self[c] for c in campos]) for clave, (titulo, campos) in GRUPOS.items()]
