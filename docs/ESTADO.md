@@ -11,7 +11,12 @@
 
 ---
 
-## Retomar aquí (2026-11-02)
+## Retomar aquí (2026-11-08) — Migración de Pediae (Fase 18a)
+Comando `importar_pediae` listo y **ensayado con el respaldo real** (conteos y montos cuadran; ver
+`docs/roadmap/18_migracion_pediae.md` §4). Falta: Darwin revisa `pediae_nombres.csv` → día del cambio (§5, en
+Railway por `railway ssh`) → aviso a la Dra. Báez (`dra-anaisbaez.salud.ordove.com`, misma clave).
+
+## Antes (2026-11-02)
 En producción desde el 2026-11-01 (Railway + `*.salud.ordove.com` + R2 + Gemini prepago US$30, proyecto aparte).
 Dictado: tras ADR-052/053/054 **funciona mucho mejor** (transcripción fiel y reparte los datos en los campos). Pendiente:
 1. Confirmar que en Railway se corrió `sincronizar_especialidades` + `refrescar_plantillas cardiologia_pediatrica`
@@ -28,8 +33,8 @@ Dictado: tras ADR-052/053/054 **funciona mucho mejor** (transcripción fiel y re
 7. Negocio: definir precios (ver «Negocio»), con el costo real del dictado.
 
 ## Hecho el 2026-11-01
-- Despliegue: proyecto Railway `ordo-salud`, R2 prod probado, carga inicial, demo, dominio `*.salud.ordove.com` y
-  `salud.ordove.com` (DNS only), `BASE_DOMAIN`, admin en `admin.salud.ordove.com`.
+- Despliegue: proyecto Railway `ordo-salud`, R2 prod probado, carga inicial, demo, dominio `*.salud.ordove.com`
+  (DNS only; `salud.ordove.com` sin asterisco no se agregó: opcional, se declara en `.railway/railway.ts`), `BASE_DOMAIN`, admin en `admin.salud.ordove.com`.
 - Gemini: clave en proyecto propio, facturación prepaga (saldo de la cuenta de facturación, compartible con otros
   sistemas; vence a los 12 meses; en cero se detienen todas las claves).
 - ADR-052 Dictado en dos pasos (transcribir sin datos del paciente / ordenar el texto), detección de silencio
