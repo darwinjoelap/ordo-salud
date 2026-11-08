@@ -12,7 +12,7 @@
 ---
 
 ## Retomar aquí (2026-11-08) — Migración de Pediae (Fase 18a)
-Comando `importar_pediae` listo y **ensayado con el respaldo real** (conteos y montos cuadran; ver
+**Importada a producción el 2026-11-08** (`importar_pediae`, todo cuadra). Antes: ensayado con el respaldo real (conteos y montos cuadran; ver
 `docs/roadmap/18_migracion_pediae.md` §4). Nombres aprobados; Dylan Zheng se une (`--unir 49=109`). Falta: día del cambio (§5, en
 Railway por `railway ssh`) → aviso a la Dra. Báez (`dra-anaisbaez.salud.ordove.com`, misma clave).
 
