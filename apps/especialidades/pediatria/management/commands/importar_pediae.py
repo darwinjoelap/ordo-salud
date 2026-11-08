@@ -612,7 +612,8 @@ class Command(BaseCommand):
                 self.avisos.append(f"Adjunto «{a.get('nombre_original')}» (consulta {a['consulta_id']}): no se descargó.")
             return
         nombre = (a.get('nombre_original') or a['drive_file_id'].split('/')[-1])[:200]
-        adj = Adjunto(paciente=p, consulta=c, nombre=nombre, tipo_contenido=datos[1][:100], tamano=len(datos[0]))
+        adj = Adjunto(tenant=self.tenant, paciente=p, consulta=c, nombre=nombre, tipo_contenido=datos[1][:100],
+                      tamano=len(datos[0]))
         adj.archivo.save(nombre, ContentFile(datos[0]), save=False)
         adj.save()
         self._contar('adjuntos')
