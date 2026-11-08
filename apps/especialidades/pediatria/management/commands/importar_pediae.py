@@ -67,12 +67,23 @@ def documento(cedula):
 
 
 def tension(ta):
-    m = re.match(r'^\s*(\d{2,3})\s*/\s*(\d{2,3})\s*$', ta or '')
+    m = re.match(r'^\s*(\d{2,3})\s*/\s*(\d{2,3})\s*(mm\s*hg)?\.?\s*$', ta or '', re.IGNORECASE)
     return (m.group(1), m.group(2)) if m else (None, None)
 
 
 class Command(BaseCommand):
     help = 'Migra un consultorio de Pediae a Ordo Salud.'
+    # Puntos de extensión (importar_ginea hereda de este comando)
+    ORIGEN = 'Pediae'
+    ESPECIALIDAD = 'pediatria'
+    PLANTILLA = 'Consulta pediátrica'
+    SEXO_POR_DEFECTO = ''
+    DESCARTES = ('nucleo.plan', 'plan')      # dónde se anotan los valores fuera de rango de una consulta
+    TABLAS_RESUMEN = {
+        'pacientes': 'pacientes_paciente', 'citas': 'agenda_cita', 'consultas': 'consultas_consulta',
+        'vacunas aplicadas': 'pacientes_vacunaaplicada', 'pesquisas': 'pacientes_pesquisarealizada',
+        'procedimientos': 'consultas_procedimiento', 'medicamentos del glosario': 'consultas_medicamento',
+        'servicios': 'servicios_servicio', 'lugares': 'agenda_lugarconsulta'}
 
     def add_arguments(self, parser):
         parser.add_argument('--origen', required=True, help='URL de la base PostgreSQL de Pediae (solo lectura).')
@@ -105,7 +116,7 @@ class Command(BaseCommand):
         self.con.read_only = True
         t = self.leer('select * from tenant_tenant where slug=%s', [slug])
         if not t:
-            raise CommandError(f'No existe «{slug}» en Pediae.')
+            raise CommandError(f'No existe «{slug}» en {self.ORIGEN}.')
         self.t = t[0]
         from apps.plataforma.models import Tenant
         if Tenant.objects.filter(slug=slug).exists():
@@ -130,7 +141,7 @@ class Command(BaseCommand):
         for par in pares:
             m = re.match(r'^\s*(\d+)\s*=\s*(\d+)\s*$', par)
             if not m or m.group(1) == m.group(2):
-                raise CommandError(f'--unir «{par}»: formato DUPLICADO=PRINCIPAL con n.º de Pediae (p. ej. 49=109).')
+                raise CommandError(f'--unir «{par}»: formato DUPLICADO=PRINCIPAL con n.º de {self.ORIGEN} (p. ej. 49=109).')
             salida[int(m.group(1))] = int(m.group(2))
         if set(salida) & set(salida.values()):
             raise CommandError('--unir: un paciente no puede ser duplicado y principal a la vez.')
@@ -145,9 +156,10 @@ class Command(BaseCommand):
         salida = {}
         for fila in filas:
             n, a = (fila.get('nombres') or '').strip(), (fila.get('apellidos') or '').strip()
+            ident = fila.get('id_origen') or fila.get('id_pediae')
             if not n:
-                raise CommandError(f"Paciente {fila.get('id_pediae')}: falta «nombres» en el CSV.")
-            salida[int(fila['id_pediae'])] = (n, a)
+                raise CommandError(f'Paciente {ident}: falta «nombres» en el CSV.')
+            salida[int(ident)] = (n, a)
         return salida
 
     def _cloud(self, ruta):
@@ -202,19 +214,16 @@ class Command(BaseCommand):
         from apps.plataforma import servicios as plataforma
         from apps.plataforma.models import Especialidad
         tid = self.t['id']
-        medicos = self.leer('select * from accounts_usuario where tenant_id=%s order by id', [tid])
-        if len(medicos) != 1:
-            raise CommandError(f'Se esperaba 1 usuario en «{self.t["slug"]}» y hay {len(medicos)}.')
-        u = medicos[0]
+        u = self._usuario_origen()
         self.medico_origen = u['id']
         cfg = (self.leer('select * from configuracion_configconsultorio where tenant_id=%s', [tid]) or [{}])[0]
-        esp = Especialidad.objects.get(codigo='pediatria')
+        esp = Especialidad.objects.get(codigo=self.ESPECIALIDAD)
         titulo = 'Dra.' if (u.get('sexo') or '').upper().startswith('F') else 'Dr.'
         self.tenant, titular, _ = plataforma.crear_tenant({
             'nombre': (cfg.get('nombre_consultorio') or self.t['nombre'])[:150], 'slug': self.t['slug'],
             'usuario_titular': u['username'], 'nombre_titular': u['first_name'], 'apellido_titular': u['last_name'],
             'email_titular': u['email'], 'titular_es_profesional': True, 'especialidad_titular': esp,
-            'titulo_titular': titulo, 'especialidades': [esp], 'notas': 'Migrado de Pediae.'})
+            'titulo_titular': titulo, 'especialidades': [esp], 'notas': f'Migrado de {self.ORIGEN}.'})
         # Misma contraseña que en Pediae (mismo formato de Django): entra con su clave de siempre.
         get_user_model().objects.filter(pk=titular.pk).update(
             password=u['password'], debe_cambiar_clave=False, telefono=(u.get('telefono') or '')[:25],
@@ -248,6 +257,12 @@ class Command(BaseCommand):
         c.save()
         self._contar('consultorio')
 
+    def _usuario_origen(self):
+        medicos = self.leer('select * from accounts_usuario where tenant_id=%s order by id', [self.t['id']])
+        if len(medicos) != 1:
+            raise CommandError(f'Se esperaba 1 usuario en «{self.t["slug"]}» y hay {len(medicos)}.')
+        return medicos[0]
+
     def _lugares_y_servicios(self):
         from apps.cobros.models import Servicio
         from apps.configuracion.models import Lugar
@@ -275,7 +290,7 @@ class Command(BaseCommand):
         from apps.clinica.models import SeccionClinica
         from apps.pacientes.models import Paciente, Representante
         self.pacientes = {}
-        items = {i['codigo']: i for i in items_ficha('pediatria')}
+        items = {i['codigo']: i for i in items_ficha(self.ESPECIALIDAD)}
         ant = SeccionClinica.objects.visibles().get(codigo='nucleo.antecedentes')
         items['nucleo.antecedentes'] = {'seccion_id': ant.pk, 'codigo': ant.codigo, 'nombre': ant.nombre,
                                         'version': ant.version, 'ambito': 'PACIENTE',
@@ -304,12 +319,12 @@ class Command(BaseCommand):
                 tipo, numero = 'N', ''
             gs = r.get('grupo_sanguineo') or ''
             p = Paciente.objects.create(
-                nombres=nombres[:120], apellidos=apellidos[:120], sexo=(r.get('sexo') or '')[:1].upper(),
+                nombres=nombres[:120], apellidos=apellidos[:120], sexo=(r.get('sexo') or self.SEXO_POR_DEFECTO)[:1].upper(),
                 fecha_nacimiento=r.get('fecha_nacimiento'), tipo_documento=tipo, numero_documento=numero,
                 telefono=(r.get('telefono') or '')[:25], email=r.get('email') or '',
                 direccion=(r.get('direccion') or '')[:250], contacto_emergencia=(r.get('contacto_emergencia') or '')[:150],
                 seguro=(r.get('seguro_medico') or '')[:100], grupo_sanguineo=gs if gs in dict(
-                    Paciente.Grupo.choices) else '', observaciones=f"Migrado de Pediae (n.º {r['id']}" + ''.join(
+                    Paciente.Grupo.choices) else '', observaciones=f"Migrado de {self.ORIGEN} (n.º {r['id']}" + ''.join(
                     f', unido con n.º {d}' for d, pr in self.unir.items() if pr == r['id']) + ').')
             Paciente.objects.filter(pk=p.pk).update(creado_en=r['creado_en'])
             self.pacientes[r['id']] = p
@@ -396,7 +411,7 @@ class Command(BaseCommand):
             item = self.items_ficha.get(codigo)
             if item is None:
                 continue
-            limpio = self._limpiar(item, datos, {'paciente': p, 'sexo': p.sexo}, f"paciente n.º {r['id']} de Pediae")
+            limpio = self._limpiar(item, datos, {'paciente': p, 'sexo': p.sexo}, f"paciente n.º {r['id']} de {self.ORIGEN}")
             if limpio:
                 _guardar_paciente(None, item, limpio, paciente=p)
 
@@ -462,7 +477,7 @@ class Command(BaseCommand):
             try:
                 with transaction.atomic():
                     c = Cita.objects.create(
-                        paciente=p, profesional=self.perfil, especialidad=self.perfil.especialidad,
+                        paciente=p, profesional=(prof := self._perfil_cita(r)), especialidad=prof.especialidad,
                         lugar=self.lugares.get(r.get('lugar_id')), fecha=r['fecha'], hora_inicio=r.get('hora_inicio'),
                         hora_fin=r.get('hora_fin'), estado=ESTADOS_CITA.get(r.get('estado'), 'PROGRAMADA'),
                         motivo=(r.get('motivo') or '')[:200], notas=r.get('notas') or '')
@@ -477,7 +492,7 @@ class Command(BaseCommand):
     def _consultas(self):
         from apps.clinica import consultas as srv
         from apps.clinica.models import Consulta, PlantillaHistoria
-        plantilla = PlantillaHistoria.objects.get(nombre='Consulta pediátrica', profesional__isnull=True)
+        plantillas = {}
         vistos = set()
         filas = self.leer('select * from consultas_consulta where tenant_id=%s order by fecha, id', [self.t['id']])
         servicios = {}
@@ -498,7 +513,12 @@ class Command(BaseCommand):
             fecha_hora = timezone.make_aware(datetime.combine(r['fecha'], hora))
             tipo = Consulta.Tipo.CONTROL if p.pk in vistos else Consulta.Tipo.PRIMERA
             vistos.add(p.pk)
-            c = srv.abrir_consulta(paciente=p, profesional=self.perfil, plantilla=plantilla, tipo=tipo,
+            nombre_plantilla = self._plantilla(r)
+            if nombre_plantilla not in plantillas:
+                plantillas[nombre_plantilla] = PlantillaHistoria.objects.get(nombre=nombre_plantilla,
+                                                                            profesional__isnull=True)
+            c = srv.abrir_consulta(paciente=p, profesional=self._perfil_de(r), plantilla=plantillas[nombre_plantilla],
+                                   tipo=tipo,
                                    lugar=self.lugares.get(r.get('lugar_id')), fecha_hora=fecha_hora)
             self._secciones_consulta(c, r)
             cita = self.citas.get(r.get('cita_id'))
@@ -515,13 +535,23 @@ class Command(BaseCommand):
             for a in adjuntos.get(r['id'], []):
                 self._adjunto(p, c, a)
 
-    def _secciones_consulta(self, c, r):
-        from apps.clinica import consultas as srv
+    def _perfil_de(self, r):
+        """Profesional de una consulta/procedimiento del origen (Pediae: siempre la titular)."""
+        return self.perfil
+
+    def _perfil_cita(self, r):
+        return self.perfil
+
+    def _plantilla(self, r):
+        return self.PLANTILLA
+
+    def _valores_consulta(self, r):
+        """{codigo de sección: {campo: valor}} de una consulta del origen."""
         sis, dia = tension(r.get('tension_arterial'))
         if r.get('tension_arterial') and sis is None:
             self.avisos.append(f"Consulta {r['id']}: TA «{r['tension_arterial']}» no se pudo separar (va al plan).")
         diag = (r.get('diagnostico') or '').strip()
-        valores = {
+        return {
             'ped.tipo': {'tipo': opcion(r.get('tipo_consulta'))},
             'ped.antropometria': {'peso_kg': r.get('peso'), 'talla_cm': r.get('talla'),
                                   'pc_cm': r.get('perimetro_cefalico')},
@@ -547,6 +577,10 @@ class Command(BaseCommand):
                 'consistencia': opcion(r.get('consistencia_deposiciones')),
                 'control_esfinteres': si_no(r.get('control_esfinteres')), 'notas_eliminacion': r.get('notas_eliminacion')},
         }
+
+    def _secciones_consulta(self, c, r):
+        from apps.clinica import consultas as srv
+        valores = self._valores_consulta(r)
         contexto = srv.contexto_calculo(c)
         salida = {}
         self.descartados = []
@@ -561,9 +595,10 @@ class Command(BaseCommand):
                 if limpio:
                     salida[item['seccion_id']] = limpio
             if vuelta == 0 and self.descartados:      # que no se pierda: queda escrito en el plan de esa consulta
-                plan = valores['nucleo.plan']
-                plan['plan'] = texto(plan['plan'], 'Dato de Pediae fuera de rango (no cargado): '
-                                     + '; '.join(self.descartados))
+                seccion, campo = self.DESCARTES
+                destino = valores.setdefault(seccion, {})
+                destino[campo] = texto(destino.get(campo), f'Dato de {self.ORIGEN} fuera de rango (no cargado): '
+                                       + '; '.join(self.descartados))
             srv.guardar_secciones(c, salida)
             contexto = srv.contexto_calculo(c)
 
@@ -582,7 +617,7 @@ class Command(BaseCommand):
             precio = Decimal(s.get('precio_usd') or 0)
             descuento = min(Decimal(s.get('descuento_usd') or 0), precio)
             cargo = Cargo.objects.create(
-                paciente=p, consulta=consulta, procedimiento=procedimiento, profesional=self.perfil, servicio=serv,
+                paciente=p, consulta=consulta, procedimiento=procedimiento, profesional=self._perfil_de(r), servicio=serv,
                 fecha=r['fecha'], descripcion=(serv.nombre if serv else 'Servicio')[:200], precio_usd=precio,
                 descuento_usd=descuento, exonerado=bool(s.get('exonerado')), costo_usd=s.get('costo_adquisicion_usd'),
                 tasa=s.get('tasa_cambio') or None)
@@ -597,7 +632,7 @@ class Command(BaseCommand):
         tasa = next((c.tasa for c in cargos if c.tasa), None)
         pago = Pago.objects.create(paciente=p, fecha=r['fecha'], moneda=Pago.Moneda.USD, monto=total, tasa=tasa,
                                    monto_usd=total, metodo=Pago.Metodo.OTRO,
-                                   notas=('Migrado de Pediae. ' + (r.get('notas_pago') or ''))[:200])
+                                   notas=(f'Migrado de {self.ORIGEN}. ' + (r.get('notas_pago') or ''))[:200])
         for c in cargos:
             if c.saldo_usd > 0:
                 PagoAplicado.objects.create(pago=pago, cargo=c, monto_usd=c.saldo_usd)
@@ -681,13 +716,9 @@ class Command(BaseCommand):
     # ── Resumen ─────────────────────────────────────────────────────────────────────────────────────────────────
     def _resumen(self):
         tid = self.t['id']
-        origen = {
-            'pacientes': 'pacientes_paciente', 'citas': 'agenda_cita', 'consultas': 'consultas_consulta',
-            'vacunas aplicadas': 'pacientes_vacunaaplicada', 'pesquisas': 'pacientes_pesquisarealizada',
-            'procedimientos': 'consultas_procedimiento', 'medicamentos del glosario': 'consultas_medicamento',
-            'servicios': 'servicios_servicio', 'lugares': 'agenda_lugarconsulta'}
+        origen = self.TABLAS_RESUMEN
         self.stdout.write(f"\nConsultorio «{self.tenant.nombre}» → enlace «{self.tenant.slug}»\n")
-        self.stdout.write(f"{'':28}{'Pediae':>8}{'Ordo Salud':>12}")
+        self.stdout.write(f"{'':28}{self.ORIGEN:>8}{'Ordo Salud':>12}")
         for clave, tabla in origen.items():
             n = self.leer(f'select count(*) n from {tabla} where tenant_id=%s', [tid])[0]['n']
             hecho = self.cuenta.get(clave, 0)
@@ -697,7 +728,7 @@ class Command(BaseCommand):
         n_adj = self.leer('select count(*) n from consultas_adjuntoconsulta a join consultas_consulta c on '
                           'c.id=a.consulta_id where c.tenant_id=%s', [tid])[0]['n']
         self.stdout.write(f"{'adjuntos':28}{n_adj:>8}{self.cuenta.get('adjuntos', 0):>12}")
-        for clave in ('pacientes unidos', 'representantes', 'cargos', 'pagos', 'imágenes de perfil'):
+        for clave in ('pacientes unidos', 'usuarios del equipo', 'representantes', 'cargos', 'pagos', 'imágenes de perfil'):
             self.stdout.write(f"{clave:28}{'':>8}{self.cuenta.get(clave, 0):>12}")
         if self.avisos:
             self.stdout.write(self.style.WARNING(f'\n{len(self.avisos)} avisos (datos que no se cargaron tal cual):'))

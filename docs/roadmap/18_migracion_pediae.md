@@ -66,7 +66,10 @@ Ordo Salud Pediatría se portó de Pediae (ADR-036/043), así que casi todo tien
 5. **Fecha del cambio:** 2026-11-08.
 6. **Nombres:** Pediae guardaba todo en `nombre_completo`. Se parten con `pediae_nombres.csv` (propuesta automática
    con los apellidos de padre/madre/representante; Darwin revisa las filas `REVISAR`/`probable` antes de importar).
-   Posibles duplicados (4): se importan **separados**; se unen a mano después si corresponde.
+   Nombres del CSV aprobados tal cual (los que quedaron sin apellido, se dejan así).
+7. **Duplicados:** Dylan Zheng → **unir** (`--unir 49=109`: mismo nacimiento y sexo; queda 109 con 3 consultas).
+   Ithan Rangel, Paula Sofía Dugarte y Gianna Vivas → se importan **ambos**; Darwin borra el sobrante en Ordo Salud
+   (el que no tiene consultas ni procedimientos).
 
 ## 4. Comando `importar_pediae`
 `apps/especialidades/pediatria/management/commands/importar_pediae.py`. Lee Pediae **solo con SELECT** (conexión en
@@ -78,6 +81,8 @@ Salud, se niega (no se migra dos veces). `--ensayo` hace todo y lo deshace; `--s
 - Consultas: cerradas, con su fecha; la cita de Pediae queda enlazada y «atendida». Primera = primera consulta del paciente.
 - Archivos: adjuntos e imágenes de perfil se descargan de Cloudinary (públicos, basta `--nube <cuenta>`) y se suben a R2.
 - Los avisos muestran solo n.º de Pediae y fecha (sin nombres): se pueden compartir.
+- `--unir DUPLICADO=PRINCIPAL` (n.º de Pediae, repetible): el duplicado no se crea; todo lo suyo pasa al principal
+  y su ficha completa lo vacío del principal. Queda anotado en observaciones.
 
 **Ensayo 2026-11-08** (respaldo real → base local vacía, sin archivos), 23 s, ~9.000 escrituras:
 pacientes 145/145 · citas 166/166 (enlazadas 140) · consultas 169/169 · vacunas 104/104 · pesquisas 29/29 ·
@@ -90,7 +95,7 @@ procedimientos 6/6 · glosario 13/13 · servicios 9/9 · lugares 1/1 · represen
 1. `git push` (el comando va con el código) y esperar el despliegue.
 2. Avisar a la doctora que **deje de usar Pediae** (si tiene borradores sin conexión, que sincronice antes).
 3. Respaldo final de Pediae (`pg_dump`, como el del 2026-11-08) en `C:\proyectos\respaldos`.
-4. `railway ssh` (servicio `web`) → pegar el CSV revisado en `/tmp/nombres.csv` → `--ensayo` → si cuadra, sin `--ensayo`.
+4. `railway ssh` (servicio `web`) → pegar el CSV revisado en `/tmp/nombres.csv` → `--ensayo` → si cuadra, sin `--ensayo` (siempre con `--unir 49=109`).
 5. Verificar: entrar a `dra-anaisbaez.salud.ordove.com` con su clave, abrir 5–10 historias, curvas, cobros, adjuntos.
 6. Plataforma (`admin.`): asignar plan/suscripción; dictado si aplica.
 7. Aviso a la doctora: enlace nuevo, misma clave, desinstalar la app vieja e instalar la nueva.
@@ -100,9 +105,30 @@ procedimientos 6/6 · glosario 13/13 · servicios 9/9 · lugares 1/1 · represen
 - [x] 18.1 Respaldo, inventario de base y de Cloudinary, mapeo
 - [x] 18.2 Decisiones
 - [x] 18.3 Comando `importar_pediae` + tests de conversiones (`tests/test_importar_pediae.py`)
-- [x] 18.4 Ensayo en local con el respaldo real (conteos y montos cuadran) · [ ] Darwin revisa nombres (CSV)
-- [ ] 18.5 Día del cambio (sección 5)
+- [x] 18.4 Ensayo en local con el respaldo real (conteos y montos cuadran) · nombres y duplicados decididos
+- [x] 18.5 Importación en producción 2026-11-08 07:44 (todo cuadra; adjuntos 21/21, 3 imágenes de perfil)
+      · [ ] verificar historias · [ ] plan/suscripción · [ ] aviso a la doctora · [ ] borrar 3 duplicados sobrantes
+      · [ ] quitar proxy TCP de Pediae · [ ] borrar en R2 las imágenes sueltas del intento fallido
 - [ ] 18.6 A las 2–4 semanas sin problemas: apagar Pediae y borrar sus archivos de Cloudinary (y el respaldo local)
 
 > Datos reales: el respaldo vive en `C:\proyectos\respaldos` (fuera de los repos) y en el entorno de trabajo de Claude
 > solo mientras dura la migración.
+
+## 7. Fase 18b — Ginea (2026-11-08)
+Respaldo `ginea_2026-11-08.dump` (PG 18). Consultorios: `dra-pereira` (351 pacientes, 313 consultas, 466 citas,
+2 usuarios) y `sinergia-femenina` (209, 143, 218, 3 usuarios: **2 médicos** + asistente). `dr-prueba` no se migra.
+Mismos criterios que Pediae (cobros con tasa, nombres por CSV `ginea_nombres.csv` con columna `consultorio`).
+
+Comando `importar_ginea` (hereda de `importar_pediae`; puntos de extensión: ORIGEN, ESPECIALIDAD, PLANTILLA,
+SEXO_POR_DEFECTO, DESCARTES, `_usuario_origen`, `_perfil_de`, `_perfil_cita`, `_valores_consulta`, `_ficha`…).
+- Equipo: titular = médico con más consultas; el resto con **su misma clave** (médico → profesional de
+  ginecología; asistente → asistente). Consultas y procedimientos con su médico; citas (Ginea no guarda médico) →
+  médico de su consulta o de la última consulta de la paciente. **El plan del consultorio debe permitir 2 profesionales.**
+- Ficha: casillas sí/no de Ginea → solo los «sí»; G/P/C/A si alguno > 0 o hay otro dato gineco-obstétrico.
+  «Duración del ciclo» < 10 días era la duración del sangrado → va a «Características del sangrado» («Duración: N días»).
+- Consulta: prenatal → plantilla «Control prenatal»; EG/FPP de Ginea quedan escritas en Observaciones (Ordo las
+  calcula desde FUR/eco); presentación «cefálico/podálico» → Cefálica/Pélvica; «indiferente» y edemas «sí» → Observaciones.
+
+**Ensayo local:** conteos completos sin ⚠ en ambos; campos de consulta y ficha cotejados uno a uno; cobros:
+Pereira US$11.155 (8.565 consultas + 2.590 procedimientos, todo pagado), Sinergia US$2.655 (2.320 pagado).
+Avisos: 1 (Pereira) y 5 (Sinergia): partos/cesáreas negativos, menarquia 111, una TA doble.
