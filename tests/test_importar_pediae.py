@@ -56,3 +56,15 @@ class NombresCsvTest(SimpleTestCase):
         ruta = self._csv('id_pediae;nombre_completo;nombres;apellidos\n8;Ficticio;;Ficticio\n')
         with self.assertRaises(CommandError):
             Command()._leer_nombres(ruta)
+
+
+class UnirTest(SimpleTestCase):
+    def test_formato(self):
+        self.assertEqual(Command()._leer_unir(['49=109', ' 7 = 8 ']), {49: 109, 7: 8})
+        for malo in (['49'], ['49=49'], ['a=b']):
+            with self.assertRaises(CommandError):
+                Command()._leer_unir(malo)
+
+    def test_no_encadena(self):
+        with self.assertRaises(CommandError):
+            Command()._leer_unir(['1=2', '2=3'])

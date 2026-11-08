@@ -80,6 +80,9 @@ class Command(BaseCommand):
         parser.add_argument('--nombres', required=True, help='CSV revisado con nombres/apellidos (punto y coma).')
         parser.add_argument('--cloudinary', help='Archivo con CLOUDINARY_URL=cloudinary://KEY:SECRET@CLOUD.')
         parser.add_argument('--nube', help='O solo el nombre de la cuenta de Cloudinary (los archivos son públicos).')
+        parser.add_argument('--unir', action='append', default=[], metavar='DUPLICADO=PRINCIPAL',
+                            help='Une dos pacientes de Pediae (n.º): el duplicado no se crea; sus consultas, citas, '
+                                 'cobros, etc. pasan al principal y su ficha completa lo que al principal le falte.')
         parser.add_argument('--sin-archivos', action='store_true')
         parser.add_argument('--ensayo', action='store_true', help='Deshace todo al final.')
 
@@ -90,12 +93,13 @@ class Command(BaseCommand):
             cols = [c.name for c in cur.description]
             return [dict(zip(cols, fila, strict=True)) for fila in cur.fetchall()]
 
-    def handle(self, origen, slug, nombres, cloudinary, nube, sin_archivos, ensayo, **op):
+    def handle(self, origen, slug, nombres, cloudinary, nube, sin_archivos, ensayo, unir=(), **op):
         import psycopg
 
         from apps.clinica import registro
         self.avisos, self.cuenta, self.descartados = [], {}, []
         self.nombres = self._leer_nombres(nombres)
+        self.unir = self._leer_unir(unir)
         self.cloud = None if (sin_archivos or ensayo) else (nube or self._cloud(cloudinary))
         self.con = psycopg.connect(origen)
         self.con.read_only = True
@@ -120,6 +124,17 @@ class Command(BaseCommand):
             if gancho_plan:
                 registro._al_guardar['nucleo.plan'] = gancho_plan
             self.con.close()
+
+    def _leer_unir(self, pares):
+        salida = {}
+        for par in pares:
+            m = re.match(r'^\s*(\d+)\s*=\s*(\d+)\s*$', par)
+            if not m or m.group(1) == m.group(2):
+                raise CommandError(f'--unir «{par}»: formato DUPLICADO=PRINCIPAL con n.º de Pediae (p. ej. 49=109).')
+            salida[int(m.group(1))] = int(m.group(2))
+        if set(salida) & set(salida.values()):
+            raise CommandError('--unir: un paciente no puede ser duplicado y principal a la vez.')
+        return salida
 
     def _leer_nombres(self, ruta):
         try:
@@ -270,6 +285,18 @@ class Command(BaseCommand):
         faltan = [r['id'] for r in filas if r['id'] not in self.nombres]
         if faltan:
             raise CommandError(f'El CSV de nombres no tiene {len(faltan)} pacientes (ids {faltan[:5]}…).')
+        por_id = {r['id']: r for r in filas}
+        for dup, principal in self.unir.items():
+            if dup not in por_id or principal not in por_id:
+                raise CommandError(f'--unir {dup}={principal}: ese paciente no está en «{self.t["slug"]}».')
+            a, b = por_id[dup], por_id[principal]
+            if (a.get('fecha_nacimiento'), a.get('sexo')) != (b.get('fecha_nacimiento'), b.get('sexo')):
+                self.avisos.append(f'--unir {dup}={principal}: distinta fecha de nacimiento o sexo (se unió igual).')
+            for k, v in a.items():                  # la ficha del principal manda; lo vacío se completa
+                if b.get(k) in (None, '') and v not in (None, ''):
+                    b[k] = v
+            b['creado_en'] = min(a['creado_en'], b['creado_en'])
+        filas = [r for r in filas if r['id'] not in self.unir]
         for r in filas:
             nombres, apellidos = self.nombres[r['id']]
             tipo, numero = documento(r.get('cedula'))
@@ -282,12 +309,16 @@ class Command(BaseCommand):
                 telefono=(r.get('telefono') or '')[:25], email=r.get('email') or '',
                 direccion=(r.get('direccion') or '')[:250], contacto_emergencia=(r.get('contacto_emergencia') or '')[:150],
                 seguro=(r.get('seguro_medico') or '')[:100], grupo_sanguineo=gs if gs in dict(
-                    Paciente.Grupo.choices) else '', observaciones=f"Migrado de Pediae (n.º {r['id']}).")
+                    Paciente.Grupo.choices) else '', observaciones=f"Migrado de Pediae (n.º {r['id']}" + ''.join(
+                    f', unido con n.º {d}' for d, pr in self.unir.items() if pr == r['id']) + ').')
             Paciente.objects.filter(pk=p.pk).update(creado_en=r['creado_en'])
             self.pacientes[r['id']] = p
             self._contar('pacientes')
             self._representantes(p, r, Representante)
             self._ficha(p, r)
+        for dup, principal in self.unir.items():
+            self.pacientes[dup] = self.pacientes[principal]
+            self._contar('pacientes unidos')
 
     def _representantes(self, p, r, Representante):
         principal = (r.get('nombre_representante') or '').strip()
@@ -659,12 +690,13 @@ class Command(BaseCommand):
         for clave, tabla in origen.items():
             n = self.leer(f'select count(*) n from {tabla} where tenant_id=%s', [tid])[0]['n']
             hecho = self.cuenta.get(clave, 0)
-            marca = '' if hecho == n else '  ⚠'
+            esperado = n - (self.cuenta.get('pacientes unidos', 0) if clave == 'pacientes' else 0)
+            marca = '' if hecho == esperado else '  ⚠'
             self.stdout.write(f'{clave:28}{n:>8}{hecho:>12}{marca}')
         n_adj = self.leer('select count(*) n from consultas_adjuntoconsulta a join consultas_consulta c on '
                           'c.id=a.consulta_id where c.tenant_id=%s', [tid])[0]['n']
         self.stdout.write(f"{'adjuntos':28}{n_adj:>8}{self.cuenta.get('adjuntos', 0):>12}")
-        for clave in ('representantes', 'cargos', 'pagos', 'imágenes de perfil'):
+        for clave in ('pacientes unidos', 'representantes', 'cargos', 'pagos', 'imágenes de perfil'):
             self.stdout.write(f"{clave:28}{'':>8}{self.cuenta.get(clave, 0):>12}")
         if self.avisos:
             self.stdout.write(self.style.WARNING(f'\n{len(self.avisos)} avisos (datos que no se cargaron tal cual):'))
