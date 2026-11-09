@@ -50,10 +50,16 @@ def geometria(indicador, sexo, puntos):
     desde = primero
     if edad_max > 72:                           # escolares: no hace falta ver desde el nacimiento
         desde = max(primero, int(math.floor((min(p[0] for p in puntos if p[0] > 0) - 24) / 12) * 12))
+    if hasta <= desde:              # el paciente ya pasó la edad que cubre la tabla OMS de este indicador
+        return None
     paso = 1 if hasta - desde <= 72 else 3
     curvas = oms.curvas(indicador, sexo, hasta, desde_meses=desde, paso=paso)
     visibles = [p for p in puntos if desde <= p[0] <= hasta]
+    if puntos and not visibles:     # todas sus mediciones quedan fuera de la tabla: el gráfico no aporta
+        return None
     valores = [v for serie in curvas.values() for _, v in serie] + [p[1] for p in visibles]
+    if not valores:
+        return None
     y_min, y_max = min(valores), max(valores)
     margen = (y_max - y_min) * 0.05 or 1
     y_min, y_max = max(0, y_min - margen), y_max + margen
