@@ -10,6 +10,7 @@ Sugerir récipe e indicaciones con IA (ADR-060).
 - Nada se guarda en la historia: el médico revisa y agrega lo que quiera.
 """
 import json
+import logging
 import re
 import unicodedata
 from decimal import Decimal, InvalidOperation
@@ -63,6 +64,9 @@ ESQUEMA = {'type': 'object', 'required': ['medicamentos', 'indicaciones'], 'prop
         'via': {'type': 'string'}, 'nota': {'type': 'string'}}}},
     'indicaciones': {'type': 'string'},
     'alertas': {'type': 'array', 'items': {'type': 'string'}}}}
+
+
+log = logging.getLogger('apps.dictado')
 
 
 class ErrorSugerencia(Exception):
@@ -293,13 +297,19 @@ def _llamar(sistema, usuario):
                               'thinking_config': {'thinking_level': settings.SUGERENCIAS_RAZONAMIENTO}},
         'store': False,
     }
-    r = proveedores._llamar_gemini(proveedores._url(modelo), cuerpo, ESQUEMA)
+    try:
+        r = proveedores._llamar_gemini(proveedores._url(modelo), cuerpo, ESQUEMA)
+    except proveedores.ErrorProveedor as e:
+        log.warning('Sugerencia IA: Gemini no respondió: %s', e)
+        raise proveedores.ErrorProveedor('Gemini no respondió a tiempo. Intenta de nuevo en un momento.') from e
     if r.status_code != 200:
-        raise proveedores.ErrorProveedor(f'Gemini no respondió bien ({r.status_code}).')
+        log.warning('Sugerencia IA: Gemini respondió %s: %s', r.status_code, r.text[:800])
+        raise proveedores.ErrorProveedor(f'Gemini no respondió bien ({r.status_code}): {r.text[:160]}')
     datos = r.json()
     try:
         salida = json.loads(proveedores._texto(datos))
     except ValueError as e:
+        log.warning('Sugerencia IA: respuesta no es JSON: %s', str(datos)[:800])
         raise proveedores.ErrorProveedor('Gemini devolvió un formato inesperado.') from e
     t_in, t_out, _ = proveedores._uso(datos)
     return (salida if isinstance(salida, dict) else {}), (t_in, t_out), modelo
