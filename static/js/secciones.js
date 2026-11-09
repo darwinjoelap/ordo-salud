@@ -155,7 +155,7 @@
       poner(base, 'frecuencia', d.frecuencia);
       poner(base, 'duracion', d.duracion);
       const obs = tarjeta.querySelector('[name$="-observaciones"]');
-      if (obs && d.texto && d.calculada) obs.value = (obs.value ? obs.value.trimEnd() + '\n' : '') + d.texto;
+      if (obs && d.texto && (d.calculada || d.con_indicaciones)) obs.value = (obs.value ? obs.value.trimEnd() + '\n' : '') + d.texto;
       msg.innerHTML = '';
       const ok = document.createElement('div');
       ok.className = 'text-success';

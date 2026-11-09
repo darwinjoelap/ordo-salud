@@ -84,7 +84,7 @@ def offline(request):
     return render(request, 'core/offline.html', {'titulo': 'Sin conexión'})
 
 
-SW_REVISION = 'f18'    # subir al cambiar la lógica del service worker
+SW_REVISION = 'f19'    # subir al cambiar la lógica del service worker
 
 SW_JS = r"""// Ordo Salud service worker · __VERSION__
 const VERSION = '__VERSION__';

@@ -79,7 +79,8 @@ def calcular(med, *, peso_kg=None, edad_meses=None, nivel='estandar'):
     else:   # PESO
         d_min, d_max = _num(med.dosis_kg_min), _num(med.dosis_kg_max)
         if d_min is None:
-            alertas.append({'tipo': 'info', 'msg': 'Este medicamento no tiene dosis por kg cargada.'})
+            if not med.indicaciones:     # con plantilla de indicaciones es un medicamento «de texto» (como en Pediae)
+                alertas.append({'tipo': 'info', 'msg': 'Este medicamento no tiene dosis por kg cargada.'})
         elif peso is None or peso <= 0:
             alertas.append({'tipo': 'info', 'msg': 'Indica el peso para calcular la dosis.'})
         else:
@@ -125,5 +126,5 @@ def calcular(med, *, peso_kg=None, edad_meses=None, nivel='estandar'):
         texto = texto.replace(k, v)
     return {'medicamento': str(med), 'dosis': dosis_txt, 'dosis_mg': dosis_mg_txt, 'frecuencia': frecuencia,
             'duracion': duracion, 'texto': ' '.join(texto.split()), 'alertas': alertas, 'calculada': calculada,
-            'rango': bool(med.dosis_kg_min and med.dosis_kg_max)}
+            'rango': bool(med.dosis_kg_min and med.dosis_kg_max), 'con_indicaciones': bool(med.indicaciones)}
 

@@ -136,3 +136,21 @@ class TasaEuroTest(BaseTest):
         r = self.cliente.get('/configuracion/?tab=contacto')
         self.assertContains(r, 'Así se verá')
         self.assertContains(r, 'Tasa para calcular bolívares')
+
+
+class DiagnosticoCodigoLargoTest(BaseTest):
+    """Error 500 del 2026-11-09: texto largo en la casilla «Código» del diagnóstico."""
+
+    def test_texto_en_codigo_pasa_a_la_descripcion(self):
+        from apps.clinica.consultas import abrir_consulta, sincronizar_diagnosticos
+        from apps.clinica.models import DiagnosticoConsulta
+        with self.en_tenant():
+            p = Paciente.objects.create(nombres='Sara', apellidos='Luz', sexo='F')
+            perfil = Membresia.objects.get(usuario=self.titular).perfil
+            c = abrir_consulta(paciente=p, profesional=perfil)
+            sincronizar_diagnosticos(c, {'diagnosticos': [
+                {'codigo': 'Control de niña sana', 'descripcion': ''},
+                {'codigo': 'J069', 'descripcion': 'IRA alta'}]})
+            filas = list(DiagnosticoConsulta.objects.filter(consulta=c).order_by('orden'))
+        self.assertEqual([(f.codigo, f.descripcion) for f in filas],
+                         [('', 'Control de niña sana'), ('J069', 'IRA alta')])

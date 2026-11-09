@@ -65,3 +65,20 @@ class DosisTest(SimpleTestCase):
     def test_sin_concentracion_queda_en_mg(self):
         r = calcular(med(dosis_kg_min=Decimal('10')), peso_kg=10)
         self.assertEqual(r['dosis'], '100 mg')
+
+
+class SoloIndicacionesTest(SimpleTestCase):
+    """Medicamentos de Pediae sin dosis por kg, solo con texto: el texto va al récipe y no hay alerta."""
+
+    def test_texto_sin_dosis(self):
+        m = med(nombre='Solución nasal', presentacion='', indicaciones='{{NOMBRE}} 1 atomización cada 8 horas')
+        r = calcular(m, peso_kg=12)
+        self.assertFalse(r['calculada'])
+        self.assertTrue(r['con_indicaciones'])
+        self.assertEqual(r['texto'], 'Solución nasal 1 atomización cada 8 horas')
+        self.assertEqual(r['alertas'], [])
+
+    def test_sin_dosis_ni_texto_avisa(self):
+        r = calcular(med(indicaciones=''), peso_kg=12)
+        self.assertFalse(r['con_indicaciones'])
+        self.assertTrue(r['alertas'])

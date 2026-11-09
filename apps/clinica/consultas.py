@@ -413,8 +413,13 @@ def sincronizar_diagnosticos(consulta, datos):
     catalogo = {c.codigo: c for c in Cie10.objects.filter(codigo__in=codigos)}
     for n, f in enumerate(filas):
         codigo = (f.get('codigo') or '').strip().upper()
+        descripcion = (f.get('descripcion') or '').strip()
+        if codigo and codigo not in catalogo and (len(codigo) > 10 or ' ' in codigo):
+            # Texto escrito en la casilla «Código» (no es un código CIE): pasa al diagnóstico, no se pierde
+            descripcion = f'{(f.get("codigo") or "").strip()} {descripcion}'.strip()
+            codigo = ''
         cie = catalogo.get(codigo)
-        descripcion = (f.get('descripcion') or (cie.descripcion if cie else '')).strip()
+        descripcion = descripcion or (cie.descripcion if cie else '')
         if not descripcion:
             continue
         DiagnosticoConsulta.objects.create(consulta=consulta, paciente=consulta.paciente, cie10=cie, codigo=codigo,
