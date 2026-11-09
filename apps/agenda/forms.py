@@ -44,7 +44,10 @@ class CitaForm(FormBase, forms.ModelForm):
         self.fields['lugar'].empty_label = 'Sin lugar'
         self.fields['hora_inicio'].help_text = ''
         if self.fields['profesional'].queryset.count() == 1:
-            self.fields['profesional'].initial = self.fields['profesional'].queryset.first()
+            unico = self.fields['profesional'].queryset.first()
+            self.fields['profesional'].initial = unico
+            if not self.initial.get('profesional'):      # el campo va oculto: nunca puede quedar vacío
+                self.initial['profesional'] = unico.pk
             self.solo_un_profesional = True
         else:
             self.solo_un_profesional = False

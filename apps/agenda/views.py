@@ -120,8 +120,10 @@ def cita_form(request, pk=None):
     inicial = {}
     if cita is None:
         inicial = {'fecha': request.GET.get('fecha') or srv.hoy(), 'hora_inicio': request.GET.get('hora'),
-                   'profesional': request.GET.get('p') or getattr(request.membresia.perfil_activo, 'pk', None),
                    'paciente': request.GET.get('paciente'), 'lugar': request.GET.get('lugar')}
+        profesional = request.GET.get('p') or getattr(request.membresia.perfil_activo, 'pk', None)
+        if profesional:            # quien no es médico (administración, asistente) no se propone a sí mismo
+            inicial['profesional'] = profesional
     form = CitaForm(request.POST or None, instance=cita or Cita(tenant=request.tenant), initial=inicial)
     if request.method == 'POST' and form.is_valid():
         try:

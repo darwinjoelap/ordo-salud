@@ -18,7 +18,7 @@
     {% for e in form.paciente.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
   </div>
   <div class="row g-2">
-    <div class="col-md-6 {% if form.solo_un_profesional %}d-none{% endif %}">{% include 'partials/campo.html' with campo=form.profesional %}</div>
+    <div class="col-md-6 {% if form.solo_un_profesional and not form.profesional.errors %}d-none{% endif %}">{% include 'partials/campo.html' with campo=form.profesional %}</div>
     <div class="col-md-6">{% include 'partials/campo.html' with campo=form.tipo %}</div>
     <div class="col-6 col-md-3">{% include 'partials/campo.html' with campo=form.fecha %}</div>
     <div class="col-6 col-md-3">{% include 'partials/campo.html' with campo=form.hora_inicio %}</div>
