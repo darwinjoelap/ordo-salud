@@ -32,3 +32,12 @@ class ConsultorioPruebasTest(TestCase):
         self.cmd('--medico', 'dermatologia', '--usuario', 'derma', '--clave', 'Clave-larga-123')
         with self.assertRaises(CommandError):
             self.cmd('--escenarios', 'dermatologia')
+
+    def test_medicina_interna(self):
+        self.cmd('--crear', '--clave', 'Clave-larga-123')
+        self.cmd('--medico', 'medicina_interna', '--usuario', 'agonzalez', '--clave', 'Clave-larga-123')
+        from apps.usuarios.models import Usuario
+        u = Usuario.objects.get(username='agonzalez')
+        self.assertEqual((u.first_name, u.last_name), ('Alí', 'González'))
+        with usando_tenant(Tenant.objects.get(slug='pruebas')):
+            self.assertGreaterEqual(Paciente.objects.filter(observaciones__startswith='[DEMO]').count(), 10)

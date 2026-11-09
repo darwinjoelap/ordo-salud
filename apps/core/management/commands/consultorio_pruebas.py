@@ -191,8 +191,138 @@ PEDIATRIA = [
                     'examen': 'Amígdalas hipertróficas con exudado, adenopatías cervicales dolorosas.'}]},
 ]
 
+# ── Paquete de medicina interna (adultos) ─────────────────────────────────────────────────────────────────────
+
+SERVICIOS_MI = [('Consulta de medicina interna', D('35')), ('Control de medicina interna', D('25')),
+                ('Electrocardiograma', D('15'))]
+
+
+def _fija(nombre, presentacion, dosis, horas, dias=None, ind=None):
+    return {'nombre': nombre, 'presentacion': presentacion, 'modo': 'FIJA', 'dosis_fija': dosis,
+            'frecuencia_horas': horas, 'duracion_dias': dias,
+            'indicaciones': ind or '{{NOMBRE}} {{PRESENTACION}}: {{DOSIS}} {{FRECUENCIA}} {{DURACION}}'}
+
+
+GLOSARIO_MI = [
+    _fija('Losartán', 'tab. 50 mg', '1 tableta', 24, ind='{{NOMBRE}} 50 mg: 1 tableta diaria en la mañana. No suspender.'),
+    _fija('Amlodipino', 'tab. 5 mg', '1 tableta', 24),
+    _fija('Metformina', 'tab. 850 mg', '1 tableta', 12, ind='{{NOMBRE}} 850 mg: 1 tableta con desayuno y cena.'),
+    _fija('Atorvastatina', 'tab. 20 mg', '1 tableta', 24, ind='{{NOMBRE}} 20 mg: 1 tableta en la noche.'),
+    _fija('Omeprazol', 'cáps. 20 mg', '1 cápsula', 24, 30, '{{NOMBRE}} 20 mg: 1 cápsula en ayunas por 30 días.'),
+    _fija('Levotiroxina', 'tab. 50 mcg', '1 tableta', 24,
+          ind='{{NOMBRE}} 50 mcg: 1 tableta en ayunas, 30 min antes del desayuno.'),
+    _fija('Acetaminofén', 'tab. 500 mg', '1 tableta', 8, 3, '{{NOMBRE}} 500 mg: 1 tableta cada 8 h si dolor o fiebre.'),
+    _fija('Diclofenac', 'tab. 50 mg', '1 tableta', 12, 5, '{{NOMBRE}} 50 mg: 1 tableta cada 12 h con comida, 5 días.'),
+    _fija('Salbutamol', 'inhalador 100 mcg', '2 puffs', 6, 7),
+    # solo texto (sin dosis), como varios glosarios reales
+    {'nombre': 'Dieta hiposódica', 'modo': 'FIJA', 'indicaciones': 'Dieta baja en sal (< 5 g/día), sin embutidos.'},
+]
+
+ADULTOS = [
+    {'prueba': 'HTA no controlada: 3 controles con TA que baja al ajustar tratamiento',
+     'p': {'nombres': 'José Gregorio', 'apellidos': 'Martínez Rojas', 'sexo': 'M', 'nace': 365 * 58,
+           'tipo_documento': 'V', 'numero_documento': '7000001', 'telefono': '0414-2000001'},
+     'antecedentes': {'enfermedades_cronicas': 'Hipertensión arterial', 'medicacion_actual': 'Losartán 50 mg/día'},
+     'consultas': [
+         {'dias': 90, 'peso': 88, 'talla': 172, 'ta': (168, 102), 'fc': 84, 'motivo': 'Cefalea occipital',
+          'enf': 'Cefalea matutina de 2 semanas. Toma losartán irregular.', 'dx': ['Hipertensión arterial no controlada'],
+          'plan': 'Adherencia, dieta hiposódica. Se agrega amlodipino 5 mg.', 'ordenes': 'Perfil renal, EKG.',
+          'receta': [('Losartán tab. 50 mg', '1 tableta', 'cada 24 horas', ''),
+                     ('Amlodipino tab. 5 mg', '1 tableta', 'cada 24 horas', '')]},
+         {'dias': 45, 'peso': 87, 'talla': 172, 'ta': (148, 92), 'fc': 78, 'motivo': 'Control de TA',
+          'dx': ['Hipertensión arterial en ajuste'], 'labs': 'Creatinina 1,0 mg/dL. K 4,2.',
+          'servicio': 'Control de medicina interna'},
+         {'dias': 7, 'peso': 85, 'talla': 172, 'ta': (132, 84), 'fc': 72, 'motivo': 'Control de TA',
+          'dx': ['Hipertensión arterial controlada'], 'servicio': 'Control de medicina interna'}],
+     'citas': [{'dias': 60, 'estado': 'PROGRAMADA', 'hora': time(8, 0), 'motivo': 'Control de TA'}]},
+
+    {'prueba': 'Diabetes tipo 2: glicemia y HbA1c altas, metformina, mejora en el control',
+     'p': {'nombres': 'Carmen Elena', 'apellidos': 'Rodríguez Paz', 'sexo': 'F', 'nace': 365 * 52,
+           'tipo_documento': 'V', 'numero_documento': '9000002', 'telefono': '0424-2000002'},
+     'antecedentes': {'enfermedades_cronicas': 'Diabetes mellitus tipo 2', 'antecedentes_familiares': 'Madre DM2'},
+     'consultas': [
+         {'dias': 120, 'peso': 82, 'talla': 160, 'cintura': 102, 'ta': (130, 80), 'glicemia': 210,
+          'motivo': 'Poliuria y polidipsia', 'dx': ['Diabetes mellitus tipo 2 de reciente diagnóstico'],
+          'labs': 'Glicemia 210 mg/dL, HbA1c 9,1 %.', 'plan': 'Metformina, plan de alimentación, caminar 30 min.',
+          'receta': [('Metformina tab. 850 mg', '1 tableta', 'cada 12 horas', '')]},
+         {'dias': 30, 'peso': 78, 'talla': 160, 'cintura': 97, 'ta': (124, 78), 'glicemia': 128,
+          'motivo': 'Control de diabetes', 'dx': ['Diabetes mellitus tipo 2 en mejoría'],
+          'labs': 'HbA1c 7,2 %. Perfil lipídico: LDL 142.', 'servicio': 'Control de medicina interna'}]},
+
+    {'prueba': 'Adulto mayor polimedicado: HTA + DM2 + ERC 3 + FA anticoagulada (interacciones, ajuste renal)',
+     'p': {'nombres': 'Rafael Antonio', 'apellidos': 'Quintero Salas', 'sexo': 'M', 'nace': 365 * 78,
+           'tipo_documento': 'V', 'numero_documento': '3000003'},
+     'rep': ('Marisol Quintero', 'OTRO', '0412-2000003'),
+     'antecedentes': {'enfermedades_cronicas': 'HTA, DM2, enfermedad renal crónica estadio 3, fibrilación auricular',
+                      'medicacion_actual': 'Losartán 50 mg, metformina 500 mg, apixabán 2,5 mg c/12 h, '
+                                           'atorvastatina 20 mg'},
+     'consultas': [{'dias': 14, 'peso': 70, 'talla': 165, 'ta': (138, 76), 'fc': 96, 'motivo': 'Control trimestral',
+                    'examen_det': {'cardiopulmonar': 'Ruidos cardíacos arrítmicos, sin soplos.'},
+                    'dx': ['Fibrilación auricular permanente', 'Enfermedad renal crónica estadio 3a'],
+                    'labs': 'Creatinina 1,6 mg/dL, TFG 42 mL/min.', 'plan': 'Ajustar metformina a la TFG.'}]},
+
+    {'prueba': 'ALERGIA a AINE (ibuprofeno) + lumbalgia, consulta abierta: la IA debe avisar si propone AINE',
+     'p': {'nombres': 'Luisa Fernanda', 'apellidos': 'Castro Mena', 'sexo': 'F', 'nace': 365 * 41},
+     'antecedentes': {'alergias': 'Ibuprofeno (angioedema)'},
+     'consultas': [{'dias': 0, 'abierta': True, 'peso': 64, 'talla': 162, 'ta': (118, 76),
+                    'motivo': 'Dolor lumbar', 'enf': 'Dolor lumbar mecánico de 3 días tras cargar peso, sin irradiación.',
+                    'examen_det': {'extremidades': 'Lasègue negativo. Contractura paravertebral lumbar.'}}]},
+
+    {'prueba': 'Obesidad + dislipidemia: IMC y perímetro abdominal, estatina',
+     'p': {'nombres': 'Pedro Luis', 'apellidos': 'Herrera Núñez', 'sexo': 'M', 'nace': 365 * 45},
+     'consultas': [{'dias': 25, 'peso': 104, 'talla': 175, 'cintura': 112, 'ta': (134, 86),
+                    'motivo': 'Chequeo', 'dx': ['Obesidad grado I', 'Dislipidemia mixta'],
+                    'labs': 'CT 248, LDL 168, TG 260, HDL 36 mg/dL.',
+                    'plan': 'Atorvastatina 20 mg. Déficit calórico y ejercicio.',
+                    'receta': [('Atorvastatina tab. 20 mg', '1 tableta', 'cada 24 horas', '')]}]},
+
+    {'prueba': 'EPOC exfumador: SpO2 baja, salbutamol',
+     'p': {'nombres': 'Ramón', 'apellidos': 'Villegas Ortiz', 'sexo': 'M', 'nace': 365 * 67},
+     'antecedentes': {'enfermedades_cronicas': 'EPOC', 'habitos': 'Exfumador (40 paquetes-año)'},
+     'consultas': [{'dias': 18, 'peso': 68, 'talla': 170, 'ta': (126, 74), 'fc': 92, 'fr': 22, 'spo2': 91,
+                    'motivo': 'Disnea de esfuerzo', 'examen_det': {'cardiopulmonar': 'Espiración prolongada, roncus.'},
+                    'dx': ['EPOC'], 'ordenes': 'Espirometría, Rx de tórax PA.'}]},
+
+    {'prueba': 'Hipotiroidismo: TSH alta, levotiroxina',
+     'p': {'nombres': 'Gabriela', 'apellidos': 'Molina Duarte', 'sexo': 'F', 'nace': 365 * 36},
+     'consultas': [{'dias': 35, 'peso': 70, 'talla': 158, 'ta': (112, 72), 'motivo': 'Cansancio y aumento de peso',
+                    'labs': 'TSH 9,8 mUI/L, T4L 0,7 ng/dL.', 'dx': ['Hipotiroidismo primario'],
+                    'receta': [('Levotiroxina tab. 50 mcg', '1 tableta', 'cada 24 horas', '')]}]},
+
+    {'prueba': 'Chequeo preempleo sano: revisión por sistemas sin alteraciones',
+     'p': {'nombres': 'Daniel', 'apellidos': 'Peña Rivas', 'sexo': 'M', 'nace': 365 * 26},
+     'consultas': [{'dias': 50, 'peso': 72, 'talla': 178, 'ta': (116, 74), 'fc': 66, 'motivo': 'Evaluación preempleo',
+                    'rxs': ['GENERAL', 'CV', 'RESP', 'DIG', 'GU', 'ME', 'NEURO', 'PIEL'], 'dx': ['Adulto sano'],
+                    'plan': 'Apto para el cargo.'}]},
+
+    {'prueba': 'COBROS: deuda pendiente y pago parcial en Bs (con EKG cobrado)',
+     'p': {'nombres': 'Yolanda', 'apellidos': 'Suárez Linares', 'sexo': 'F', 'nace': 365 * 63},
+     'consultas': [{'dias': 12, 'peso': 66, 'talla': 155, 'ta': (142, 88), 'motivo': 'Palpitaciones',
+                    'dx': ['Extrasistolia ventricular'], 'pago': ('BS', D('600')),
+                    'procedimiento': 'Electrocardiograma'}]},
+
+    {'prueba': 'Agenda: cita hoy, mañana y una tentativa',
+     'p': {'nombres': 'Héctor', 'apellidos': 'Blanco Díaz', 'sexo': 'M', 'nace': 365 * 49, 'telefono': '0416-2000010'},
+     'consultas': [{'dias': 75, 'peso': 80, 'talla': 170, 'ta': (128, 82), 'motivo': 'Gastritis',
+                    'dx': ['Dispepsia funcional'],
+                    'receta': [('Omeprazol cáps. 20 mg', '1 cápsula', 'cada 24 horas', 'por 30 días')]}],
+     'citas': [{'dias': 0, 'estado': 'CONFIRMADA', 'hora': time(15, 0), 'motivo': 'Control'},
+               {'dias': 1, 'estado': 'PROGRAMADA', 'hora': time(16, 0), 'motivo': 'Resultados de laboratorio'},
+               {'dias': 30, 'estado': 'TENTATIVA', 'motivo': 'Control'}]},
+
+    {'prueba': 'Consulta EN BORRADOR de hoy: fiebre y tos (dictado / sugerencia IA)',
+     'p': {'nombres': 'Marta', 'apellidos': 'Ibarra Colmenares', 'sexo': 'F', 'nace': 365 * 55},
+     'consultas': [{'dias': 0, 'abierta': True, 'peso': 61, 'talla': 157, 'ta': (122, 70), 'temp': 38.7, 'fc': 104,
+                    'fr': 24, 'spo2': 94, 'motivo': 'Fiebre y tos productiva',
+                    'enf': '4 días con fiebre, tos con expectoración amarillenta y dolor torácico al toser.',
+                    'examen_det': {'cardiopulmonar': 'Crepitantes en base derecha.'}}]},
+]
+
 PAQUETES = {'pediatria': {'casos': PEDIATRIA, 'servicios': SERVICIOS_PED, 'glosario': GLOSARIO_PED,
-                          'plantilla': 'Consulta pediátrica', 'usuario': ('Dra.', 'Pía', 'Pruebas')}}
+                          'plantilla': 'Consulta pediátrica', 'usuario': ('Dra.', 'Pía', 'Pruebas')},
+            'medicina_interna': {'casos': ADULTOS, 'servicios': SERVICIOS_MI, 'glosario': GLOSARIO_MI, 'adulto': True,
+                                 'plantilla': 'Primera consulta', 'plantilla_control': 'Control',
+                                 'usuario': ('Dr.', 'Alí', 'González')}}
 
 
 class Command(BaseCommand):
@@ -286,6 +416,7 @@ class Command(BaseCommand):
         gancho = registro._al_guardar.pop('nucleo.plan', None)      # «próximo control» no crea citas aquí
         try:
             with transaction.atomic():
+                self.paquete = paquete
                 self._base(tenant, perfil, paquete)
                 creados = 0
                 for caso in paquete['casos']:
@@ -336,12 +467,17 @@ class Command(BaseCommand):
             limpios = {items[c]['seccion_id']: self._limpiar(items[c], v, {'paciente': p, 'sexo': p.sexo})
                        for c, v in caso['ficha'].items() if c in items}
             srv.guardar_ficha(p, [items[c] for c in caso['ficha'] if c in items], limpios)
-        plantilla = PlantillaHistoria.objects.get(nombre=paquete['plantilla'], profesional__isnull=True)
+        def plantilla(nombre):
+            return PlantillaHistoria.objects.get(nombre=nombre, profesional__isnull=True,
+                                                 especialidad=perfil.especialidad)
+        primera = plantilla(paquete['plantilla'])
+        control = plantilla(paquete.get('plantilla_control') or paquete['plantilla'])
         for n, c in enumerate(sorted(caso.get('consultas', []), key=lambda x: -x['dias'])):
             fecha = timezone.make_aware(datetime.combine(hace(c['dias']), time(9 + n % 8, 0)))
-            consulta = srv.abrir_consulta(paciente=p, profesional=perfil, plantilla=plantilla, lugar=self.lugar,
-                                          tipo=Consulta.Tipo.CONTROL if n else Consulta.Tipo.PRIMERA, fecha_hora=fecha)
-            valores = self._valores(c)
+            consulta = srv.abrir_consulta(paciente=p, profesional=perfil, plantilla=control if n else primera,
+                                          lugar=self.lugar, fecha_hora=fecha,
+                                          tipo=Consulta.Tipo.CONTROL if n else Consulta.Tipo.PRIMERA)
+            valores = self._valores(c, adulto=paquete.get('adulto', False))
             for _ in range(2):          # 2.ª vuelta con los signos ya guardados: percentiles con fecha correcta
                 contexto = srv.contexto_calculo(consulta)
                 srv.guardar_secciones(consulta, {
@@ -360,15 +496,22 @@ class Command(BaseCommand):
         self._pesquisas(p, caso.get('pesquisas', []))
 
     @staticmethod
-    def _valores(c):
+    def _valores(c, adulto=False):
         dx = [{'descripcion': d} for d in c.get('dx', [])]
+        signos = {'temperatura': c.get('temp'), 'fc': c.get('fc'), 'fr': c.get('fr'), 'spo2': c.get('spo2')}
+        if adulto:          # adultos: peso, talla, TA y glicemia van en signos vitales (no hay antropometría OMS)
+            ta = c.get('ta') or (None, None)
+            signos.update({'peso_kg': c.get('peso'), 'talla_cm': c.get('talla'), 'pa_sistolica': ta[0],
+                           'pa_diastolica': ta[1], 'glicemia': c.get('glicemia'),
+                           'perimetro_abdominal': c.get('cintura')})
         return {
             'ped.tipo': {'tipo': c.get('tipo', 'ENFERMEDAD')},
             'ped.antropometria': {'peso_kg': c.get('peso'), 'talla_cm': c.get('talla'), 'pc_cm': c.get('pc')},
-            'nucleo.signos_vitales': {'temperatura': c.get('temp'), 'fc': c.get('fc'), 'fr': c.get('fr'),
-                                      'spo2': c.get('spo2')},
+            'nucleo.signos_vitales': signos,
             'nucleo.motivo': {'motivo': c.get('motivo'), 'enfermedad_actual': c.get('enf')},
-            'nucleo.examen_fisico': {'general': c.get('examen')},
+            'nucleo.examen_fisico': {'general': c.get('examen'), **(c.get('examen_det') or {})},
+            'nucleo.paraclinicos': {'laboratorio': c.get('labs'), 'imagenes': c.get('imagenes')},
+            'gen.revision_sistemas': {'sin_alteraciones': c.get('rxs') or []},
             'nucleo.diagnosticos': {'diagnosticos': dx},
             'nucleo.plan': {'plan': c.get('plan')},
             'nucleo.ordenes': {'laboratorio': c.get('ordenes')},
@@ -401,7 +544,7 @@ class Command(BaseCommand):
         serv = self.servicios.get(c.get('servicio')) if c.get('servicio') else None
         if serv is None and c.get('abierta'):
             return
-        serv = serv or self.servicios['Consulta pediátrica']
+        serv = serv or self.servicios[self.paquete['servicios'][0][0]]
         cobros.crear_cargo(paciente=p, servicio=serv, descripcion=serv.nombre, precio_usd=serv.precio_usd,
                            descuento_usd=c.get('descuento') or 0, exonerado=bool(c.get('exonerado')),
                            consulta=consulta, profesional=perfil, fecha=consulta.fecha_hora.date())
