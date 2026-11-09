@@ -79,7 +79,7 @@
     </div>
     <div class="card"><div class="card-header bg-white fw-semibold">Equipo ({{ miembros|length }})</div>
       <ul class="list-group list-group-flush">{% for m in miembros %}
-        <li class="list-group-item small d-flex justify-content-between {% if not m.activa %}text-muted{% endif %}"><span>{{ m.usuario.nombre_visible }}<br><span class="text-muted">{{ m.usuario.username }}{% if m.perfil_activo %} · {{ m.perfil_activo.especialidad }}{% endif %}</span></span><span>{{ m.get_rol_display }}{% if not m.activa %} · inactivo{% endif %}</span></li>
+        <li class="list-group-item small d-flex justify-content-between {% if not m.activa %}text-muted{% endif %}"><span>{{ m.usuario.nombre_visible }}<br><span class="text-muted">{{ m.usuario.username }}{% if m.perfil_activo %} · {{ m.perfil_activo.especialidad }}{% endif %}</span></span><span class="text-end">{{ m.get_rol_display }}{% if not m.activa %} · inactivo{% endif %}<br><a href="{% url 'plataforma:acceso' tenant_obj.pk m.pk %}" class="text-decoration-none"><i class="bi bi-share me-1"></i>Compartir acceso</a></span></li>
       {% empty %}<li class="list-group-item small text-muted">Sin miembros.</li>{% endfor %}</ul>
     </div>
     <div class="card mt-3"><div class="card-header bg-white fw-semibold">Accesos de soporte</div>

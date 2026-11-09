@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block contenido %}
+{% include 'plataforma/_nav.html' %}
+<a href="{% url 'plataforma:editar' tenant_obj.pk %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> {{ tenant_obj.nombre }}</a>
+<div class="card card-body mt-2" style="max-width:620px">
+  <h1 class="h5 mb-1">Acceso de {{ m.usuario.nombre_visible }}</h1>
+  <div class="small text-muted mb-3">{{ m.get_rol_display }}{% if m.perfil_activo %} · {{ m.perfil_activo.especialidad }}{% endif %}{% if not m.activa %} · <b>inactivo</b>{% endif %}</div>
+  {% if clave %}<p class="small text-muted">Envíalo por un medio privado. {% if nueva %}<b>Es una contraseña nueva:</b> la anterior ya no sirve. {% endif %}Al entrar se le pedirá cambiarla; desde ese momento ya no se podrá ver aquí.</p>{% endif %}
+  {% include 'plataforma/_credenciales.html' with usuario=m.usuario %}
+  <hr>
+  <form method="post" onsubmit="return confirm('¿Generar una contraseña temporal nueva para {{ m.usuario.username|escapejs }}? La actual dejará de funcionar.')">{% csrf_token %}
+    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-key me-1"></i>Generar contraseña nueva</button>
+    <span class="small text-muted ms-1">Úsalo si la olvidó o si nunca recibió la suya.</span>
+  </form>
+</div>
+{% endblock %}

@@ -140,6 +140,7 @@ def agregar(tenant, actor, username, nombre, apellido, rol, email='', especialid
     clave = clave_temporal()
     usuario = U.objects.create_user(username, clave, tenant_cuenta=tenant, email=email or '',
                                     first_name=nombre.strip(), last_name=apellido.strip(), debe_cambiar_clave=True)
+    usuario.poner_clave_temporal(clave)
     m = Membresia.objects.create(usuario=usuario, tenant=tenant, rol=rol)
     if especialidad is not None:
         crear_perfil(m, especialidad, titulo=titulo or '')
@@ -184,8 +185,5 @@ def restablecer_clave(actor, m):
         raise ErrorEquipo('Esta persona también trabaja en otro consultorio: debe cambiar su contraseña ella '
                           'misma desde "Mi perfil".')
     clave = clave_temporal()
-    u = m.usuario
-    u.set_password(clave)
-    u.debe_cambiar_clave = True
-    u.save(update_fields=['password', 'debe_cambiar_clave'])
+    m.usuario.poner_clave_temporal(clave)
     return clave

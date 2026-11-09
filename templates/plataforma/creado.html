@@ -3,14 +3,9 @@
 <a href="{% url 'plataforma:lista' %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> Consultorios</a>
 <div class="card card-body mt-2" style="max-width:600px">
   <h1 class="h5">Consultorio creado: {{ tenant.nombre }}</h1>
-  <p class="small text-muted">Envía estos datos al cliente por un medio privado. <b>La contraseña no se volverá a mostrar</b>; al entrar se le pedirá cambiarla.</p>
-  <dl class="row mb-3">
-    <dt class="col-4">Enlace</dt><dd class="col-8"><code>{{ enlace }}</code></dd>
-    <dt class="col-4">Usuario</dt><dd class="col-8"><code>{{ titular.username }}</code></dd>
-    <dt class="col-4">Contraseña</dt><dd class="col-8"><code class="fs-5">{{ clave }}</code></dd>
-  </dl>
-  <div class="d-flex gap-2">
-    <button type="button" class="btn btn-outline-primary btn-sm" onclick="navigator.clipboard.writeText('{{ tenant.nombre|escapejs }} en Ordo Salud\nEnlace: {{ enlace|escapejs }}\nUsuario: {{ titular.username|escapejs }}\nContraseña temporal: {{ clave|escapejs }}').then(()=>{this.textContent='Copiado'})"><i class="bi bi-clipboard me-1"></i>Copiar todo</button>
+  <p class="small text-muted">Envía estos datos al cliente por un medio privado. Al entrar se le pedirá cambiar la contraseña; mientras no lo haga, puedes volver a compartirla desde el consultorio → Equipo → <b>Compartir acceso</b>.</p>
+  {% include 'plataforma/_credenciales.html' with usuario=titular %}
+  <div class="mt-2">
     <a href="{% url 'plataforma:editar' tenant.pk %}" class="btn btn-primary btn-sm">Ver consultorio</a>
   </div>
 </div>

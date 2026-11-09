@@ -61,11 +61,30 @@ class Usuario(AbstractUser):
     debe_cambiar_clave = models.BooleanField(
         'Debe cambiar la contraseña', default=False,
         help_text='Se activa al asignar una contraseña temporal; se pide cambiarla al entrar.')
+    # ADR-062: la temporal, cifrada, para poder volver a compartirla mientras el usuario no la cambie
+    clave_temporal_cifrada = models.TextField(blank=True, editable=False)
 
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = []
 
     objects = UsuarioManager()
+
+    def poner_clave_temporal(self, clave, guardar=True):
+        """Contraseña temporal: obliga a cambiarla al entrar y queda cifrada para volver a compartirla."""
+        from apps.core.cifrado import cifrar
+        self.set_password(clave)
+        self.debe_cambiar_clave = True
+        self.clave_temporal_cifrada = cifrar(clave)
+        if guardar:
+            self.save(update_fields=['password', 'debe_cambiar_clave', 'clave_temporal_cifrada'])
+
+    def clave_temporal_vigente(self):
+        """La temporal SOLO si sigue siendo su contraseña (no la cambió); si no, ''."""
+        from apps.core.cifrado import descifrar
+        if not (self.debe_cambiar_clave and self.clave_temporal_cifrada):
+            return ''
+        clave = descifrar(self.clave_temporal_cifrada)
+        return clave if clave and self.check_password(clave) else ''
 
     class Meta:
         verbose_name = 'Usuario'

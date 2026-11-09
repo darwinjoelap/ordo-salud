@@ -61,7 +61,7 @@ def nuevo(request):
         log.warning('Plataforma: %s creó el tenant %s (%s)', request.user.username, tenant.nombre, tenant.pk)
         return render(request, 'plataforma/creado.html', {
             'titulo': 'Consultorio creado', 'tenant': tenant, 'titular': titular, 'clave': clave,
-            'enlace': _enlace(request, tenant)})
+            **_texto_acceso(request, tenant, titular, clave)})
     return render(request, 'plataforma/form.html', {'titulo': 'Nuevo consultorio o clínica', 'form': form})
 
 
@@ -218,3 +218,39 @@ def tasas(request):
     return render(request, 'plataforma/tasas.html', {
         'titulo': 'Tasa BCV', 'tasas': TasaCambio.objects.select_related('registrada_por')[:60],
         'vigente': tasas_srv.tasa_global(), 'hoy': timezone.localdate()})
+
+
+@solo_plataforma
+def acceso(request, pk, membresia_pk):
+    """
+    Compartir el acceso de un miembro (ADR-062): enlace + usuario + contraseña. Se muestra la temporal VIGENTE si el
+    usuario no la ha cambiado; si ya tiene la suya, solo se puede generar una nueva (POST).
+    """
+    from apps.equipo.models import Membresia
+    tenant = get_object_or_404(Tenant, pk=pk)
+    m = get_object_or_404(Membresia.objects.select_related('usuario'), pk=membresia_pk, tenant=tenant)
+    clave, nueva = '', False
+    if request.method == 'POST':
+        clave, nueva = servicios.restablecer_acceso(m, request.user), True
+        messages.success(request, f'Contraseña temporal nueva para {m.usuario.username}: la anterior ya no sirve.')
+    else:
+        clave = m.usuario.clave_temporal_vigente()
+    return render(request, 'plataforma/acceso.html', {
+        'titulo': f'Acceso · {m.usuario.nombre_visible}', 'tenant_obj': tenant, 'm': m, 'clave': clave,
+        'nueva': nueva, **_texto_acceso(request, tenant, m.usuario, clave)})
+
+
+def _texto_acceso(request, tenant, usuario, clave):
+    """Texto listo para copiar o mandar por WhatsApp."""
+    import urllib.parse
+
+    from apps.agenda.servicios import numero_whatsapp
+    enlace = _enlace(request, tenant)
+    lineas = [f'{tenant.nombre} en Ordo Salud', f'Enlace: {enlace}', f'Usuario: {usuario.username}']
+    if clave:
+        lineas.append(f'Contraseña temporal: {clave} (al entrar te pedirá cambiarla)')
+    texto = '\n'.join(lineas)
+    numero = numero_whatsapp(usuario.telefono)
+    return {'enlace': enlace, 'texto_acceso': texto,
+            'url_whatsapp': f'https://wa.me/{numero}?text={urllib.parse.quote(texto)}' if numero
+            else f'https://wa.me/?text={urllib.parse.quote(texto)}'}

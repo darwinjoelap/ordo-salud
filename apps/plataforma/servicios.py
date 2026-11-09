@@ -2,6 +2,7 @@
 Panel de plataforma (solo superusuarios): alta y control de tenants (consultorios y clínicas).
 El enlace de cada tenant es su slug: https://<dominio>/<slug>/
 """
+import logging
 import re
 from datetime import timedelta
 
@@ -15,6 +16,8 @@ from apps.core.fechas import sumar_meses
 from apps.core.permisos import Rol
 
 from .models import AccesoSoporte, Suscripcion, Tenant
+
+log = logging.getLogger('apps.plataforma')
 
 # Primeros segmentos de URL que usa Ordo Salud: no pueden ser enlaces de un tenant
 RESERVADOS = {
@@ -87,10 +90,21 @@ def crear_tenant(datos):
                                     email=datos.get('email_titular') or '',
                                     first_name=(datos.get('nombre_titular') or '').strip(),
                                     last_name=(datos.get('apellido_titular') or '').strip(), debe_cambiar_clave=True)
+    titular.poner_clave_temporal(clave)
     m = Membresia.objects.create(usuario=titular, tenant=tenant, rol=Rol.TITULAR)
     if datos.get('titular_es_profesional') and datos.get('especialidad_titular'):
         crear_perfil(m, datos['especialidad_titular'], titulo=datos.get('titulo_titular') or 'Dr.')
     return tenant, titular, clave
+
+
+def restablecer_acceso(membresia, usuario_plataforma=None):
+    """Plataforma (ADR-062): contraseña temporal nueva para un miembro del consultorio. Devuelve la clave."""
+    from apps.equipo.servicios import clave_temporal
+    clave = clave_temporal()
+    membresia.usuario.poner_clave_temporal(clave)
+    log.warning('Plataforma: %s generó contraseña temporal para %s (%s)', getattr(usuario_plataforma, 'username', '-'),
+                membresia.usuario.username, membresia.tenant.slug)
+    return clave
 
 
 @transaction.atomic

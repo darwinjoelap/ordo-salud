@@ -1,0 +1,10 @@
+{# Enlace, usuario y contraseña con «Copiar todo» y «WhatsApp» (ADR-062). Necesita: enlace, usuario, clave, texto_acceso, url_whatsapp #}
+<dl class="row mb-3">
+  <dt class="col-4">Enlace</dt><dd class="col-8"><code>{{ enlace }}</code></dd>
+  <dt class="col-4">Usuario</dt><dd class="col-8"><code>{{ usuario.username }}</code></dd>
+  <dt class="col-4">Contraseña</dt><dd class="col-8">{% if clave %}<code class="fs-5">{{ clave }}</code> <span class="small text-muted">temporal</span>{% else %}<span class="small text-muted">Tiene su propia contraseña: no se puede ver. Genera una nueva si la olvidó.</span>{% endif %}</dd>
+</dl>
+<div class="d-flex flex-wrap gap-2">
+  <button type="button" class="btn btn-outline-primary btn-sm" data-copiar="{{ texto_acceso }}" onclick="navigator.clipboard.writeText(this.dataset.copiar).then(()=>{this.textContent='Copiado'})"><i class="bi bi-clipboard me-1"></i>Copiar todo</button>
+  <a href="{{ url_whatsapp }}" target="_blank" rel="noopener" class="btn btn-outline-success btn-sm"><i class="bi bi-whatsapp me-1"></i>Enviar por WhatsApp{% if usuario.telefono %} ({{ usuario.telefono }}){% endif %}</a>
+</div>

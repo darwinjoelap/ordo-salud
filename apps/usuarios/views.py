@@ -20,7 +20,8 @@ def perfil(request):
     if accion == 'clave' and form_clave.is_valid():
         usuario = form_clave.save()
         usuario.debe_cambiar_clave = False
-        usuario.save(update_fields=['debe_cambiar_clave'])
+        usuario.clave_temporal_cifrada = ''           # su clave propia nunca se puede volver a mostrar
+        usuario.save(update_fields=['debe_cambiar_clave', 'clave_temporal_cifrada'])
         update_session_auth_hash(request, usuario)      # no cierra la sesión
         messages.success(request, 'Contraseña cambiada.')
         return redirect('/')

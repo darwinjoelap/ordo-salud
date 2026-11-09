@@ -10,6 +10,7 @@ urlpatterns = [
     path('<int:pk>/', views.editar, name='editar'),
     path('<int:pk>/renovar/', views.renovar, name='renovar'),
     path('<int:pk>/entrar/', views.entrar, name='entrar'),
+    path('<int:pk>/acceso/<int:membresia_pk>/', views.acceso, name='acceso'),
     path('salir/', views.salir, name='salir'),
     path('tasas/', views.tasas, name='tasas'),
     path('suscripciones/', views.suscripciones, name='suscripciones'),
