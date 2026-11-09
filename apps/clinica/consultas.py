@@ -436,7 +436,7 @@ def sincronizar_prescripcion(consulta, datos):
             ItemPrescripcion.objects.create(
                 consulta=consulta, paciente=consulta.paciente, medicamento=f['medicamento'][:200], orden=n,
                 **{c: (f.get(c) or '')[:100] for c in ('dosis', 'frecuencia', 'duracion')},
-                cantidad=(f.get('cantidad') or '')[:60])
+                cantidad=(f.get('cantidad') or '')[:60], indicacion=(f.get('indicacion') or '')[:300])
 
 
 def sincronizar_motivo(consulta, datos):

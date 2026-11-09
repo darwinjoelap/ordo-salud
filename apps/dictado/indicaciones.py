@@ -130,7 +130,7 @@ def ejemplos(perfil, diagnostico):
     salida = []
     for c in candidatas:
         items = list(ItemPrescripcion.objects.filter(consulta_id=c['pk']).order_by('orden')
-                     .values_list('medicamento', 'dosis', 'frecuencia', 'duracion'))
+                     .values_list('medicamento', 'dosis', 'frecuencia', 'duracion', 'indicacion'))
         if not items:
             continue
         recipe = '; '.join(' '.join(x for x in fila if x) for fila in items)

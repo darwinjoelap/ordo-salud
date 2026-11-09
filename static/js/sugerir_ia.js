@@ -58,20 +58,6 @@
     return '';
   }
 
-  // Récipe: misma lógica que el glosario (primera fila libre; si no hay, agrega una)
-  function filaLibre() {
-    const nombres = tarjeta.querySelectorAll('[name*="-medicamentos__"][name$="__medicamento"]');
-    for (const n of nombres) { if (!n.value.trim()) return n; }
-    const agregar = tarjeta.querySelector('[data-agregar-fila]');
-    if (!agregar) return null;
-    agregar.click();
-    const todos = tarjeta.querySelectorAll('[name*="-medicamentos__"][name$="__medicamento"]');
-    return todos[todos.length - 1];
-  }
-  function poner(base, sufijo, valor) {
-    const c = tarjeta.querySelector('[name="' + base + sufijo + '"]');
-    if (c && valor) c.value = valor;
-  }
   function agregarTexto(campo, texto) {
     if (campo && texto) campo.value = (campo.value ? campo.value.trimEnd() + '\n' : '') + texto;
   }
@@ -140,16 +126,15 @@
     no.addEventListener('click', function () { panel.innerHTML = ''; });
     ok.addEventListener('click', function () {
       const obs = tarjeta.querySelector('[name$="-observaciones"]');
+      const rx = window.OrdoRecipe(tarjeta);
       filas.forEach(function (x) {
-        if (!x.check.checked) return;
-        const campo = filaLibre();
-        if (!campo) return;
-        const base = campo.name.replace(/medicamento$/, '');
-        campo.value = x.datos.medicamento;
-        poner(base, 'dosis', x.datos.dosis);
-        poner(base, 'frecuencia', x.datos.frecuencia);
-        poner(base, 'duracion', x.datos.duracion);
-        if (x.datos.texto) agregarTexto(obs, x.datos.texto);
+        if (!x.check.checked || !rx) return;
+        const fila = rx.libre();                 // cada medicamento en su fila numerada, con su indicación
+        rx.poner(fila, 'medicamento', x.datos.medicamento);
+        rx.poner(fila, 'dosis', x.datos.dosis);
+        rx.poner(fila, 'frecuencia', x.datos.frecuencia);
+        rx.poner(fila, 'duracion', x.datos.duracion);
+        rx.poner(fila, 'indicacion', x.datos.texto);
       });
       if (indic && indic.value.trim()) {
         const plan = document.querySelector('[data-codigo="nucleo.plan"] [name$="-indicaciones"]');

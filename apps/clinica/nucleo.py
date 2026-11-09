@@ -103,15 +103,18 @@ SECCIONES = [
         {'clave': 'indicaciones', 'tipo': T, 'etiqueta': 'Indicaciones al paciente', 'filas': 3},
         {'clave': 'proximo_control', 'tipo': 'fecha', 'etiqueta': 'Próximo control', 'ancho': 4},
     ]}),
-    SeccionDef('nucleo.prescripcion', 'Récipe (prescripción)', orden=80, esquema={'campos': [
+    # v2 (ADR-063): cada medicamento con su indicación numerada, como en Pediae
+    SeccionDef('nucleo.prescripcion', 'Récipe (prescripción)', orden=80, version=2, esquema={'campos': [
         {'clave': 'medicamentos', 'tipo': 'tabla', 'etiqueta': 'Medicamentos', 'filas': 3, 'subcampos': [
             {'clave': 'medicamento', 'tipo': 'texto', 'etiqueta': 'Medicamento y presentación', 'ancho': 4},
             {'clave': 'dosis', 'tipo': 'texto', 'etiqueta': 'Dosis', 'ancho': 2},
             {'clave': 'frecuencia', 'tipo': 'texto', 'etiqueta': 'Frecuencia', 'ancho': 2},
             {'clave': 'duracion', 'tipo': 'texto', 'etiqueta': 'Duración', 'ancho': 2},
             {'clave': 'cantidad', 'tipo': 'texto', 'etiqueta': 'Cantidad', 'ancho': 2},
+            {'clave': 'indicacion', 'tipo': 'texto', 'etiqueta': 'Indicación', 'ancho': 12},
         ]},
-        {'clave': 'observaciones', 'tipo': T, 'etiqueta': 'Indicaciones del récipe', 'filas': 2},
+        {'clave': 'observaciones', 'tipo': T, 'etiqueta': 'Indicaciones adicionales (sin número)', 'filas': 2,
+         'ayuda': 'Van al final de las indicaciones del récipe, sin número.'},
     ]}),
     SeccionDef('nucleo.ordenes', 'Órdenes de exámenes', orden=90, esquema={'campos': [
         {'clave': 'laboratorio', 'tipo': T, 'etiqueta': 'Laboratorio', 'filas': 2, 'ancho': 6},

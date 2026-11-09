@@ -1,4 +1,14 @@
 <div class="os-glosario d-flex flex-wrap gap-2 align-items-end mb-3 p-2 rounded" data-glosario data-edad-meses="{{ edad_meses }}" data-url="{% url 'clinica:medicamento_calcular' 0 %}">
+  {# Siempre a la vista, como en Pediae: con qué edad y peso se calcula #}
+  <div class="w-100 d-flex flex-wrap align-items-end gap-3 pb-1 mb-1 border-bottom">
+    <div class="small"><i class="bi bi-person me-1"></i><b>{{ paciente_glosario.nombres|default:'' }}</b>{% if paciente_glosario.edad_texto %} · {{ paciente_glosario.edad_texto }}{% endif %}</div>
+    <div class="d-flex align-items-center gap-1">
+      <label class="small mb-0 fw-semibold" for="glosario-peso">Peso</label>
+      <input type="text" inputmode="decimal" class="form-control form-control-sm" id="glosario-peso" style="width:80px" placeholder="kg">
+      <span class="small">kg</span>
+      <span class="small text-muted" data-glosario-peso-origen></span>
+    </div>
+  </div>
   {% if glosario %}
     <div class="flex-grow-1" style="min-width:200px">
       <label class="form-label small mb-0" for="glosario-med"><i class="bi bi-capsule me-1"></i>Del glosario</label>
@@ -12,10 +22,6 @@
       <select class="form-select form-select-sm" id="glosario-nivel">
         <option value="minimo">Mínima</option><option value="estandar" selected>Estándar</option><option value="maximo">Máxima</option>
       </select>
-    </div>
-    <div style="width:90px">
-      <label class="form-label small mb-0" for="glosario-peso">Peso (kg)</label>
-      <input type="text" inputmode="decimal" class="form-control form-control-sm" id="glosario-peso">
     </div>
     <button type="button" class="btn btn-sm btn-outline-primary" data-glosario-agregar><i class="bi bi-plus-lg me-1"></i>Agregar al récipe</button>
     <div class="w-100 small" data-glosario-msg aria-live="polite"></div>

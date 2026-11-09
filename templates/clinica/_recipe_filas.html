@@ -1,0 +1,36 @@
+{# Récipe como en Pediae (ADR-063): filas numeradas medicamento + indicación, se agregan a mano, se ordenan y se quitan. #}
+<div class="col-12" data-campo="{{ c.clave }}">
+  <div class="d-flex align-items-center justify-content-between mb-1">
+    <label class="form-label mb-0">{{ c.etiqueta }}</label>
+    <button type="button" class="btn btn-sm btn-outline-primary" data-rx-agregar><i class="bi bi-plus-lg me-1"></i>Agregar a mano</button>
+  </div>
+  <div data-rx id="tabla-{{ form.prefix }}-{{ c.clave }}">
+    {% for fila in it.filas %}
+    <div class="os-rx-fila border rounded p-2 mb-2 bg-body" data-rx-fila>
+      <div class="d-flex gap-2 align-items-start">
+        <span class="badge rounded-pill text-bg-primary mt-1" style="min-width:26px" data-rx-num>{{ forloop.counter }}</span>
+        <div class="flex-grow-1 min-w-0">
+          {% for sub, campo in fila %}{% if sub.clave == 'medicamento' %}
+            <input type="text" name="{{ campo.html_name }}" id="{{ campo.auto_id }}" value="{{ campo.value|default_if_none:'' }}" maxlength="300" class="form-control form-control-sm fw-semibold" placeholder="Medicamento y presentación (ej.: Amoxicilina susp. 250 mg/5 mL)">
+          {% endif %}{% endfor %}
+          <div class="row g-1 mt-1">
+            {% for sub, campo in fila %}{% if sub.clave == 'dosis' or sub.clave == 'frecuencia' or sub.clave == 'duracion' or sub.clave == 'cantidad' %}
+              <div class="col-6 col-md-3"><input type="text" name="{{ campo.html_name }}" id="{{ campo.auto_id }}" value="{{ campo.value|default_if_none:'' }}" maxlength="300" class="form-control form-control-sm" placeholder="{{ sub.etiqueta }}" aria-label="{{ sub.etiqueta }}"></div>
+            {% endif %}{% endfor %}
+          </div>
+          {% for sub, campo in fila %}{% if sub.clave == 'indicacion' %}
+            <textarea name="{{ campo.html_name }}" id="{{ campo.auto_id }}" rows="2" maxlength="300" class="form-control form-control-sm mt-1" placeholder="Indicación: cómo y cuándo tomarlo (sale con el mismo número en el récipe)">{{ campo.value|default_if_none:'' }}</textarea>
+          {% endif %}{% endfor %}
+        </div>
+        <div class="btn-group-vertical btn-group-sm flex-shrink-0">
+          <button type="button" class="btn btn-outline-secondary" data-rx-subir title="Subir" aria-label="Subir"><i class="bi bi-arrow-up"></i></button>
+          <button type="button" class="btn btn-outline-secondary" data-rx-bajar title="Bajar" aria-label="Bajar"><i class="bi bi-arrow-down"></i></button>
+          <button type="button" class="btn btn-outline-danger" data-rx-quitar title="Quitar" aria-label="Quitar"><i class="bi bi-x-lg"></i></button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% if c.ayuda %}<div class="form-text">{{ c.ayuda }}</div>{% endif %}
+  {% for campo_err, errores in form.errors.items %}{% if campo_err == c.clave %}{% for e in errores %}<div class="text-danger small">{{ e }}</div>{% endfor %}{% endif %}{% endfor %}
+</div>

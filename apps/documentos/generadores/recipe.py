@@ -139,7 +139,10 @@ def generar(doc, con_firma=True):
         izquierda.append(Spacer(1, 2 * mm))
         como = ', '.join(x for x in [m.get('dosis'), m.get('frecuencia'), m.get('duracion')] if x)
         derecha.append(Paragraph(f"{n}. <b>{m['medicamento']}</b>", TEXTO))
-        if como:
+        # ADR-063: la indicación de ESE medicamento, con su número; sin indicación, dosis·frecuencia·duración
+        if (m.get('indicacion') or '').strip():
+            derecha.append(Paragraph(m['indicacion'].strip(), DETALLE))
+        elif como:
             derecha.append(Paragraph(como, DETALLE))
         derecha.append(Spacer(1, 1.5 * mm))
     if not datos['medicamentos']:

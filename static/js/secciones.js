@@ -103,12 +103,73 @@
   }
 })();
 
+// Récipe numerado (ADR-063, como Pediae): agregar a mano, subir/bajar, quitar; los nombres siguen el orden visible.
+(function () {
+  function iniciar(caja) {
+    function filas() { return Array.prototype.slice.call(caja.querySelectorAll('[data-rx-fila]')); }
+    function vacia(f) {
+      return !Array.prototype.some.call(f.querySelectorAll('input, textarea'), function (el) { return el.value.trim(); });
+    }
+    function renumerar() {
+      filas().forEach(function (f, i) {
+        f.querySelector('[data-rx-num]').textContent = i + 1;
+        f.querySelectorAll('input, textarea, select').forEach(function (el) {
+          el.name = el.name.replace(/__\d+__/, '__' + i + '__');
+          if (el.id) el.id = el.id.replace(/__\d+__/, '__' + i + '__');
+        });
+      });
+    }
+    function agregar() {
+      const todas = filas();
+      const nueva = todas[todas.length - 1].cloneNode(true);
+      nueva.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+      caja.appendChild(nueva);
+      renumerar();
+      return nueva;
+    }
+    // Primera fila vacía; si no hay, una nueva. Siempre deja una fila vacía al final para seguir escribiendo.
+    function libre() {
+      const f = filas().find(vacia) || agregar();
+      if (f === filas()[filas().length - 1]) agregar();
+      return f;
+    }
+    function poner(f, clave, valor) {
+      const el = f.querySelector('[name$="__' + clave + '"]');
+      if (el && valor) { el.value = valor; el.dispatchEvent(new Event('input', {bubbles: true})); }
+    }
+    caja.closest('[data-campo]').querySelector('[data-rx-agregar]').addEventListener('click', function () {
+      libre().querySelector('[name$="__medicamento"]').focus();
+    });
+    caja.addEventListener('click', function (e) {
+      const b = e.target.closest('[data-rx-subir], [data-rx-bajar], [data-rx-quitar]');
+      if (!b) return;
+      const f = b.closest('[data-rx-fila]');
+      if (b.hasAttribute('data-rx-subir') && f.previousElementSibling) caja.insertBefore(f, f.previousElementSibling);
+      if (b.hasAttribute('data-rx-bajar') && f.nextElementSibling) caja.insertBefore(f.nextElementSibling, f);
+      if (b.hasAttribute('data-rx-quitar')) {
+        if (filas().length > 1) f.remove();
+        else f.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+      }
+      renumerar();
+      caja.dispatchEvent(new Event('change', {bubbles: true}));      // borrador sin conexión
+    });
+    caja.ordoRx = {libre: libre, poner: poner};
+  }
+  document.querySelectorAll('[data-rx]').forEach(iniciar);
+  // Para el glosario y la sugerencia con IA
+  window.OrdoRecipe = function (dentro) {
+    const caja = (dentro || document).querySelector('[data-rx]');
+    return caja ? caja.ordoRx : null;
+  };
+})();
+
 // Glosario de medicamentos en el récipe: calcula la dosis (peso/edad) y llena la primera fila libre.
 (function () {
   const barra = document.querySelector('[data-glosario]');
-  if (!barra || !barra.querySelector('#glosario-med')) return;
+  if (!barra) return;
   const tarjeta = barra.closest('[data-seccion]');
   const peso = barra.querySelector('#glosario-peso');
+  const origen = barra.querySelector('[data-glosario-peso-origen]');
   const msg = barra.querySelector('[data-glosario-msg]');
 
   function pesoDelFormulario() {
@@ -116,25 +177,16 @@
     for (const c of campos) { if (c.value) return c.value; }
     return '';
   }
-  // El peso se toma de antropometría/signos vitales mientras el médico no lo cambie a mano
-  function sincronizarPeso() { if (!peso.dataset.manual) peso.value = pesoDelFormulario(); }
-  peso.addEventListener('input', function () { peso.dataset.manual = '1'; });
+  // El peso se toma de antropometría/signos vitales mientras el médico no lo cambie a mano (siempre a la vista)
+  function sincronizarPeso() {
+    if (!peso.dataset.manual) peso.value = pesoDelFormulario();
+    if (origen) origen.textContent = peso.dataset.manual ? '(escrito a mano)' : (peso.value ? '(de esta consulta)' : '(escríbelo para calcular dosis)');
+  }
+  peso.addEventListener('input', function () { peso.dataset.manual = peso.value ? '1' : ''; sincronizarPeso(); });
   document.addEventListener('input', function (e) { if (e.target.name && e.target.name.endsWith('-peso_kg')) sincronizarPeso(); });
   sincronizarPeso();
+  if (!barra.querySelector('#glosario-med')) return;
 
-  function filaLibre() {
-    const nombres = tarjeta.querySelectorAll('[name*="-medicamentos__"][name$="__medicamento"]');
-    for (const n of nombres) { if (!n.value.trim()) return n; }
-    const boton = tarjeta.querySelector('[data-agregar-fila]');
-    if (!boton) return null;
-    boton.click();
-    const todos = tarjeta.querySelectorAll('[name*="-medicamentos__"][name$="__medicamento"]');
-    return todos[todos.length - 1];
-  }
-  function poner(base, sufijo, valor) {
-    const el = tarjeta.querySelector('[name="' + base + sufijo + '"]');
-    if (el && valor) el.value = valor;
-  }
 
   barra.querySelector('[data-glosario-agregar]').addEventListener('click', function () {
     const sel = barra.querySelector('#glosario-med');
@@ -147,15 +199,14 @@
       if (!r.ok) throw new Error(r.status);
       return r.json();
     }).then(function (d) {
-      const campo = filaLibre();
-      if (!campo) { msg.textContent = 'No encontré la tabla del récipe.'; return; }
-      const base = campo.name.replace(/medicamento$/, '');
-      campo.value = d.medicamento;
-      poner(base, 'dosis', d.dosis);
-      poner(base, 'frecuencia', d.frecuencia);
-      poner(base, 'duracion', d.duracion);
-      const obs = tarjeta.querySelector('[name$="-observaciones"]');
-      if (obs && d.texto && (d.calculada || d.con_indicaciones)) obs.value = (obs.value ? obs.value.trimEnd() + '\n' : '') + d.texto;
+      const rx = window.OrdoRecipe(tarjeta);
+      if (!rx) { msg.textContent = 'No encontré el récipe.'; return; }
+      const fila = rx.libre();
+      rx.poner(fila, 'medicamento', d.medicamento);
+      rx.poner(fila, 'dosis', d.dosis);
+      rx.poner(fila, 'frecuencia', d.frecuencia);
+      rx.poner(fila, 'duracion', d.duracion);
+      if (d.texto && (d.calculada || d.con_indicaciones)) rx.poner(fila, 'indicacion', d.texto);
       msg.innerHTML = '';
       const ok = document.createElement('div');
       ok.className = 'text-success';

@@ -165,6 +165,7 @@ class ItemPrescripcion(TenantModel):
     frecuencia = models.CharField('Frecuencia', max_length=100, blank=True)
     duracion = models.CharField('Duración', max_length=100, blank=True)
     cantidad = models.CharField('Cantidad', max_length=60, blank=True)
+    indicacion = models.TextField('Indicación', blank=True)
     orden = models.PositiveSmallIntegerField(default=0)
 
     class Meta:

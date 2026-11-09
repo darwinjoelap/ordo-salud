@@ -12,6 +12,8 @@
       {% if c.filas %}<textarea class="form-control os-calculado" rows="{{ c.filas }}" placeholder="Se arma al escribir" disabled data-calculado="{{ c.clave }}">{{ form.calculados|obtener:c.clave|default_if_none:'' }}</textarea>
       {% else %}<input class="form-control os-calculado" value="{{ form.calculados|obtener:c.clave|default_if_none:'' }}" placeholder="Se calcula al escribir" disabled data-calculado="{{ c.clave }}">{% endif %}
     </div>
+  {% elif c.tipo == 'tabla' and c.clave == 'medicamentos' %}
+    {% include 'clinica/_recipe_filas.html' %}
   {% elif c.tipo == 'tabla' %}
     <div class="col-12" data-campo="{{ c.clave }}">
       <label class="form-label">{{ c.etiqueta }}{% if c.requerido %} <span class="text-danger">*</span>{% endif %}</label>
