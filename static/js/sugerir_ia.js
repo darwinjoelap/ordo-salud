@@ -71,38 +71,49 @@
       .catch(function () { btn.disabled = false; btn.textContent = 'No se pudo guardar · reintentar'; });
   }
 
+  function tarjetaFila(f) {
+    const fila = el('div', 'border-top pt-2 mt-2');
+    const linea = el('label', 'd-flex gap-2 align-items-start');
+    const check = el('input', 'form-check-input mt-1');
+    check.type = 'checkbox';
+    const peligro = (f.alertas || []).some(function (a) { return a.tipo === 'danger'; });
+    check.checked = Boolean(f.fila) && !peligro;          // completar: marcado; adicionales: a criterio de ella
+    linea.appendChild(check);
+    const cuerpo = el('div', 'flex-grow-1');
+    const titulo = el('div', 'fw-semibold', (f.fila ? f.fila + '. ' : '+ ') + f.medicamento);
+    if (f.origen === 'ia') titulo.appendChild(el('span', 'badge text-bg-warning ms-2', 'IA · verificar'));
+    if (f.origen === 'glosario') titulo.appendChild(el('span', 'badge text-bg-success ms-2', 'de tu glosario'));
+    cuerpo.appendChild(titulo);
+    cuerpo.appendChild(el('div', 'small', [f.dosis, f.frecuencia, f.duracion].filter(Boolean).join(' · ') || 'Sin dosis calculada'));
+    if (f.texto) cuerpo.appendChild(el('div', 'small fst-italic', '«' + f.texto + '»'));
+    if (f.ficha) cuerpo.appendChild(el('div', 'small text-muted', 'Ficha: ' + f.ficha));
+    if (f.nota) cuerpo.appendChild(el('div', 'small text-muted', f.nota));
+    (f.alertas || []).forEach(function (a) { cuerpo.appendChild(el('div', 'small text-' + a.tipo, a.msg)); });
+    linea.appendChild(cuerpo);
+    fila.appendChild(linea);
+    if (f.para_glosario) {
+      const g = el('button', 'btn btn-link btn-sm p-0 ms-4', 'Guardar esta ficha en mi glosario');
+      g.type = 'button';
+      g.addEventListener('click', function () { guardarEnGlosario(f.para_glosario, g); });
+      fila.appendChild(g);
+    }
+    return {nodo: fila, check: check, datos: f};
+  }
+
   function mostrar(d) {
     panel.innerHTML = '';
     const card = el('div', 'border rounded p-2 bg-body-tertiary');
     card.appendChild(el('div', 'fw-semibold mb-1', 'Sugerencia (revisa antes de agregar)'));
     (d.alertas || []).forEach(function (a) { card.appendChild(el('div', 'small text-warning-emphasis', '⚠ ' + a)); });
     const filas = [];
-    (d.filas || []).forEach(function (f, i) {
-      const fila = el('div', 'border-top pt-2 mt-2');
-      const linea = el('label', 'd-flex gap-2 align-items-start');
-      const check = el('input', 'form-check-input mt-1');
-      check.type = 'checkbox';
-      check.checked = !(f.alertas || []).some(function (a) { return a.tipo === 'danger'; });
-      linea.appendChild(check);
-      const cuerpo = el('div', 'flex-grow-1');
-      const titulo = el('div', 'fw-semibold', f.medicamento);
-      if (f.origen === 'ia') titulo.appendChild(el('span', 'badge text-bg-warning ms-2', 'IA · verificar'));
-      cuerpo.appendChild(titulo);
-      cuerpo.appendChild(el('div', 'small', [f.dosis, f.frecuencia, f.duracion].filter(Boolean).join(' · ') || 'Sin dosis calculada'));
-      if (f.ficha) cuerpo.appendChild(el('div', 'small text-muted', 'Ficha: ' + f.ficha));
-      if (f.nota) cuerpo.appendChild(el('div', 'small text-muted', f.nota));
-      (f.alertas || []).forEach(function (a) { cuerpo.appendChild(el('div', 'small text-' + a.tipo, a.msg)); });
-      linea.appendChild(cuerpo);
-      fila.appendChild(linea);
-      if (f.para_glosario) {
-        const g = el('button', 'btn btn-link btn-sm p-0 ms-4', 'Guardar esta ficha en mi glosario');
-        g.type = 'button';
-        g.addEventListener('click', function () { guardarEnGlosario(f.para_glosario, g); });
-        fila.appendChild(g);
-      }
-      card.appendChild(fila);
-      filas.push({check: check, datos: f});
+    const completar = (d.filas || []).filter(function (f) { return f.fila; });
+    const nuevas = (d.filas || []).filter(function (f) { return !f.fila; });
+    [[completar, 'Completar tu récipe'], [nuevas, 'También podrías agregar']].forEach(function (grupo) {
+      if (!grupo[0].length) return;
+      card.appendChild(el('div', 'small text-uppercase text-muted fw-semibold mt-2', grupo[1]));
+      grupo[0].forEach(function (f) { const t = tarjetaFila(f); card.appendChild(t.nodo); filas.push(t); });
     });
+    if (!filas.length && !d.indicaciones) card.appendChild(el('div', 'small text-muted', 'No hay nada que agregar.'));
     let indic = null;
     if (d.indicaciones) {
       const bloque = el('div', 'border-top pt-2 mt-2');
@@ -129,12 +140,19 @@
       const rx = window.OrdoRecipe(tarjeta);
       filas.forEach(function (x) {
         if (!x.check.checked || !rx) return;
-        const fila = rx.libre();                 // cada medicamento en su fila numerada, con su indicación
-        rx.poner(fila, 'medicamento', x.datos.medicamento);
-        rx.poner(fila, 'dosis', x.datos.dosis);
-        rx.poner(fila, 'frecuencia', x.datos.frecuencia);
-        rx.poner(fila, 'duracion', x.datos.duracion);
-        rx.poner(fila, 'indicacion', x.datos.texto);
+        const f = x.datos;
+        const destino = (f.fila && rx.fila(f.fila)) || rx.libre();
+        const vacio = function (clave) {
+          const c = destino.querySelector('[name$="__' + clave + '"]');
+          return c && !c.value.trim();
+        };
+        // En la fila de ella: se completa lo vacío y no se pisa lo que escribió
+        const nombre = destino.querySelector('[name$="__medicamento"]');
+        if (!nombre.value.trim() || f.medicamento.toLowerCase().indexOf(nombre.value.trim().toLowerCase()) === 0) {
+          rx.poner(destino, 'medicamento', f.medicamento);        // «Amoxicilina» → «Amoxicilina susp. 250 mg/5 mL»
+        }
+        ['dosis', 'frecuencia', 'duracion'].forEach(function (k) { if (vacio(k)) rx.poner(destino, k, f[k]); });
+        if (vacio('indicacion')) rx.poner(destino, 'indicacion', f.texto);
       });
       if (indic && indic.value.trim()) {
         const plan = document.querySelector('[data-codigo="nucleo.plan"] [name$="-indicaciones"]');
@@ -149,7 +167,8 @@
     boton.disabled = true;
     panel.innerHTML = '';
     panel.appendChild(el('div', 'small text-muted', 'Pensando la sugerencia… (unos segundos)'));
-    fetch(caja.dataset.url, {method: 'POST', body: JSON.stringify({campos: camposConsulta(), peso: peso()}),
+    fetch(caja.dataset.url, {method: 'POST', body: JSON.stringify({campos: camposConsulta(), peso: peso(),
+                                                         recipe: (window.OrdoRecipe(tarjeta) || {leer: function () { return []; }}).leer()}),
       headers: {'X-CSRFToken': token(), 'X-Requested-With': 'fetch', 'Content-Type': 'application/json'}})
       .then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (d) {

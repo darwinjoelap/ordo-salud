@@ -31,8 +31,8 @@
 </div>
 {% if sugerir_ia %}
 <div class="mb-3" data-sugerir-ia data-url="{% url 'dictado:sugerir' paciente_glosario.pk %}" data-url-glosario="{% url 'dictado:guardar_en_glosario' %}">
-  <button type="button" class="btn btn-sm btn-outline-primary" data-sugerir-ia-btn><i class="bi bi-stars me-1"></i>Sugerir récipe e indicaciones (IA)</button>
-  <span class="small text-muted ms-1">Usa lo escrito en esta consulta. Revisa todo antes de agregarlo.</span>
+  <button type="button" class="btn btn-sm btn-outline-primary" data-sugerir-ia-btn><i class="bi bi-stars me-1"></i>Completar y sugerir con IA</button>
+  <span class="small text-muted ms-1">Completa dosis e indicación de lo que escribiste en el récipe y sugiere lo que falte. Revisa antes de agregar.</span>
   <div class="mt-2" data-sugerir-ia-panel aria-live="polite"></div>
 </div>
 {% endif %}

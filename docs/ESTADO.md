@@ -11,6 +11,19 @@
 
 ---
 
+## Consultorio de pruebas (`consultorio_pruebas`)
+Unidad `pruebas.salud.ordove.com` con pacientes ficticios [DEMO]; se le agrega un médico por especialidad
+(`--medico <codigo> --usuario … --clave …`). Paquete de escenarios: **pediatría** (13 casos: curvas, desnutrición,
+obesidad, alergia + IA, asma + procedimiento, RN prematuro, adolescente, gemelas, cobros parciales/exonerado, agenda
+hoy/mañana/no asistió, datos incompletos, borradores). Pendiente detectado: **edad corregida en prematuros** (hoy
+percentiles por edad cronológica). Próximos paquetes: ginecología, cardiología pediátrica, medicina general.
+
+## 2026-11-09 noche — «Completar y sugerir con IA» (ADR-060, ampliación)
+El botón completa las filas del récipe que la doctora escribió solo con el nombre (con el glosario si coincide, sin IA
+ni costo; si no, la IA da la ficha y el sistema calcula), no repite lo ya indicado y lo nuevo va aparte («También
+podrías agregar», sin marcar). Nombre escrito que está en el glosario → enlace «Calcular con glosario» en esa fila.
+308 tests OK (SQLite y Postgres). SW `f22`.
+
 ## 2026-11-09 — ADR-060 sugerir indicaciones con IA · ADR-061 dictado por especialidad
 Fix 500 (código CIE largo) y medicamentos de solo-indicaciones en el récipe. Sugerencias IA: activar por consultorio
 en la plataforma (empezar con la Dra. Anais). 282 tests OK (SQLite y Postgres) + prueba en navegador.

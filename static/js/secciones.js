@@ -123,6 +123,7 @@
       const todas = filas();
       const nueva = todas[todas.length - 1].cloneNode(true);
       nueva.querySelectorAll('input, textarea').forEach(function (el) { el.value = ''; });
+      nueva.querySelectorAll('[data-rx-glosario]').forEach(function (el) { el.remove(); });
       caja.appendChild(nueva);
       renumerar();
       return nueva;
@@ -153,7 +154,16 @@
       renumerar();
       caja.dispatchEvent(new Event('change', {bubbles: true}));      // borrador sin conexión
     });
-    caja.ordoRx = {libre: libre, poner: poner};
+    // Fila n (1…) y lo escrito en cada fila (para «Completar y sugerir con IA»)
+    function fila(n) { return filas()[n - 1] || null; }
+    function leer() {
+      return filas().map(function (f, i) {
+        const v = function (clave) { const el = f.querySelector('[name$="__' + clave + '"]'); return el ? el.value.trim() : ''; };
+        return {fila: i + 1, medicamento: v('medicamento'), dosis: v('dosis'), frecuencia: v('frecuencia'),
+                duracion: v('duracion'), indicacion: v('indicacion')};
+      }).filter(function (r) { return r.medicamento; });
+    }
+    caja.ordoRx = {libre: libre, poner: poner, fila: fila, leer: leer};
   }
   document.querySelectorAll('[data-rx]').forEach(iniciar);
   // Para el glosario y la sugerencia con IA
@@ -188,25 +198,23 @@
   if (!barra.querySelector('#glosario-med')) return;
 
 
-  barra.querySelector('[data-glosario-agregar]').addEventListener('click', function () {
-    const sel = barra.querySelector('#glosario-med');
-    if (!sel.value) { sel.focus(); return; }
-    const url = barra.dataset.url.replace('/0/', '/' + sel.value + '/') + '?' + new URLSearchParams({
+  // Calcula con la ficha del glosario y llena «fila» (o la primera libre). En una fila ya escrita solo llena lo vacío.
+  function calcular(pk, destino) {
+    const url = barra.dataset.url.replace('/0/', '/' + pk + '/') + '?' + new URLSearchParams({
       peso: peso.value.replace(',', '.'), edad_meses: barra.dataset.edadMeses,
       nivel: barra.querySelector('#glosario-nivel').value});
     msg.textContent = 'Calculando…';
-    fetch(url, {headers: {'X-Requested-With': 'fetch'}}).then(function (r) {
+    return fetch(url, {headers: {'X-Requested-With': 'fetch'}}).then(function (r) {
       if (!r.ok) throw new Error(r.status);
       return r.json();
     }).then(function (d) {
       const rx = window.OrdoRecipe(tarjeta);
       if (!rx) { msg.textContent = 'No encontré el récipe.'; return; }
-      const fila = rx.libre();
-      rx.poner(fila, 'medicamento', d.medicamento);
-      rx.poner(fila, 'dosis', d.dosis);
-      rx.poner(fila, 'frecuencia', d.frecuencia);
-      rx.poner(fila, 'duracion', d.duracion);
-      if (d.texto && (d.calculada || d.con_indicaciones)) rx.poner(fila, 'indicacion', d.texto);
+      const fila = destino || rx.libre();
+      const vacio = function (k) { const c = fila.querySelector('[name$="__' + k + '"]'); return c && !c.value.trim(); };
+      if (!destino || vacio('medicamento')) rx.poner(fila, 'medicamento', d.medicamento);
+      ['dosis', 'frecuencia', 'duracion'].forEach(function (k) { if (vacio(k)) rx.poner(fila, k, d[k]); });
+      if (d.texto && (d.calculada || d.con_indicaciones) && vacio('indicacion')) rx.poner(fila, 'indicacion', d.texto);
       msg.innerHTML = '';
       const ok = document.createElement('div');
       ok.className = 'text-success';
@@ -218,9 +226,49 @@
         div.textContent = a.msg;
         msg.appendChild(div);
       });
-      sel.value = '';
     }).catch(function () { msg.textContent = 'No se pudo calcular (¿sin conexión?). Escribe la dosis a mano.'; });
+  }
+
+  barra.querySelector('[data-glosario-agregar]').addEventListener('click', function () {
+    const sel = barra.querySelector('#glosario-med');
+    if (!sel.value) { sel.focus(); return; }
+    calcular(sel.value).then(function () { sel.value = ''; });
   });
+
+  // Nombre escrito a mano que está en el glosario → botón «Calcular con glosario» en esa fila (sin IA)
+  function clave(texto) {
+    const p = (texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/[a-zñ]{4,}/);
+    return p ? p[0] : '';
+  }
+  const opciones = Array.prototype.slice.call(barra.querySelectorAll('#glosario-med option'))
+    .filter(function (o) { return o.value; })
+    .map(function (o) { return {pk: o.value, nombre: o.textContent.split(' · ')[0].trim(), texto: o.textContent.trim()}; });
+  const rxCaja = tarjeta && tarjeta.querySelector('[data-rx]');
+  if (rxCaja && opciones.length) {
+    let espera;
+    rxCaja.addEventListener('input', function (e) {
+      if (!e.target.name || !e.target.name.endsWith('__medicamento')) return;
+      clearTimeout(espera);
+      espera = setTimeout(function () { ofrecer(e.target); }, 300);
+    });
+    function ofrecer(campo) {
+      const fila = campo.closest('[data-rx-fila]');
+      if (!fila) return;
+      fila.querySelectorAll('[data-rx-glosario]').forEach(function (el) { el.remove(); });
+      const k = clave(campo.value);
+      const dosis = fila.querySelector('[name$="__dosis"]');
+      if (!k || (dosis && dosis.value.trim())) return;
+      const m = opciones.find(function (o) { return clave(o.nombre) === k; });
+      if (!m) return;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn btn-link btn-sm p-0 small';
+      b.setAttribute('data-rx-glosario', '');
+      b.textContent = 'Calcular con glosario: ' + m.texto;
+      b.addEventListener('click', function () { b.remove(); calcular(m.pk, fila); });
+      campo.insertAdjacentElement('afterend', b);
+    }
+  }
 })();
 
 // Campos calculados (percentiles, IMC, EG, FPP…): vista previa mientras se escribe. Sin conexión, se calculan al guardar.

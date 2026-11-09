@@ -46,13 +46,17 @@ Reglas:
 - Respeta las alergias: no propongas nada de la misma familia y avísalo en `alertas`.
 - `indicaciones`: medidas generales y signos de alarma, breves, en el estilo de los ejemplos de la profesional.
 - Usa solo medicamentos de uso aceptado para la edad del paciente. Ante la duda, no lo propongas.
-- Máximo 4 medicamentos; `nota` e `indicaciones` breves (pocas líneas).
+- Récipe actual: NO repitas los «ya indicados». Para cada «por completar» devuelve un elemento con su `fila` (el número
+  que se indica) y su ficha (o su `glosario_id`), respetando el medicamento que eligió la profesional.
+- Medicamentos nuevos que sugieras: `fila` = 0. Solo si de verdad faltan para este caso.
+- Máximo 4 medicamentos nuevos; `nota` e `indicaciones` breves (pocas líneas).
 - No incluyas nombres ni datos de identificación.
 Paciente: {paciente}."""
 
 ESQUEMA = {'type': 'object', 'required': ['medicamentos', 'indicaciones'], 'properties': {
     'medicamentos': {'type': 'array', 'items': {'type': 'object', 'required': ['glosario_id', 'nombre'], 'properties': {
         'glosario_id': {'type': 'integer'},
+        'fila': {'type': 'integer'},
         'nombre': {'type': 'string'},
         'presentacion': {'type': 'string'},
         'modo': {'type': 'string', 'enum': ['PESO', 'FIJA']},
@@ -207,11 +211,30 @@ def _choca_con_alergias(nombre, alergias):
     return bool(palabras & _palabras(nombre))
 
 
-def armar_filas(salida, glosario, peso, edad_meses, alergias):
+def _clave_nombre(nombre):
+    """Primera palabra significativa (≥ 4 letras) del nombre: «Amoxicilina 500 mg» → «amoxicilina»."""
+    palabras = re.findall(r'[a-z]{4,}', _norm(nombre))
+    return palabras[0] if palabras else ''
+
+
+def del_glosario(nombre, glosario):
+    """El medicamento del glosario que corresponde a lo escrito a mano (por su primera palabra), o None."""
+    clave = _clave_nombre(nombre)
+    return next((m for m in glosario if clave and _clave_nombre(m.nombre) == clave), None) if clave else None
+
+
+def armar_filas(salida, glosario, peso, edad_meses, alergias, pendientes=frozenset(), existentes=frozenset()):
+    """
+    pendientes: números de fila (1…) que la profesional escribió y faltan por completar.
+    existentes: claves de nombre de lo que ya está en el récipe (no se vuelven a sugerir como nuevos).
+    """
     filas, por_id = [], {m.pk: m for m in glosario}
     for d in salida.get('medicamentos') or []:
         if not isinstance(d, dict):
             continue
+        fila = d.get('fila') if d.get('fila') in pendientes else None
+        if fila is None and _clave_nombre(d.get('nombre') or '') in existentes:
+            continue                                    # ya está en el récipe: no se repite
         med = por_id.get(d.get('glosario_id') or 0)
         origen = 'glosario' if med else 'ia'
         if med is None:
@@ -231,7 +254,7 @@ def armar_filas(salida, glosario, peso, edad_meses, alergias):
         if origen == 'ia' and d.get('via'):
             texto = f'{texto} vía {d["via"]}'.strip()
         filas.append({
-            'origen': origen, 'medicamento': r['medicamento'], 'dosis': r['dosis'], 'dosis_mg': r['dosis_mg'],
+            'fila': fila, 'origen': origen, 'medicamento': r['medicamento'], 'dosis': r['dosis'], 'dosis_mg': r['dosis_mg'],
             'frecuencia': r['frecuencia'], 'duracion': r['duracion'], 'texto': texto,
             'nota': (d.get('nota') or '')[:200], 'alertas': alertas,
             'ficha': ficha_texto(med) if origen == 'ia' else '',
@@ -250,24 +273,52 @@ def _para_glosario(m):
 
 # ── Llamada ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-def sugerir(*, paciente, perfil, campos, peso=None, glosario=()):
+def sugerir(*, paciente, perfil, campos, peso=None, glosario=(), recipe=()):
     """
-    campos: {etiqueta: valor} con lo escrito en la consulta (lo arma la página). Devuelve
-    {'filas': [...], 'indicaciones': str, 'alertas': [str], 'id': SugerenciaIA.pk}. Lanza ErrorSugerencia.
+    campos: {etiqueta: valor} con lo escrito en la consulta. recipe: filas actuales del récipe
+    [{fila, medicamento, dosis, frecuencia, duracion, indicacion}] (fila = número visible, 1…).
+    Las filas con nombre y sin dosis ni indicación se COMPLETAN (primero con el glosario, sin IA); lo ya indicado no
+    se repite; lo nuevo va aparte. Devuelve {'filas': [... con 'fila'], 'indicaciones', 'alertas', 'id'}.
     """
     from apps.core.fechas import edad_meses as calc_edad_meses
     glosario = list(glosario)
     texto_consulta = '\n'.join(f'{k}: {v}' for k, v in campos.items() if str(v).strip())[:MAX_CONTEXTO]
-    if not texto_consulta.strip():
-        raise ErrorSugerencia('Escribe al menos el motivo o el diagnóstico antes de pedir una sugerencia.')
+    recipe = [r for r in recipe if isinstance(r, dict) and (r.get('medicamento') or '').strip()]
+    completas = [r for r in recipe if any((r.get(k) or '').strip() for k in ('dosis', 'frecuencia', 'indicacion'))]
+    pendientes = [r for r in recipe if r not in completas]
+    if not texto_consulta.strip() and not pendientes:
+        raise ErrorSugerencia('Escribe el motivo o el diagnóstico, o el nombre de los medicamentos que quieres '
+                              'completar, antes de pedir una sugerencia.')
     diagnostico = ' '.join(str(v) for k, v in campos.items() if 'iagn' in k)
     edad_m = calc_edad_meses(paciente.fecha_nacimiento) if paciente.fecha_nacimiento else None
     ant = getattr(paciente, 'antecedentes', None)
     alergias = (getattr(ant, 'alergias', '') or '').strip()
+    existentes = {_clave_nombre(r['medicamento']) for r in recipe} - {''}
+
+    # 1) Lo escrito a mano que está en el glosario se completa aquí mismo (exacto, sin IA, sin costo)
+    locales, para_ia = [], []
+    for r in pendientes:
+        med = del_glosario(r['medicamento'], glosario)
+        if med is None:
+            para_ia.append(r)
+            continue
+        f = armar_filas({'medicamentos': [{'glosario_id': med.pk, 'nombre': med.nombre, 'fila': r['fila']}]},
+                        glosario, peso, edad_m, alergias, pendientes={r['fila']})
+        locales += f
+    if not para_ia and not texto_consulta.strip():
+        return {'filas': locales, 'indicaciones': '', 'alertas': [], 'id': None}
+
+    # 2) La IA completa el resto y, si hace falta, sugiere lo que falte
     sistema = SISTEMA.format(especialidad=perfil.especialidad.nombre if perfil.especialidad_id else 'medicina',
                              paciente=contexto_paciente(paciente, peso))
     estilo = ejemplos(perfil, diagnostico)
-    usuario = (f'Consulta actual:\n"""\n{texto_consulta}\n"""\n\nGlosario de la profesional:\n{glosario_texto(glosario)}'
+    ya = [r['medicamento'] for r in completas] + [f['medicamento'] for f in locales]
+    actual = ('\n\nRécipe actual:\n'
+              + (f'- Ya indicados (no repetir): {"; ".join(ya)}\n' if ya else '')
+              + ''.join(f'- Por completar, fila {r["fila"]}: {r["medicamento"]}\n' for r in para_ia)) \
+        if (ya or para_ia) else ''
+    usuario = (f'Consulta actual:\n"""\n{texto_consulta or "(sin datos)"}\n"""{actual}\n\n'
+               f'Glosario de la profesional:\n{glosario_texto(glosario)}'
                + (f'\n\nAsí indicó antes en casos parecidos (su estilo):\n{estilo}' if estilo else ''))
     registro = SugerenciaIA(paciente=paciente, profesional=perfil)
     try:
@@ -276,9 +327,14 @@ def sugerir(*, paciente, perfil, campos, peso=None, glosario=()):
         registro.ok, registro.error = False, str(e)[:300]
         registro.save()
         raise ErrorSugerencia(str(e)) from e
-    filas = armar_filas(salida, glosario, peso, edad_m, alergias)
-    resultado = {'filas': filas, 'indicaciones': (salida.get('indicaciones') or '').strip()[:2000],
-                 'alertas': [str(a)[:300] for a in (salida.get('alertas') or [])][:6]}
+    filas = locales + armar_filas(salida, glosario, peso, edad_m, alergias,
+                                  pendientes={r['fila'] for r in para_ia}, existentes=existentes)
+    hechas = {f['fila'] for f in filas if f['fila']}
+    alertas = [str(a)[:300] for a in (salida.get('alertas') or [])][:6]
+    for r in para_ia:
+        if r['fila'] not in hechas:
+            alertas.append(f'La IA no completó la fila {r["fila"]} ({r["medicamento"]}): complétala a mano.')
+    resultado = {'filas': filas, 'indicaciones': (salida.get('indicaciones') or '').strip()[:2000], 'alertas': alertas}
     registro.resultado, registro.modelo_ia = resultado, modelo
     registro.tokens_entrada, registro.tokens_salida = t_in, t_out
     registro.save()

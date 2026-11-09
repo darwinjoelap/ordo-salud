@@ -129,3 +129,60 @@ class SugerirVistaTest(BaseTest):
         self.assertNotIn('grabación', r.json()['error'])
         self.assertEqual(post.call_args.kwargs['timeout'], 45)
 
+
+
+class CompletarRecipeTest(SimpleTestCase):
+    """«Completar y sugerir con IA»: completa las filas que escribió, no repite y lo nuevo va aparte."""
+
+    def test_fila_pendiente_se_completa_y_lo_ya_indicado_no_se_repite(self):
+        salida = {'medicamentos': [{**AMOXI, 'fila': 2}, {**AMOXI, 'nombre': 'Amoxicilina otra'},
+                                   {**AMOXI, 'nombre': 'Ibuprofeno', 'fila': 9}]}
+        filas = indicaciones.armar_filas(salida, [], 12, 30, '', pendientes={2}, existentes={'amoxicilina'})
+        self.assertEqual([(f['medicamento'].split()[0], f['fila']) for f in filas],
+                         [('Amoxicilina', 2), ('Ibuprofeno', None)])   # fila 9 no la pidió: va como nueva
+
+    def test_del_glosario_por_primera_palabra(self):
+        med = Medicamento(pk=3, nombre='Acetaminofén', presentacion='gotas')
+        self.assertIs(indicaciones.del_glosario('acetaminofen 100 mg', [med]), med)
+        self.assertIsNone(indicaciones.del_glosario('Ibuprofeno', [med]))
+
+
+class CompletarVistaTest(SugerirVistaTest):
+    def test_lo_del_glosario_se_completa_sin_ia(self):
+        self.activar()
+        with self.en_tenant():
+            med = Medicamento.objects.create(
+                nombre='Apiret', presentacion='180 mg/5 mL', modo='PESO', unidad_kg='mg', dosis_kg_min=Decimal('15'),
+                concentracion_mg=Decimal('180'), volumen_ml=Decimal('5'), unidad_resultado='mL', frecuencia_horas=6,
+                rangos_edad=[], indicaciones='', profesional=Membresia.objects.get(usuario=self.titular).perfil)
+        cuerpo = json.dumps({'campos': {}, 'peso': '12', 'recipe': [{'fila': 1, 'medicamento': 'apiret'}]})
+        with mock.patch.object(indicaciones, '_llamar') as llamada:
+            r = self.post(cuerpo)
+        self.assertEqual(r.status_code, 200, r.content)
+        llamada.assert_not_called()
+        f = r.json()['filas'][0]
+        self.assertEqual((f['fila'], f['origen'], f['dosis']), (1, 'glosario', '5 mL'))
+        self.assertIsNone(r.json()['id'])
+        with self.en_tenant():
+            self.assertFalse(SugerenciaIA.objects.exists())
+        self.assertTrue(med.pk)
+
+    def test_la_ia_recibe_el_recipe_y_completa_su_fila(self):
+        self.activar()
+        recipe = [{'fila': 1, 'medicamento': 'Ibuprofeno', 'dosis': '5 mL'},
+                  {'fila': 2, 'medicamento': 'Amoxicilina'}, {'fila': 'x', 'medicamento': 'basura'}]
+        salida = {'medicamentos': [{**AMOXI, 'fila': 2}, {**AMOXI, 'nombre': 'Ibuprofeno'}], 'alertas': []}
+        with mock.patch.object(indicaciones, '_llamar', return_value=(salida, (10, 10), 'm')) as llamada:
+            r = self.post(json.dumps({'campos': {'Diagnóstico': 'Otitis'}, 'peso': '12', 'recipe': recipe}))
+        usuario = llamada.call_args[0][1]
+        self.assertIn('Ya indicados (no repetir): Ibuprofeno', usuario)
+        self.assertIn('Por completar, fila 2: Amoxicilina', usuario)
+        self.assertNotIn('basura', usuario)
+        filas = r.json()['filas']
+        self.assertEqual([(f['fila'], f['dosis']) for f in filas], [(2, '4,8 mL')])   # ibuprofeno no se repite
+
+    def test_fila_que_la_ia_no_completo_avisa(self):
+        self.activar()
+        with mock.patch.object(indicaciones, '_llamar', return_value=({'medicamentos': []}, (1, 1), 'm')):
+            r = self.post(json.dumps({'campos': {}, 'recipe': [{'fila': 1, 'medicamento': 'Cefixima'}]}))
+        self.assertIn('no completó la fila 1', ' '.join(r.json()['alertas']))

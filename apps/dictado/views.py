@@ -124,14 +124,20 @@ def sugerir(request, paciente_pk):
         peso = float(str(datos.get('peso') or '').replace(',', '.')) or None
     except ValueError:
         peso = None
+    recipe = []
+    for fila in (datos.get('recipe') or [])[:30]:
+        if isinstance(fila, dict) and isinstance(fila.get('fila'), int) and 1 <= fila['fila'] <= 50:
+            recipe.append({'fila': fila['fila'], **{k: str(fila.get(k) or '')[:300] for k in (
+                'medicamento', 'dosis', 'frecuencia', 'duracion', 'indicacion')}})
     try:
-        r = indicaciones.sugerir(paciente=paciente, perfil=perfil, campos=campos, peso=peso,
+        r = indicaciones.sugerir(paciente=paciente, perfil=perfil, campos=campos, peso=peso, recipe=recipe,
                                  glosario=visibles(request).filter(activo=True).order_by('nombre'))
     except indicaciones.ErrorSugerencia as e:
         from . import proveedores
         return _error(str(e), 502 if isinstance(e.__cause__, proveedores.ErrorProveedor) else 400)
-    auditoria.registrar(request, 'CREAR', paciente, paciente_id=paciente.pk,
-                        detalle=f'Sugerencia de indicaciones con IA n.º {r["id"]}')
+    if r['id']:
+        auditoria.registrar(request, 'CREAR', paciente, paciente_id=paciente.pk,
+                            detalle=f'Sugerencia de indicaciones con IA n.º {r["id"]}')
     return JsonResponse(r)
 
 
