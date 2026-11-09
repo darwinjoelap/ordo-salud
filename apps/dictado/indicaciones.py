@@ -46,6 +46,7 @@ Reglas:
 - Respeta las alergias: no propongas nada de la misma familia y avísalo en `alertas`.
 - `indicaciones`: medidas generales y signos de alarma, breves, en el estilo de los ejemplos de la profesional.
 - Usa solo medicamentos de uso aceptado para la edad del paciente. Ante la duda, no lo propongas.
+- Máximo 4 medicamentos; `nota` e `indicaciones` breves (pocas líneas).
 - No incluyas nombres ni datos de identificación.
 Paciente: {paciente}."""
 
@@ -293,15 +294,17 @@ def _llamar(sistema, usuario):
         'system_instruction': {'parts': [{'text': sistema}]},
         'contents': [{'role': 'user', 'parts': [{'text': usuario}]}],
         'generation_config': {'response_mime_type': 'application/json', 'response_json_schema': ESQUEMA,
-                              'temperature': 0.2,
+                              'temperature': 0.2, 'max_output_tokens': 2048,
                               'thinking_config': {'thinking_level': settings.SUGERENCIAS_RAZONAMIENTO}},
         'store': False,
     }
     try:
-        r = proveedores._llamar_gemini(proveedores._url(modelo), cuerpo, ESQUEMA)
+        r = proveedores._llamar_gemini(proveedores._url(modelo), cuerpo, ESQUEMA,
+                                       timeout=settings.SUGERENCIAS_TIMEOUT, intentos=1)
     except proveedores.ErrorProveedor as e:
         log.warning('Sugerencia IA: Gemini no respondió: %s', e)
-        raise proveedores.ErrorProveedor('Gemini no respondió a tiempo. Intenta de nuevo en un momento.') from e
+        raise proveedores.ErrorProveedor('La IA tardó demasiado en responder. Intenta de nuevo en un momento '
+                                         '(lo escrito en la consulta no se perdió).') from e
     if r.status_code != 200:
         log.warning('Sugerencia IA: Gemini respondió %s: %s', r.status_code, r.text[:800])
         raise proveedores.ErrorProveedor(f'Gemini no respondió bien ({r.status_code}): {r.text[:160]}')

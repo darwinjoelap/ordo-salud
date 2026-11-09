@@ -114,3 +114,18 @@ class SugerirVistaTest(BaseTest):
         self.assertNotContains(r, 'data-sugerir-ia')
         self.activar()
         self.assertContains(self.cliente.get(f'/pacientes/{self.paciente.pk}/consultas/nueva/'), 'data-sugerir-ia')
+
+    def test_gemini_lento_un_solo_intento_y_mensaje_claro(self):
+        import requests
+        from django.test import override_settings
+        self.activar()
+        with override_settings(GEMINI_API_KEY='x', DICTADO_MODO=''), \
+                mock.patch('apps.dictado.proveedores.requests.post', side_effect=requests.ReadTimeout) as post, \
+                mock.patch('apps.dictado.proveedores.time.sleep'):
+            r = self.post()
+        self.assertEqual(r.status_code, 502)
+        self.assertEqual(post.call_count, 1)
+        self.assertIn('tardó demasiado', r.json()['error'])
+        self.assertNotIn('grabación', r.json()['error'])
+        self.assertEqual(post.call_args.kwargs['timeout'], 45)
+

@@ -272,16 +272,16 @@ TIMEOUT_GEMINI = 90          # segundos por intento
 REINTENTABLES = (429, 500, 502, 503, 504)
 
 
-def _llamar_gemini(url, cuerpo, esquema):
+def _llamar_gemini(url, cuerpo, esquema, timeout=None, intentos=2):
     """
     POST con dos intentos (si Google no responde a tiempo o está saturado) y dos ajustes automáticos si la versión
     del modelo no admite algo: `response_json_schema` → esquema OpenAPI; `thinking_config` → sin él.
     """
     cabeceras = {**_cabeceras(), 'Content-Type': 'application/json'}
     ultimo = None
-    for intento in range(2):
+    for intento in range(intentos):
         try:
-            r = requests.post(url, headers=cabeceras, data=json.dumps(cuerpo), timeout=TIMEOUT_GEMINI)
+            r = requests.post(url, headers=cabeceras, data=json.dumps(cuerpo), timeout=timeout or TIMEOUT_GEMINI)
         except (requests.Timeout, requests.ConnectionError) as e:
             ultimo = e
             time.sleep(2)
@@ -293,12 +293,12 @@ def _llamar_gemini(url, cuerpo, esquema):
             config = cuerpo['generation_config']
             if 'thinking' in texto and 'thinking_config' in config:
                 config.pop('thinking_config')
-                return _llamar_gemini(url, cuerpo, esquema)
+                return _llamar_gemini(url, cuerpo, esquema, timeout, intentos)
             if 'schema' in texto and 'response_json_schema' in config:
                 config.pop('response_json_schema')
                 config['response_schema'] = _sin_additional(esquema)
-                return _llamar_gemini(url, cuerpo, esquema)
-        if r.status_code in REINTENTABLES and intento == 0:
+                return _llamar_gemini(url, cuerpo, esquema, timeout, intentos)
+        if r.status_code in REINTENTABLES and intento < intentos - 1:
             time.sleep(3)
             continue
         return r

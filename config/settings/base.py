@@ -198,6 +198,7 @@ DICTADO_MODELO_IA = config('DICTADO_MODELO_IA', default='claude-sonnet-5-5')
 DICTADO_SINCRONO = config('DICTADO_SINCRONO', default=False, cast=bool)
 # Sugerir indicaciones con IA (ADR-060) y costo estimado de la IA (US$ por millón de tokens; Gemini 3.8 Flash
 # hasta el 31/12/2026: 0,75 / 3,75; desde 2027: 1,50 / 7,50 → actualizar en Railway)
-SUGERENCIAS_RAZONAMIENTO = config('SUGERENCIAS_RAZONAMIENTO', default='low')
+SUGERENCIAS_RAZONAMIENTO = config('SUGERENCIAS_RAZONAMIENTO', default='minimal')   # con 'low' tardaba > 90 s
+SUGERENCIAS_TIMEOUT = config('SUGERENCIAS_TIMEOUT', default=45, cast=int)             # un intento: la médica espera
 IA_PRECIO_ENTRADA = config('IA_PRECIO_ENTRADA', default=0.75, cast=float)
 IA_PRECIO_SALIDA = config('IA_PRECIO_SALIDA', default=3.75, cast=float)

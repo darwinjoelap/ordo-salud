@@ -128,7 +128,8 @@ def sugerir(request, paciente_pk):
         r = indicaciones.sugerir(paciente=paciente, perfil=perfil, campos=campos, peso=peso,
                                  glosario=visibles(request).filter(activo=True).order_by('nombre'))
     except indicaciones.ErrorSugerencia as e:
-        return _error(str(e), 502 if 'Gemini' in str(e) else 400)
+        from . import proveedores
+        return _error(str(e), 502 if isinstance(e.__cause__, proveedores.ErrorProveedor) else 400)
     auditoria.registrar(request, 'CREAR', paciente, paciente_id=paciente.pk,
                         detalle=f'Sugerencia de indicaciones con IA n.º {r["id"]}')
     return JsonResponse(r)
