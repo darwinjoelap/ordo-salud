@@ -98,7 +98,11 @@ def detalle(request, pk):
     from apps.agenda.models import Cita
     contexto['proximas_citas'] = (Cita.objects.filter(paciente=paciente, fecha__gte=timezone.localdate(),
                                                       estado__in=Cita.ACTIVAS)
-                                  .select_related('profesional__membresia__usuario').order_by('fecha', 'hora_inicio')[:5])
+                                  .select_related('profesional__membresia__usuario').order_by('fecha', 'hora_inicio'))
+    m = request.membresia
+    if m is not None and m.perfil_activo is not None and not selectors.puede_ver_todos(m):
+        contexto['proximas_citas'] = contexto['proximas_citas'].filter(profesional=m.perfil_activo)   # ADR-064
+    contexto['proximas_citas'] = contexto['proximas_citas'][:5]
     if ve_historia:
         from apps.clinica.selectors import resumen_paciente
         contexto.update(resumen_paciente(request, paciente))

@@ -75,3 +75,10 @@
 - Si el nombre coincide (primera palabra ≥ 4 letras) con el glosario, se calcula localmente: sin IA, sin registro ni costo.
 - El resto va a la IA con «Ya indicados (no repetir)» y «Por completar, fila N»; responde `fila` por elemento.
 - Lo que la IA devuelva con nombre ya presente y sin fila pedida se descarta. Al aplicar, solo se llenan campos vacíos.
+
+### ADR-064 (2026-11-09) — Agenda por médico con la misma opción que los pacientes
+- «Los médicos pueden ver todos los pacientes y todas las agendas» (`medicos_ven_todos_pacientes`, apagada por defecto).
+- Apagada: el médico (rol MÉDICO) ve solo su agenda (día, semana, horarios, bloqueos, próximas citas del paciente);
+  `?p=todos`/`?p=<otro>` se ignoran; cita ajena, editar, estado, atender y recordatorio dan 404; agenda solo para sí.
+- Ve los bloqueos de todo el consultorio pero no puede borrarlos. Titular, administración y asistente ven todo.
+- Motivo: una sola regla de privacidad; la cita lleva el nombre del paciente. Opción 2 descartada (otra casilla).

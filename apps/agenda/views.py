@@ -15,8 +15,36 @@ from .forms import BloqueoForm, CitaForm, HorarioForm, TipoCitaForm, profesional
 from .models import Bloqueo, Cita, HorarioAtencion, TipoCita
 
 
+def _solo_propia(request):
+    """
+    El perfil del médico que solo ve su agenda, o None. Misma regla que los pacientes (ADR-064): un médico que no
+    está autorizado a ver todos los pacientes tampoco ve las citas de los demás. Titular, administración y
+    asistente ven todo.
+    """
+    from apps.pacientes.selectors import puede_ver_todos
+    m = request.membresia
+    if m is None or m.perfil_activo is None or puede_ver_todos(m):
+        return None
+    return m.perfil_activo
+
+
+def _profesionales(request):
+    propio = _solo_propia(request)
+    qs = profesionales_activos()
+    return list(qs.filter(pk=propio.pk) if propio else qs)
+
+
+def _citas_visibles(request, qs=None):
+    qs = Cita.objects.all() if qs is None else qs
+    propio = _solo_propia(request)
+    return qs.filter(profesional=propio) if propio else qs
+
+
 def _profesional_elegido(request, profesionales):
     """?p=<id> · ?p=todos · por defecto: el propio si es profesional, si no todos."""
+    propio = _solo_propia(request)
+    if propio:
+        return propio
     valor = request.GET.get('p')
     if valor == 'todos':
         return None
@@ -44,7 +72,7 @@ def dia(request):
     from apps.clinica.models import Consulta, Procedimiento
     from apps.cobros.models import Cargo
     fecha = srv.fecha_de(request.GET.get('fecha'))
-    profesionales = list(profesionales_activos())
+    profesionales = _profesionales(request)
     elegido = _profesional_elegido(request, profesionales)
     citas = list(_citas(fecha, fecha, elegido).prefetch_related(
         Prefetch('cargos', queryset=Cargo.objects.exclude(estado=Cargo.Estado.ANULADO)),
@@ -87,7 +115,8 @@ def horas(request):
     """Panel de horas del día para el formulario de cita (HTMX)."""
     from apps.equipo.models import PerfilProfesional
     fecha = srv.fecha_de(request.GET.get('fecha'))
-    profesional = PerfilProfesional.objects.filter(pk=request.GET.get('profesional') or 0).first()
+    propio = _solo_propia(request)
+    profesional = propio or PerfilProfesional.objects.filter(pk=request.GET.get('profesional') or 0).first()
     if profesional is None:
         return render(request, 'agenda/_horas.html', {'sin_profesional': True})
     excluir = request.GET.get('excluir')
@@ -101,7 +130,7 @@ def horas(request):
 def semana(request):
     fecha = srv.fecha_de(request.GET.get('fecha'))
     dias = srv.semana_de(fecha)
-    profesionales = list(profesionales_activos())
+    profesionales = _profesionales(request)
     elegido = _profesional_elegido(request, profesionales)
     citas = list(_citas(dias[0], dias[-1], elegido))
     return render(request, 'agenda/semana.html', {
@@ -113,7 +142,7 @@ def semana(request):
 @login_required
 @requiere('agenda.gestionar')
 def cita_form(request, pk=None):
-    cita = get_object_or_404(Cita.objects.select_related('paciente'), pk=pk) if pk else None
+    cita = get_object_or_404(_citas_visibles(request, Cita.objects.select_related('paciente')), pk=pk) if pk else None
     if cita and not cita.activa:
         messages.warning(request, 'Esta cita ya no está activa; para cambiarla, reactívala primero.')
         return redirect('agenda:cita', pk=cita.pk)
@@ -121,10 +150,13 @@ def cita_form(request, pk=None):
     if cita is None:
         inicial = {'fecha': request.GET.get('fecha') or srv.hoy(), 'hora_inicio': request.GET.get('hora'),
                    'paciente': request.GET.get('paciente'), 'lugar': request.GET.get('lugar')}
-        profesional = request.GET.get('p') or getattr(request.membresia.perfil_activo, 'pk', None)
+        propio = _solo_propia(request)
+        profesional = ((propio.pk if propio else None) or request.GET.get('p')
+                       or getattr(request.membresia.perfil_activo, 'pk', None))
         if profesional:            # quien no es médico (administración, asistente) no se propone a sí mismo
             inicial['profesional'] = profesional
-    form = CitaForm(request.POST or None, instance=cita or Cita(tenant=request.tenant), initial=inicial)
+    form = CitaForm(request.POST or None, instance=cita or Cita(tenant=request.tenant), initial=inicial,
+                    solo=_solo_propia(request))
     if request.method == 'POST' and form.is_valid():
         try:
             cita, avisos = srv.guardar_cita(form.instance, sobrecupo=form.cleaned_data.get('sobrecupo'))
@@ -146,8 +178,8 @@ def cita_form(request, pk=None):
 @login_required
 @requiere('agenda.ver')
 def cita(request, pk):
-    c = get_object_or_404(Cita.objects.select_related('paciente', 'profesional__membresia__usuario', 'tipo', 'lugar',
-                                                      'consulta'), pk=pk)
+    c = get_object_or_404(_citas_visibles(request, Cita.objects.select_related(
+        'paciente', 'profesional__membresia__usuario', 'tipo', 'lugar', 'consulta')), pk=pk)
     perfil = request.membresia.perfil_activo
     return render(request, 'agenda/cita.html', {
         'titulo': f'Cita · {c.paciente}', 'cita': c, 'whatsapp': srv.url_whatsapp(c),
@@ -161,7 +193,7 @@ def cita(request, pk):
 @requiere('agenda.gestionar')
 @require_POST
 def cita_estado(request, pk):
-    c = get_object_or_404(Cita.objects.all(), pk=pk)
+    c = get_object_or_404(_citas_visibles(request), pk=pk)
     srv.cambiar_estado(c, request.POST.get('estado'), request.POST.get('motivo', ''))
     messages.success(request, 'Estado actualizado.')
     destino = request.POST.get('volver', '')
@@ -172,7 +204,7 @@ def cita_estado(request, pk):
 @requiere('consultas.crear')
 @require_POST
 def atender(request, pk):
-    c = get_object_or_404(Cita.objects.select_related('tipo', 'lugar', 'paciente'), pk=pk)
+    c = get_object_or_404(_citas_visibles(request, Cita.objects.select_related('tipo', 'lugar', 'paciente')), pk=pk)
     consulta = srv.atender(c, request.membresia.perfil_activo)
     auditoria.registrar(request, 'CREAR', consulta, paciente_id=c.paciente_id, detalle='Desde la agenda')
     return redirect('clinica:consulta_editar', pk=consulta.pk) if consulta.editable else \
@@ -183,7 +215,7 @@ def atender(request, pk):
 @requiere('agenda.gestionar')
 @require_POST
 def recordatorio(request, pk):
-    c = get_object_or_404(Cita.objects.select_related('paciente'), pk=pk)
+    c = get_object_or_404(_citas_visibles(request, Cita.objects.select_related('paciente')), pk=pk)
     url = srv.url_whatsapp(c)
     if not url:
         messages.error(request, 'El paciente (o su representante) no tiene teléfono.')
@@ -197,7 +229,7 @@ def recordatorio(request, pk):
 @login_required
 @requiere('agenda.gestionar')
 def horarios(request):
-    profesionales = list(profesionales_activos())
+    profesionales = _profesionales(request)
     elegido = _profesional_elegido(request, profesionales) or (profesionales[0] if profesionales else None)
     form = HorarioForm(request.POST or None)
     if request.method == 'POST' and form.is_valid() and elegido:
@@ -217,7 +249,9 @@ def horarios(request):
 @requiere('agenda.gestionar')
 @require_POST
 def horario_eliminar(request, pk):
-    h = get_object_or_404(HorarioAtencion.objects.all(), pk=pk)
+    propio = _solo_propia(request)
+    qs = HorarioAtencion.objects.filter(profesional=propio) if propio else HorarioAtencion.objects.all()
+    h = get_object_or_404(qs, pk=pk)
     p = h.profesional_id
     h.delete()
     return redirect(f'/agenda/horarios/?p={p}')
@@ -240,19 +274,24 @@ def tipos(request, pk=None):
 @login_required
 @requiere('agenda.gestionar')
 def bloqueos(request):
-    form = BloqueoForm(request.POST or None)
+    from django.db.models import Q
+    propio = _solo_propia(request)
+    form = BloqueoForm(request.POST or None, solo=propio)
     if request.method == 'POST' and form.is_valid():
         form.save()
         messages.success(request, 'Bloqueo registrado.')
         return redirect('agenda:bloqueos')
+    lista = Bloqueo.objects.filter(hasta__date__gte=srv.hoy()).select_related('profesional__membresia__usuario')
+    if propio:              # los suyos y los de todo el consultorio (feriados), no los de otros médicos
+        lista = lista.filter(Q(profesional=propio) | Q(profesional__isnull=True))
     return render(request, 'agenda/bloqueos.html', {
-        'titulo': 'Bloqueos de agenda', 'form': form,
-        'bloqueos': Bloqueo.objects.filter(hasta__date__gte=srv.hoy()).select_related('profesional__membresia__usuario')})
+        'titulo': 'Bloqueos de agenda', 'form': form, 'bloqueos': lista, 'propio': propio})
 
 
 @login_required
 @requiere('agenda.gestionar')
 @require_POST
 def bloqueo_eliminar(request, pk):
-    get_object_or_404(Bloqueo.objects.all(), pk=pk).delete()
+    propio = _solo_propia(request)
+    get_object_or_404(Bloqueo.objects.filter(profesional=propio) if propio else Bloqueo.objects.all(), pk=pk).delete()
     return redirect('agenda:bloqueos')

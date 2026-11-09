@@ -32,10 +32,11 @@ class CitaForm(FormBase, forms.ModelForm):
         widgets = {'fecha': FECHA, 'hora_inicio': HORA, 'notas': forms.Textarea(attrs={'rows': 2})}
         labels = {'tipo': 'Tipo de cita', 'hora_inicio': 'Hora (vacía = tentativa)'}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, solo=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['paciente'].queryset = Paciente.objects.filter(activo=True)
-        self.fields['profesional'].queryset = profesionales_activos()
+        # solo: el médico que solo ve su agenda (ADR-064) agenda únicamente para sí
+        self.fields['profesional'].queryset = profesionales_activos().filter(pk=solo.pk) if solo else profesionales_activos()
         self.fields['tipo'].queryset = TipoCita.objects.filter(activo=True)
         self.fields['lugar'].queryset = self.fields['lugar'].queryset.filter(activo=True)
         self.fields['lugar'].required = False
@@ -101,9 +102,14 @@ class BloqueoForm(FormBase, forms.ModelForm):
         widgets = {'desde': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
                    'hasta': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M')}
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, solo=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['profesional'].queryset = profesionales_activos()
+        if solo:            # el médico que solo ve su agenda bloquea solo la suya (no todo el consultorio)
+            self.fields['profesional'].queryset = profesionales_activos().filter(pk=solo.pk)
+            self.fields['profesional'].required = True
+            self.fields['profesional'].empty_label = None
+            self.initial.setdefault('profesional', solo.pk)
 
     def clean(self):
         datos = super().clean()

@@ -18,6 +18,10 @@ obesidad, alergia + IA, asma + procedimiento, RN prematuro, adolescente, gemelas
 hoy/mañana/no asistió, datos incompletos, borradores). Pendiente detectado: **edad corregida en prematuros** (hoy
 percentiles por edad cronológica). Próximos paquetes: ginecología, cardiología pediátrica, medicina general.
 
+## 2026-11-09 noche — ADR-064 agenda por médico
+Con «Los médicos pueden ver todos los pacientes y todas las agendas» apagada (por defecto), cada médico ve solo su
+agenda. Migración `configuracion 0009` (solo cambia el texto de la opción).
+
 ## 2026-11-09 noche — «Completar y sugerir con IA» (ADR-060, ampliación)
 El botón completa las filas del récipe que la doctora escribió solo con el nombre (con el glosario si coincide, sin IA
 ni costo; si no, la IA da la ficha y el sistema calcula), no repite lo ya indicado y lo nuevo va aparte («También

@@ -42,9 +42,9 @@ class ConfiguracionTenant(models.Model):
     visibilidad_historia = models.CharField('Visibilidad de la historia', max_length=20,
                                             choices=Visibilidad.choices, default=Visibilidad.COMPARTIDA)
     medicos_ven_todos_pacientes = models.BooleanField(
-        'Los médicos pueden ver todos los pacientes', default=False,
-        help_text='Apagado: cada médico ve sus pacientes (los que atendió, tiene citados o registró) y los nuevos '
-                  'sin historia. Titular, administradores y asistentes siempre ven todos.')
+        'Los médicos pueden ver todos los pacientes y todas las agendas', default=False,
+        help_text='Apagado: cada médico ve sus pacientes (los que atendió, tiene citados o registró), los nuevos '
+                  'sin historia y solo su agenda. Titular, administradores y asistentes siempre ven todo.')
     horas_edicion_consulta = models.PositiveSmallIntegerField(
         'Horas para editar una consulta', default=24,
         help_text='Pasado ese tiempo la consulta se cierra sola; después solo se corrige con una enmienda.')
