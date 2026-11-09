@@ -355,7 +355,10 @@ def _llamar(sistema, usuario):
         'system_instruction': {'parts': [{'text': sistema}]},
         'contents': [{'role': 'user', 'parts': [{'text': usuario}]}],
         'generation_config': {'response_mime_type': 'application/json', 'response_json_schema': ESQUEMA,
-                              'temperature': 0.2, 'max_output_tokens': 2048,
+                              'temperature': 0.2,
+                              # El razonamiento («thinking») gasta del mismo tope: con 2048 la respuesta salía cortada
+                              # a mitad del JSON (finishReason MAX_TOKENS, 2026-11-09). Solo se paga lo que se usa.
+                              'max_output_tokens': 8192,
                               'thinking_config': {'thinking_level': settings.SUGERENCIAS_RAZONAMIENTO}},
         'store': False,
     }
@@ -377,7 +380,9 @@ def _llamar(sistema, usuario):
         try:
             salida = json.loads(proveedores._texto(datos))
         except ValueError as e:
-            log.warning('Sugerencia IA: respuesta no es JSON (intento %s): %s', intento + 1, str(datos)[:300])
+            cand = (datos.get('candidates') or [{}])[0]
+            log.warning('Sugerencia IA: respuesta no es JSON (intento %s, fin=%s, tokens=%s): %s', intento + 1,
+                        cand.get('finishReason'), datos.get('usageMetadata'), proveedores._texto(datos)[-200:])
             if intento == 0:
                 continue
             raise proveedores.ErrorProveedor('La IA devolvió una respuesta incompleta. Intenta de nuevo; si se repite, '
