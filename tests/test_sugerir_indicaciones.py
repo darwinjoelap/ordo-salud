@@ -186,3 +186,42 @@ class CompletarVistaTest(SugerirVistaTest):
         with mock.patch.object(indicaciones, '_llamar', return_value=({'medicamentos': []}, (1, 1), 'm')):
             r = self.post(json.dumps({'campos': {}, 'recipe': [{'fila': 1, 'medicamento': 'Cefixima'}]}))
         self.assertIn('no completó la fila 1', ' '.join(r.json()['alertas']))
+
+
+class RespuestaRotaTest(SimpleTestCase):
+    """2026-11-09: Gemini escribió «1.000…e+000…» en un campo numérico hasta cortar el JSON."""
+
+    def test_numeros_como_texto_y_basura_ignorada(self):
+        self.assertEqual(indicaciones.ESQUEMA['properties']['medicamentos']['items']['properties']['volumen_ml']['type'],
+                         'string')
+        self.assertEqual(indicaciones._dec('2,5'), Decimal('2.5'))
+        self.assertEqual(indicaciones._dec('15'), Decimal('15'))
+        for malo in ('1e+999999', 'NaN', 'Infinity', '-3', '', None, '1' * 30):
+            self.assertIsNone(indicaciones._dec(malo), malo)
+
+    def _respuesta(self, texto):
+        r = mock.Mock(status_code=200)
+        r.json.return_value = {'candidates': [{'content': {'parts': [{'text': texto}]}}],
+                               'usageMetadata': {'promptTokenCount': 100, 'candidatesTokenCount': 50}}
+        return r
+
+    def test_json_cortado_se_reintenta_una_vez(self):
+        from django.test import override_settings
+
+        from apps.dictado import proveedores
+        bueno = json.dumps({'medicamentos': [], 'indicaciones': 'ok'})
+        with override_settings(GEMINI_API_KEY='x', DICTADO_MODO=''), \
+                mock.patch.object(proveedores, '_llamar_gemini',
+                                  side_effect=[self._respuesta('{"medicamentos": [{"volumen_ml": 1.0000'),
+                                               self._respuesta(bueno)]) as llamada:
+            salida, tokens, _ = indicaciones._llamar('s', 'u')
+        self.assertEqual((llamada.call_count, salida['indicaciones'], tokens), (2, 'ok', (200, 100)))
+
+    def test_dos_veces_rota_da_mensaje_claro(self):
+        from django.test import override_settings
+
+        from apps.dictado import proveedores
+        with override_settings(GEMINI_API_KEY='x', DICTADO_MODO=''), \
+                mock.patch.object(proveedores, '_llamar_gemini', return_value=self._respuesta('{"x": 1.00')):
+            with self.assertRaisesMessage(proveedores.ErrorProveedor, 'respuesta incompleta'):
+                indicaciones._llamar('s', 'u')

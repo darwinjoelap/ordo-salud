@@ -53,6 +53,7 @@ Reglas:
 - No incluyas nombres ni datos de identificación.
 Paciente: {paciente}."""
 
+NUM = {'type': 'string', 'maxLength': 12, 'description': 'Número decimal simple, p. ej. 15 o 2.5 (sin exponente)'}
 ESQUEMA = {'type': 'object', 'required': ['medicamentos', 'indicaciones'], 'properties': {
     'medicamentos': {'type': 'array', 'items': {'type': 'object', 'required': ['glosario_id', 'nombre'], 'properties': {
         'glosario_id': {'type': 'integer'},
@@ -60,11 +61,13 @@ ESQUEMA = {'type': 'object', 'required': ['medicamentos', 'indicaciones'], 'prop
         'nombre': {'type': 'string'},
         'presentacion': {'type': 'string'},
         'modo': {'type': 'string', 'enum': ['PESO', 'FIJA']},
-        'mg_kg_min': {'type': 'number'}, 'mg_kg_max': {'type': 'number'},
+        # Números como texto corto («15», «2.5»): con 'number' Gemini a veces entra en bucle escribiendo
+        # «1.000…e+000…» hasta agotar los tokens y el JSON queda cortado (2026-11-09).
+        'mg_kg_min': NUM, 'mg_kg_max': NUM,
         'unidad_kg': {'type': 'string', 'enum': sorted(UNIDADES_KG)},
-        'concentracion': {'type': 'number'}, 'volumen_ml': {'type': 'number'},
+        'concentracion': NUM, 'volumen_ml': NUM,
         'unidad_resultado': {'type': 'string', 'enum': sorted(UNIDADES_RESULTADO)},
-        'dosis_max': {'type': 'number'}, 'dosis_fija': {'type': 'string'},
+        'dosis_max': NUM, 'dosis_fija': {'type': 'string'},
         'frecuencia_horas': {'type': 'integer'}, 'duracion_dias': {'type': 'integer'},
         'via': {'type': 'string'}, 'nota': {'type': 'string'}}}},
     'indicaciones': {'type': 'string'},
@@ -148,10 +151,12 @@ def ejemplos(perfil, diagnostico):
 
 def _dec(v):
     try:
-        d = Decimal(str(v))
+        d = Decimal(str(v).strip().replace(',', '.'))
     except (InvalidOperation, TypeError, ValueError):
         return None
-    return d if d > 0 else None
+    if not d.is_finite() or d <= 0 or d >= 100000:
+        return None
+    return d.quantize(Decimal('0.001')).normalize()
 
 
 def _ficha_medicamento(d):
@@ -354,21 +359,27 @@ def _llamar(sistema, usuario):
                               'thinking_config': {'thinking_level': settings.SUGERENCIAS_RAZONAMIENTO}},
         'store': False,
     }
-    try:
-        r = proveedores._llamar_gemini(proveedores._url(modelo), cuerpo, ESQUEMA,
-                                       timeout=settings.SUGERENCIAS_TIMEOUT, intentos=1)
-    except proveedores.ErrorProveedor as e:
-        log.warning('Sugerencia IA: Gemini no respondió: %s', e)
-        raise proveedores.ErrorProveedor('La IA tardó demasiado en responder. Intenta de nuevo en un momento '
-                                         '(lo escrito en la consulta no se perdió).') from e
-    if r.status_code != 200:
-        log.warning('Sugerencia IA: Gemini respondió %s: %s', r.status_code, r.text[:800])
-        raise proveedores.ErrorProveedor(f'Gemini no respondió bien ({r.status_code}): {r.text[:160]}')
-    datos = r.json()
-    try:
-        salida = json.loads(proveedores._texto(datos))
-    except ValueError as e:
-        log.warning('Sugerencia IA: respuesta no es JSON: %s', str(datos)[:800])
-        raise proveedores.ErrorProveedor('Gemini devolvió un formato inesperado.') from e
-    t_in, t_out, _ = proveedores._uso(datos)
-    return (salida if isinstance(salida, dict) else {}), (t_in, t_out), modelo
+    t_in = t_out = 0
+    for intento in range(2):            # si el JSON vino cortado o roto, se pide una vez más
+        try:
+            r = proveedores._llamar_gemini(proveedores._url(modelo), cuerpo, ESQUEMA,
+                                           timeout=settings.SUGERENCIAS_TIMEOUT, intentos=1)
+        except proveedores.ErrorProveedor as e:
+            log.warning('Sugerencia IA: Gemini no respondió: %s', e)
+            raise proveedores.ErrorProveedor('La IA tardó demasiado en responder. Intenta de nuevo en un momento '
+                                             '(lo escrito en la consulta no se perdió).') from e
+        if r.status_code != 200:
+            log.warning('Sugerencia IA: Gemini respondió %s: %s', r.status_code, r.text[:800])
+            raise proveedores.ErrorProveedor(f'Gemini no respondió bien ({r.status_code}): {r.text[:160]}')
+        datos = r.json()
+        uso = proveedores._uso(datos)
+        t_in, t_out = t_in + uso[0], t_out + uso[1]
+        try:
+            salida = json.loads(proveedores._texto(datos))
+        except ValueError as e:
+            log.warning('Sugerencia IA: respuesta no es JSON (intento %s): %s', intento + 1, str(datos)[:300])
+            if intento == 0:
+                continue
+            raise proveedores.ErrorProveedor('La IA devolvió una respuesta incompleta. Intenta de nuevo; si se repite, '
+                                             'completa ese medicamento con el glosario o a mano.') from e
+        return (salida if isinstance(salida, dict) else {}), (t_in, t_out), modelo
