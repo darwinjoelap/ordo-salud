@@ -355,10 +355,10 @@ def _llamar(sistema, usuario):
         'system_instruction': {'parts': [{'text': sistema}]},
         'contents': [{'role': 'user', 'parts': [{'text': usuario}]}],
         'generation_config': {'response_mime_type': 'application/json', 'response_json_schema': ESQUEMA,
-                              'temperature': 0.2,
-                              # El razonamiento («thinking») gasta del mismo tope: con 2048 la respuesta salía cortada
-                              # a mitad del JSON (finishReason MAX_TOKENS, 2026-11-09). Solo se paga lo que se usa.
-                              'max_output_tokens': 8192,
+                              # Sin 'temperature': Gemini 3 pide dejarla en 1.0; con 0.2 entraba en bucle
+                              # («1.000…e+000…», JSON cortado, ReadTimeout; 2026-11-09). Tope con margen para el
+                              # razonamiento, que gasta del mismo cupo; solo se paga lo que se usa.
+                              'max_output_tokens': 4096,
                               'thinking_config': {'thinking_level': settings.SUGERENCIAS_RAZONAMIENTO}},
         'store': False,
     }
