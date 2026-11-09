@@ -57,6 +57,8 @@ class EditarTenantForm(_TenantBase):
     dias_gracia = forms.IntegerField(label='Días de gracia', required=False, min_value=0, max_value=60,
                                      help_text='Vacío = los del plan.')
     dictado_activo = forms.BooleanField(label='Dictado por voz activo', required=False)
+    sugerencias_ia = forms.BooleanField(label='Sugerir indicaciones con IA', required=False,
+                                        help_text='Récipe e indicaciones sugeridos; dosis fuera del glosario.')
 
     def clean_especialidades(self):
         nuevas = set(self.cleaned_data['especialidades'])

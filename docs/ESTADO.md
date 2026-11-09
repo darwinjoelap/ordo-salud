@@ -11,6 +11,11 @@
 
 ---
 
+## 2026-11-09 — ADR-060 sugerir indicaciones con IA · ADR-061 dictado por especialidad
+Fix 500 (código CIE largo) y medicamentos de solo-indicaciones en el récipe. Sugerencias IA: activar por consultorio
+en la plataforma (empezar con la Dra. Anais). 282 tests OK (SQLite y Postgres) + prueba en navegador.
+**Desde 2027 Gemini cuesta el doble:** cambiar `IA_PRECIO_ENTRADA=1.50` y `IA_PRECIO_SALIDA=7.50` en Railway y revisar precios.
+
 ## 2026-11-08 tarde — ADR-057/058/059 (código listo, falta push)
 Soporte con control total (ve y edita historias; no crea consultas ni firma documentos) · plantilla editable del
 recordatorio de WhatsApp · tasa euro BCV y elección USD/EUR por consultorio. 265 tests OK (SQLite y Postgres).

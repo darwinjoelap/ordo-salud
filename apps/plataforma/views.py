@@ -73,7 +73,8 @@ def editar(request, pk):
                'limite_profesionales': tenant.limite_profesionales, 'dias_gracia': tenant.dias_gracia,
                'notas': tenant.notas,
                'especialidades': list(tenant.especialidades.all()),
-               'dictado_activo': tenant.configuracion.dictado_activo}
+               'dictado_activo': tenant.configuracion.dictado_activo,
+               'sugerencias_ia': tenant.configuracion.sugerencias_ia}
     form = EditarTenantForm(request.POST or None, initial=inicial, tenant=tenant)
     if request.method == 'POST' and form.is_valid():
         servicios.actualizar_tenant(tenant, form.cleaned_data)
@@ -88,7 +89,12 @@ def editar(request, pk):
         'ultima_renovacion': tenant.suscripciones.filter(anulada=False).order_by('-creado_en', '-pk').first(),
         'accesos': tenant.accesos_soporte.select_related('usuario')[:8],
         'form_renovar': RenovarForm(initial={'plan': tenant.plan}), 'enlace': _enlace(request, tenant),
-        'dictado_uso': _dictado_uso(tenant)})
+        'dictado_uso': _dictado_uso(tenant), 'sugerencias_uso': _sugerencias_uso(tenant)})
+
+
+def _sugerencias_uso(tenant):
+    from apps.dictado import indicaciones
+    return indicaciones.uso_mes(tenant)
 
 
 def _dictado_uso(tenant):

@@ -196,3 +196,8 @@ DICTADO_MODO = config('DICTADO_MODO', default='')                 # 'prueba' fue
 DICTADO_MODELO_TRANSCRIPCION = config('DICTADO_MODELO_TRANSCRIPCION', default='gpt-4o-transcribe')
 DICTADO_MODELO_IA = config('DICTADO_MODELO_IA', default='claude-sonnet-5-5')
 DICTADO_SINCRONO = config('DICTADO_SINCRONO', default=False, cast=bool)
+# Sugerir indicaciones con IA (ADR-060) y costo estimado de la IA (US$ por millón de tokens; Gemini 3.8 Flash
+# hasta el 31/12/2026: 0,75 / 3,75; desde 2027: 1,50 / 7,50 → actualizar en Railway)
+SUGERENCIAS_RAZONAMIENTO = config('SUGERENCIAS_RAZONAMIENTO', default='low')
+IA_PRECIO_ENTRADA = config('IA_PRECIO_ENTRADA', default=0.75, cast=float)
+IA_PRECIO_SALIDA = config('IA_PRECIO_SALIDA', default=3.75, cast=float)

@@ -65,6 +65,8 @@ class ConfiguracionTenant(models.Model):
     # Módulos
     dictado_activo = models.BooleanField('Dictado por voz', default=False, editable=False,
                                          help_text='Lo activa la plataforma según el plan.')
+    sugerencias_ia = models.BooleanField('Sugerir indicaciones con IA', default=False, editable=False,
+                                         help_text='Lo activa la plataforma (ADR-060).')
     actualizado_en = models.DateTimeField(auto_now=True)
 
     class Meta:

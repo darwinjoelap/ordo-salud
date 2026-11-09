@@ -87,3 +87,89 @@ def vincular(request, consulta):
     if pk.isdigit() and perfil is not None:
         SesionDictado.objects.filter(pk=pk, paciente_id=consulta.paciente_id, profesional=perfil,
                                      consulta__isnull=True).update(consulta=consulta)
+
+
+# ── Sugerir indicaciones (ADR-060) ────────────────────────────────────────────────────────────────────────────
+
+def _json(request):
+    import json
+    try:
+        datos = json.loads(request.body or b'{}')
+    except ValueError:
+        return None
+    return datos if isinstance(datos, dict) else None
+
+
+@login_required
+@requiere('consultas.crear')
+@require_POST
+def sugerir(request, paciente_pk):
+    """POST JSON {campos: {etiqueta: valor}, peso} → récipe e indicaciones sugeridos (nada se guarda en la historia)."""
+    from apps.clinica.views_medicamentos import visibles
+    from apps.pacientes.selectors import puede_ver_paciente
+
+    from . import indicaciones
+    perfil = request.membresia.perfil_activo
+    if perfil is None or not indicaciones.activo(request.tenant):
+        return _error('La sugerencia con IA no está activa en este consultorio.', 403)
+    paciente = get_object_or_404(Paciente.objects.select_related('antecedentes'), pk=paciente_pk)
+    if not puede_ver_paciente(request.membresia, paciente):
+        return _error('Sin acceso a este paciente.', 403)
+    datos = _json(request)
+    if datos is None:
+        return _error('Datos inválidos.')
+    campos = {str(k)[:80]: str(v)[:2000] for k, v in (datos.get('campos') or {}).items()
+              if isinstance(k, str) and v not in (None, '')}
+    try:
+        peso = float(str(datos.get('peso') or '').replace(',', '.')) or None
+    except ValueError:
+        peso = None
+    try:
+        r = indicaciones.sugerir(paciente=paciente, perfil=perfil, campos=campos, peso=peso,
+                                 glosario=visibles(request).filter(activo=True).order_by('nombre'))
+    except indicaciones.ErrorSugerencia as e:
+        return _error(str(e), 502 if 'Gemini' in str(e) else 400)
+    auditoria.registrar(request, 'CREAR', paciente, paciente_id=paciente.pk,
+                        detalle=f'Sugerencia de indicaciones con IA n.º {r["id"]}')
+    return JsonResponse(r)
+
+
+@login_required
+@requiere('consultas.crear')
+@require_POST
+def guardar_en_glosario(request):
+    """POST JSON con la ficha que propuso la IA (ya revisada) → Medicamento propio del profesional."""
+    from decimal import Decimal, InvalidOperation
+
+    from apps.clinica.models import Medicamento
+    perfil = request.membresia.perfil_activo
+    d = _json(request)
+    if perfil is None or d is None or not (d.get('nombre') or '').strip():
+        return _error('Datos inválidos.')
+
+    def dec(campo):
+        try:
+            v = Decimal(str(d.get(campo) or '').replace(',', '.'))
+        except InvalidOperation:
+            return None
+        return v if v > 0 else None
+
+    def entero(campo):
+        try:
+            v = int(d.get(campo) or 0)
+        except (TypeError, ValueError):
+            return None
+        return v or None
+    unidades_kg = {u for u, _ in Medicamento.UNIDADES_KG}
+    unidades = {u for u, _ in Medicamento.UNIDADES_RESULTADO}
+    med = Medicamento.objects.create(
+        profesional=perfil, nombre=d['nombre'].strip()[:150], presentacion=(d.get('presentacion') or '')[:120],
+        modo=d.get('modo') if d.get('modo') in ('PESO', 'FIJA') else 'FIJA',
+        unidad_kg=d.get('unidad_kg') if d.get('unidad_kg') in unidades_kg else 'mg',
+        dosis_kg_min=dec('dosis_kg_min'), dosis_kg_max=dec('dosis_kg_max'), concentracion_mg=dec('concentracion_mg'),
+        volumen_ml=dec('volumen_ml'), unidad_resultado=d.get('unidad_resultado') if d.get('unidad_resultado') in unidades
+        else '', dosis_max=dec('dosis_max'), dosis_fija=(d.get('dosis_fija') or '')[:60],
+        frecuencia_horas=entero('frecuencia_horas'), duracion_dias=entero('duracion_dias'), rangos_edad=[],
+        indicaciones='', activo=True)
+    auditoria.registrar(request, 'CREAR', med, detalle='Glosario: ficha sugerida por IA y aceptada')
+    return JsonResponse({'id': med.pk, 'nombre': str(med)})

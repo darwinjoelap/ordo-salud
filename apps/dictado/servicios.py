@@ -32,6 +32,56 @@ VOCABULARIO = {
                  'neumococo, rotavirus, BCG, hitos del desarrollo.',
     'ginecologia': 'FUR, FPP, edad gestacional, altura uterina, FCF, citología, colposcopia, VPH, DIU, gestas, '
                    'partos, cesáreas, abortos.',
+    'medicina_general': 'cefalea, odinofagia, rinorrea, tos productiva, disuria, epigastralgia, IRA, IVU, HTA, '
+                        'DM2, hemograma, uroanálisis, glicemia, perfil lipídico.',
+    'medicina_interna': 'HTA, DM2, dislipidemia, ERC, TFG, creatinina, HbA1c, EPOC, ICC, FA, anticoagulación, '
+                        'polifarmacia, perfil renal, perfil hepático, electrolitos.',
+    'cardiologia': 'EKG, ritmo sinusal, FA, BRDHH, BRIHH, QTc, ecocardiograma, FEVI, MAPA, Holter, prueba de esfuerzo, '
+                   'soplo, galope, ingurgitación yugular, ICC, cardiopatía isquémica, troponina, NT-proBNP.',
+    'dermatologia': 'mácula, pápula, placa, vesícula, pústula, nódulo, eritema, descamación, liquenificación, '
+                    'dermatoscopia, nevo, acné, dermatitis, psoriasis, onicomicosis, prurito.',
+    'traumatologia': 'esguince, fractura, luxación, Lachman, McMurray, cajón anterior, Phalen, Tinel, arcos de '
+                     'movilidad, flexión, extensión, abducción, rodilla, hombro, columna lumbar, Rx, RMN, férula, yeso.',
+    'neurologia': 'cefalea, migraña, aura, crisis convulsiva, Glasgow, pares craneales, fuerza muscular, ROT, '
+                  'Babinski, sensibilidad, marcha, Romberg, nistagmo, EEG, RMN cerebral, neuropatía.',
+    'gastroenterologia': 'epigastralgia, pirosis, ERGE, dispepsia, distensión, Bristol, rectorragia, melena, '
+                         'endoscopia digestiva superior, colonoscopia, H. pylori, hígado graso, transaminasas.',
+    'endocrinologia': 'TSH, T4 libre, hipotiroidismo, hipertiroidismo, nódulo tiroideo, DM2, HbA1c, glicemia, '
+                      'insulina, metformina, HOMA, cortisol, prolactina, IMC, circunferencia abdominal.',
+    'neumologia': 'disnea, mMRC, sibilancias, crepitantes, roncus, espirometría, VEF1, CVF, VEF1/CVF, asma, EPOC, '
+                  'SpO2, Rx de tórax, TAC de tórax, inhaladores, salbutamol, budesonida.',
+    'urologia': 'disuria, polaquiuria, nicturia, tenesmo vesical, hematuria, IPSS, tacto rectal, próstata, PSA, '
+                'litiasis, cólico renal, ecografía renal, uroflujometría, varicocele.',
+    'otorrinolaringologia': 'otalgia, otorrea, otoscopia, membrana timpánica, hipoacusia, acúfenos, vértigo, '
+                            'rinoscopia, septum, cornetes, amígdalas, rinosinusitis, audiometría, timpanometría.',
+    'oftalmologia': 'OD, OI, AO, agudeza visual, 20/20, cartilla de Snellen, PIO, tonometría, biomicroscopía, '
+                    'fondo de ojo, cristalino, catarata, glaucoma, refracción, esfera, cilindro, eje, conjuntivitis.',
+    'psiquiatria': 'examen mental, afecto, ánimo, ideación, pensamiento, sensopercepción, juicio, introspección, '
+                   'insomnio, ansiedad, depresión, PHQ-9, GAD-7, ISRS, sertralina, escitalopram, clonazepam.',
+    'nutricion': 'peso, talla, IMC, circunferencia de cintura, cadera, pliegues, porcentaje de grasa, masa muscular, '
+                 'recordatorio de 24 horas, kcal, proteínas, carbohidratos, plan de alimentación.',
+    'fisiatria': 'EVA, dolor, arcos de movilidad, goniometría, Daniels, fuerza muscular, espasticidad, Ashworth, '
+                 'marcha, fisioterapia, TENS, ultrasonido terapéutico, magnetoterapia, sesiones.',
+}
+
+# Reglas propias de cada especialidad (se agregan a SISTEMA). Lo que no está aquí usa solo las reglas generales.
+REGLAS = {
+    'oftalmologia': '- Respeta el ojo: OD = ojo derecho, OI = ojo izquierdo, AO = ambos. Nunca pases un dato de un '
+                    'ojo al otro. La agudeza visual va tal cual se dicta (20/40, cuenta dedos…).',
+    'traumatologia': '- Respeta el lado (derecho/izquierdo) y la región exactos. Escalas (EVA, Daniels) tal cual.',
+    'fisiatria': '- Respeta el lado (derecho/izquierdo) y la región exactos. Escalas (EVA, Daniels, Ashworth) tal '
+                 'cual.',
+    'psiquiatria': '- Copia el relato con las palabras dictadas: no resumas, no interpretes ni cambies el sentido. '
+                   'No propongas diagnósticos que no se dictaron.',
+    'dermatologia': '- Describe las lesiones con los términos dictados (tipo, localización, tamaño, color); no las '
+                    'reclasifiques.',
+    'nutricion': '- No calcules IMC ni porcentajes: los calcula el sistema. Pon solo las medidas dictadas.',
+    'endocrinologia': '- No calcules IMC: lo calcula el sistema. Los valores de laboratorio van con su unidad dictada.',
+    'cardiologia': '- FEVI y saturación en porcentaje (sin el símbolo). Ritmo y hallazgos del EKG tal cual.',
+    'cardiologia_pediatrica': '- Medidas del eco en milímetros, como se dictan; no calcules Z-score (lo calcula el '
+                              'sistema).',
+    'pediatria': '- No calcules percentiles ni IMC: los calcula el sistema. Edad del niño solo como contexto.',
+    'ginecologia': '- No calcules edad gestacional ni FPP: las calcula el sistema desde la FUR o la eco.',
 }
 
 SISTEMA = """Eres el asistente de historia clínica de {especialidad} en un consultorio de Venezuela.
@@ -51,7 +101,7 @@ Reglas:
 - La tensión arterial «99 sobre 60» es sistólica 99 y diastólica 60.
 - Lo que no encaje en ningún campo va completo en `no_ubicado`, para que ella lo ubique.
 - No incluyas el nombre ni datos de identificación del paciente.
-Paciente: {paciente}."""
+{reglas}Paciente: {paciente}."""
 
 
 def _inicio_mes(ahora):
@@ -164,6 +214,12 @@ def herramienta(estructura):
     }
 
 
+def sistema_para(codigo, nombre, paciente):
+    reglas = REGLAS.get(codigo or '')
+    return SISTEMA.format(especialidad=nombre or 'medicina', paciente=paciente,
+                          reglas=f'{reglas}\n' if reglas else '')
+
+
 def contexto_paciente(paciente):
     partes = [paciente.get_sexo_display().lower() if paciente.sexo else 'sexo no indicado']
     if paciente.edad_texto:
@@ -227,8 +283,7 @@ def procesar(sesion_id, audio, nombre, tipo, estructura, especialidad_codigo, es
                     'No se escuchó voz en la grabación (está en silencio). Revisa que el navegador use el micrófono '
                     'correcto (ícono del candado → Micrófono) o sube una nota de voz del teléfono.')
             vocabulario = VOCABULARIO[''] + ' ' + VOCABULARIO.get(especialidad_codigo, '')
-            sistema = SISTEMA.format(especialidad=especialidad_nombre or 'medicina',
-                                     paciente=contexto_paciente(sesion.paciente))
+            sistema = sistema_para(especialidad_codigo, especialidad_nombre, contexto_paciente(sesion.paciente))
             r = proveedores.procesar_audio(datos, tipo_mime, vocabulario, sistema, herramienta(estructura))
             if not sesion.segundos and r.segundos_audio:
                 sesion.segundos = min(r.segundos_audio, MAX_SEGUNDOS)

@@ -28,7 +28,9 @@
         <div class="col-md-4">{% include 'partials/campo.html' with campo=form.dias_gracia %}</div>
         <div class="col-md-4 pt-md-4">{% include 'partials/campo.html' with campo=form.dictado_activo %}
           {% if dictado_uso %}<div class="small text-muted">Este mes: {{ dictado_uso.usados }}{% if dictado_uso.limite %} de {{ dictado_uso.limite }}{% endif %} min{% if dictado_uso.extra %} · <b class="text-warning-emphasis">{{ dictado_uso.extra }} min extra = US$ {{ dictado_uso.monto_extra }}</b>{% endif %} · {{ dictado_uso.sesiones }} dictado{{ dictado_uso.sesiones|pluralize }} en total{% if not dictado_uso.limite %} · sin límite en el plan{% endif %}</div>
-          {% if dictado_uso.anterior.usados %}<div class="small text-muted">Mes anterior ({{ dictado_uso.anterior.desde|date:"F Y" }}): {{ dictado_uso.anterior.usados }} min{% if dictado_uso.anterior.extra %} · <b>por cobrar: {{ dictado_uso.anterior.extra }} min extra = US$ {{ dictado_uso.anterior.monto_extra }}</b>{% endif %}</div>{% endif %}{% endif %}</div>{% endif %}
+          {% if dictado_uso.anterior.usados %}<div class="small text-muted">Mes anterior ({{ dictado_uso.anterior.desde|date:"F Y" }}): {{ dictado_uso.anterior.usados }} min{% if dictado_uso.anterior.extra %} · <b>por cobrar: {{ dictado_uso.anterior.extra }} min extra = US$ {{ dictado_uso.anterior.monto_extra }}</b>{% endif %}</div>{% endif %}{% endif %}</div>
+        <div class="col-md-4 pt-md-4">{% include 'partials/campo.html' with campo=form.sugerencias_ia %}
+          {% if sugerencias_uso %}<div class="small text-muted">Este mes: {{ sugerencias_uso.n }} sugerencia{{ sugerencias_uso.n|pluralize }} · ≈ US$ {{ sugerencias_uso.costo }}</div>{% endif %}</div>{% endif %}
         <div class="col-12">{% include 'partials/campo.html' with campo=form.notas %}</div>
       </div>
       <h2 class="h6">{{ form.especialidades.label }}</h2>

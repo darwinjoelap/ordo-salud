@@ -104,10 +104,12 @@ def actualizar_tenant(tenant, datos):
         nuevas = [e for e in datos['especialidades'] if not tenant.especialidades.filter(pk=e.pk).exists()]
         tenant.especialidades.set(datos['especialidades'])
         habilitar_especialidades(tenant, nuevas)
-    if 'dictado_activo' in datos:
+    cambios = [c for c in ('dictado_activo', 'sugerencias_ia') if c in datos]
+    if cambios:
         config = tenant.configuracion
-        config.dictado_activo = datos['dictado_activo']
-        config.save(update_fields=['dictado_activo', 'actualizado_en'])
+        for c in cambios:
+            setattr(config, c, datos[c])
+        config.save(update_fields=[*cambios, 'actualizado_en'])
     return tenant
 
 

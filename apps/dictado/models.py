@@ -48,3 +48,20 @@ class SesionDictado(TenantModel, Auditable):
     @property
     def minutos(self):
         return round(self.segundos / 60, 1)
+
+
+class SugerenciaIA(TenantModel, Auditable):
+    """Cada «Sugerir indicaciones» (ADR-060): uso y costo por consultorio, y qué se propuso (auditoría)."""
+    paciente = models.ForeignKey('pacientes.Paciente', on_delete=models.CASCADE, related_name='sugerencias_ia')
+    profesional = models.ForeignKey('equipo.PerfilProfesional', on_delete=models.PROTECT, related_name='sugerencias_ia')
+    ok = models.BooleanField(default=True)
+    error = models.CharField('Error', max_length=300, blank=True)
+    resultado = models.JSONField('Lo que se propuso', default=dict, blank=True)
+    modelo_ia = models.CharField(max_length=60, blank=True)
+    tokens_entrada = models.PositiveIntegerField(default=0)
+    tokens_salida = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = 'Sugerencia de indicaciones (IA)'
+        verbose_name_plural = 'Sugerencias de indicaciones (IA)'
+        ordering = ['-creado_en']

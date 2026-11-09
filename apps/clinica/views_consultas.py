@@ -337,11 +337,14 @@ def ficha_especialidad(request, paciente_pk, codigo):
 def _glosario(request, paciente):
     """Medicamentos activos del glosario y edad en meses para la calculadora de dosis del récipe."""
     from apps.core.fechas import edad_meses
+    from apps.dictado import indicaciones
 
     from .views_medicamentos import visibles
     meds = visibles(request).filter(activo=True).order_by('nombre').only('pk', 'nombre', 'presentacion')
     return {'glosario': list(meds),
-            'edad_meses': edad_meses(paciente.fecha_nacimiento) if paciente.fecha_nacimiento else ''}
+            'edad_meses': edad_meses(paciente.fecha_nacimiento) if paciente.fecha_nacimiento else '',
+            'sugerir_ia': request.membresia.perfil_activo is not None and indicaciones.activo(request.tenant),
+            'paciente_glosario': paciente}
 
 
 @login_required
