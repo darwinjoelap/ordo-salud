@@ -222,6 +222,40 @@ class RespuestaRotaTest(SimpleTestCase):
 
         from apps.dictado import proveedores
         with override_settings(GEMINI_API_KEY='x', DICTADO_MODO=''), \
-                mock.patch.object(proveedores, '_llamar_gemini', return_value=self._respuesta('{"x": 1.00')):
-            with self.assertRaisesMessage(proveedores.ErrorProveedor, 'respuesta incompleta'):
-                indicaciones._llamar('s', 'u')
+                mock.patch.object(proveedores, '_llamar_gemini', return_value=self._respuesta('{"x": 1.00')), \
+                self.assertRaisesMessage(proveedores.ErrorProveedor, 'respuesta incompleta'):
+            indicaciones._llamar('s', 'u')
+
+
+class BucleDeNumerosTest(SugerirVistaTest):
+    """2026-11-09: «000000…» hasta MAX_TOKENS → no se reintenta y la vista responde 200 con aviso (no 502)."""
+
+    def _cortada(self):
+        r = mock.Mock(status_code=200)
+        r.json.return_value = {'candidates': [{'finishReason': 'MAX_TOKENS', 'content': {'parts': [
+            {'text': '{"medicamentos": [{"glosario_id": 0, "fila": 1, "volumen_ml": 1.' + '0' * 3000}]}}],
+            'usageMetadata': {'promptTokenCount': 700, 'candidatesTokenCount': 2500, 'thoughtsTokenCount': 1000}}
+        return r
+
+    def test_reparar_recorta_numeros_desbocados(self):
+        texto = '{"a": 1.' + '0' * 50 + ', "b": 1.000000000e+0000000000, "glosario_id": 12}'
+        self.assertEqual(json.loads(indicaciones._reparar(texto)), {'a': 1.0, 'b': 1.0, 'glosario_id': 12})
+
+    def test_sistema_se_arma_sin_error(self):
+        self.assertIn('"medicamentos"', indicaciones.SISTEMA.format(especialidad='x', paciente='y'))
+
+    def test_max_tokens_no_reintenta_y_degrada(self):
+        from django.test import override_settings
+
+        from apps.dictado import proveedores
+        self.activar()
+        cuerpo = json.dumps({'campos': {'Diagnóstico': 'Gripe'}, 'recipe': [{'fila': 1, 'medicamento': 'Vitamina C'}]})
+        with override_settings(GEMINI_API_KEY='x', DICTADO_MODO=''), \
+                mock.patch.object(proveedores, '_llamar_gemini', return_value=self._cortada()) as llamada:
+            r = self.post(cuerpo)
+        self.assertEqual((r.status_code, llamada.call_count), (200, 1))
+        self.assertIn('fila 1 (Vitamina C)', r.json()['alertas'][0])
+        self.assertNotIn('response_json_schema', llamada.call_args[0][1]['generation_config'])
+        with self.en_tenant():
+            s = SugerenciaIA.objects.get()
+        self.assertEqual((s.ok, s.tokens_entrada, s.tokens_salida), (False, 700, 3500))

@@ -51,6 +51,12 @@ Reglas:
 - Medicamentos nuevos que sugieras: `fila` = 0. Solo si de verdad faltan para este caso.
 - Máximo 4 medicamentos nuevos; `nota` e `indicaciones` breves (pocas líneas).
 - No incluyas nombres ni datos de identificación.
+- Responde SOLO un objeto JSON con esta forma (omite las claves que no apliquen). Números cortos: 15, 2.5, 100; nunca
+  más de 2 decimales, ceros de relleno ni exponentes:
+  {{"medicamentos": [{{"glosario_id": 0, "fila": 2, "nombre": "…", "presentacion": "…", "modo": "PESO",
+    "mg_kg_min": 10, "mg_kg_max": 15, "unidad_kg": "mg", "concentracion": 100, "volumen_ml": 1,
+    "unidad_resultado": "gotas|mL|tableta|…", "dosis_max": 500, "dosis_fija": "", "frecuencia_horas": 8,
+    "duracion_dias": 7, "via": "oral", "nota": "…"}}], "indicaciones": "…", "alertas": ["…"]}}
 Paciente: {paciente}."""
 
 NUM = {'type': 'string', 'maxLength': 12, 'description': 'Número decimal simple, p. ej. 15 o 2.5 (sin exponente)'}
@@ -79,6 +85,19 @@ log = logging.getLogger('apps.dictado')
 
 class ErrorSugerencia(Exception):
     pass
+
+
+class RespuestaIncompleta(proveedores.ErrorProveedor):
+    """Gemini respondió pero el JSON vino cortado o roto (p. ej. un número sin fin hasta agotar el cupo)."""
+    def __init__(self, msg, tokens=(0, 0), modelo=''):
+        super().__init__(msg)
+        self.tokens, self.modelo = tokens, modelo
+
+
+def _reparar(texto):
+    """Recorta números desbocados («1.000000000…», «e+0000…») antes de leer el JSON."""
+    texto = re.sub(r'(\d+(?:\.\d{1,3})?)\d{6,}', r'\1', texto)
+    return re.sub(r'(\d)[eE][+-]?0{3,}\d*', r'\1', texto)
 
 
 def activo(tenant):
@@ -328,6 +347,15 @@ def sugerir(*, paciente, perfil, campos, peso=None, glosario=(), recipe=()):
     registro = SugerenciaIA(paciente=paciente, profesional=perfil)
     try:
         salida, (t_in, t_out), modelo = _llamar(sistema, usuario)
+    except RespuestaIncompleta as e:
+        # No se pierde lo que sí se pudo: lo del glosario se devuelve y lo demás queda para completar a mano
+        registro.ok, registro.error, registro.modelo_ia = False, str(e)[:300], e.modelo
+        registro.tokens_entrada, registro.tokens_salida = e.tokens
+        registro.save()
+        return {'filas': locales, 'indicaciones': '', 'id': registro.pk, 'alertas': [
+            'La IA no pudo responder esta vez' + (': ' + ', '.join(f'fila {r["fila"]} ({r["medicamento"]})'
+                                                                    for r in para_ia) if para_ia else '')
+            + '. Complétalo con el glosario o a mano, o vuelve a intentar.']}
     except proveedores.ErrorProveedor as e:
         registro.ok, registro.error = False, str(e)[:300]
         registro.save()
@@ -354,11 +382,11 @@ def _llamar(sistema, usuario):
     cuerpo = {
         'system_instruction': {'parts': [{'text': sistema}]},
         'contents': [{'role': 'user', 'parts': [{'text': usuario}]}],
-        'generation_config': {'response_mime_type': 'application/json', 'response_json_schema': ESQUEMA,
-                              # Sin 'temperature': Gemini 3 pide dejarla en 1.0; con 0.2 entraba en bucle
-                              # («1.000…e+000…», JSON cortado, ReadTimeout; 2026-11-09). Tope con margen para el
-                              # razonamiento, que gasta del mismo cupo; solo se paga lo que se usa.
-                              'max_output_tokens': 4096,
+        # Sin esquema forzado ni 'temperature' (2026-11-09): con el esquema, Gemini 3 escribía números sin fin
+        # («1.000000…», «000…») hasta agotar el cupo, también con temperatura 1.0. Pide JSON y la forma va en el
+        # prompt; `armar_filas` valida todo lo que llega. El razonamiento gasta del mismo cupo.
+        'generation_config': {'response_mime_type': 'application/json',
+                              'max_output_tokens': 3072,
                               'thinking_config': {'thinking_level': settings.SUGERENCIAS_RAZONAMIENTO}},
         'store': False,
     }
@@ -377,14 +405,14 @@ def _llamar(sistema, usuario):
         datos = r.json()
         uso = proveedores._uso(datos)
         t_in, t_out = t_in + uso[0], t_out + uso[1]
+        texto = proveedores._texto(datos)
         try:
-            salida = json.loads(proveedores._texto(datos))
+            salida = json.loads(_reparar(texto))
         except ValueError as e:
-            cand = (datos.get('candidates') or [{}])[0]
-            log.warning('Sugerencia IA: respuesta no es JSON (intento %s, fin=%s, tokens=%s): %s', intento + 1,
-                        cand.get('finishReason'), datos.get('usageMetadata'), proveedores._texto(datos)[-200:])
-            if intento == 0:
+            fin = ((datos.get('candidates') or [{}])[0]).get('finishReason')
+            log.warning('Sugerencia IA: respuesta no es JSON (intento %s, fin=%s, tokens=%s): %s … %s', intento + 1,
+                        fin, datos.get('usageMetadata'), texto[:400], texto[-120:])
+            if intento == 0 and fin != 'MAX_TOKENS':      # un bucle hasta el tope suele repetirse: no se reintenta
                 continue
-            raise proveedores.ErrorProveedor('La IA devolvió una respuesta incompleta. Intenta de nuevo; si se repite, '
-                                             'completa ese medicamento con el glosario o a mano.') from e
+            raise RespuestaIncompleta('La IA devolvió una respuesta incompleta.', (t_in, t_out), modelo) from e
         return (salida if isinstance(salida, dict) else {}), (t_in, t_out), modelo
