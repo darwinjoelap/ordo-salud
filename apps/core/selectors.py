@@ -32,5 +32,13 @@ def resumen_inicio(request):
         datos['pagos_hoy'] = len(del_dia['pagos'])
     if perfil is not None:
         from apps.clinica.selectors import consultas_en_curso
-        datos['en_curso'] = consultas_en_curso(perfil)
+        from datetime import timedelta
+
+        from apps.clinica.consultas import faltantes
+        en_curso = list(consultas_en_curso(perfil))
+        limite = timezone.now() - timedelta(hours=request.tenant.configuracion.horas_edicion_consulta)
+        for c in en_curso:          # vencida y sin poder cerrarse sola: decir qué falta
+            c.vencida = c.fecha_hora < limite
+            c.falta = faltantes(c) if c.vencida else []
+        datos['en_curso'] = en_curso
     return datos
