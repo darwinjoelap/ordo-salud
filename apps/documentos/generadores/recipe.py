@@ -57,6 +57,39 @@ def _texto(texto):
     return salida
 
 
+def _numero(valor):
+    from decimal import Decimal, InvalidOperation
+    try:
+        d = Decimal(str(valor).replace(',', '.'))
+    except (InvalidOperation, ValueError):
+        return ''
+    if not d.is_finite() or d <= 0:
+        return ''
+    return format(d.quantize(Decimal('0.01')).normalize(), 'f').replace('.', ',')
+
+
+def antropometria(consulta):
+    """
+    «Peso: 12,5 kg · Talla: 88 cm» de lo registrado en ESTA consulta, solo si el paciente es menor de 18 años
+    (como Pediae: la dosis va por peso). Vacío si no hay datos o es adulto.
+    """
+    from django.utils import timezone
+
+    from apps.core.fechas import edad_meses
+    if consulta is None or not consulta.pk:
+        return ''
+    nacimiento = consulta.paciente.fecha_nacimiento
+    meses = edad_meses(nacimiento, timezone.localtime(consulta.fecha_hora).date()) if nacimiento else None
+    if meses is None or meses >= 18 * 12:
+        return ''
+    peso = talla = ''
+    for r in consulta.registros.all():
+        datos = r.datos or {}
+        peso = peso or _numero(datos.get('peso_kg') or '')
+        talla = talla or _numero(datos.get('talla_cm') or '')
+    return ' · '.join(x for x in [f'Peso: {peso} kg' if peso else '', f'Talla: {talla} cm' if talla else ''] if x)
+
+
 def _cabecera(doc, membrete, logo=None):
     tenant, profesional, paciente = doc.tenant, doc.profesional, doc.paciente
     config = tenant.configuracion
@@ -96,7 +129,8 @@ def _cabecera(doc, membrete, logo=None):
         salida.append(Paragraph(lugar.direccion or lugar.nombre, DATO))
     salida += [Spacer(1, 2 * mm), HRFlowable(width=COLUMNA, thickness=0.6, color=LINEA), Spacer(1, 2 * mm),
                Paragraph(f'{doc.fecha:%d/%m/%Y}', FECHA), Paragraph(paciente.nombre_completo, PACIENTE)]
-    detalle = [paciente.documento if paciente.numero_documento else '', paciente.edad_texto or '']
+    detalle = [paciente.documento if paciente.numero_documento else '', paciente.edad_texto or '',
+               antropometria(doc.consulta if doc.consulta_id else None)]
     if any(detalle):
         salida.append(Paragraph(' · '.join(x for x in detalle if x), DATO))
     return salida + [Spacer(1, 4 * mm)]
