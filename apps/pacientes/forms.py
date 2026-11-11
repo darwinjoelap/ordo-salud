@@ -12,7 +12,7 @@ class PacienteForm(FormBase, forms.ModelForm):
         model = Paciente
         fields = ['nombres', 'apellidos', 'sexo', 'fecha_nacimiento', 'tipo_documento', 'numero_documento',
                   'telefono', 'telefono_2', 'email', 'direccion', 'ciudad', 'ocupacion', 'estado_civil',
-                  'grupo_sanguineo', 'seguro', 'contacto_emergencia', 'referido_por', 'observaciones']
+                  'nivel_instruccion', 'grupo_sanguineo', 'seguro', 'contacto_emergencia', 'referido_por', 'observaciones']
         widgets = {'fecha_nacimiento': FECHA, 'observaciones': forms.Textarea(attrs={'rows': 2}),
                    'telefono': forms.TextInput(attrs={'inputmode': 'tel'}),
                    'telefono_2': forms.TextInput(attrs={'inputmode': 'tel'}),

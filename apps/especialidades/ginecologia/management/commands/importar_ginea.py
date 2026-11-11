@@ -118,8 +118,12 @@ class Command(Base):
         for r in filas:
             p = self.pacientes.get(r['id'])
             ec = ESTADO_CIVIL.get(r.get('estado_civil') or '')
-            if p is not None and (ec or r.get('ocupacion')):
-                Paciente.objects.filter(pk=p.pk).update(estado_civil=ec or '', ocupacion=(r.get('ocupacion') or '')[:100])
+            instruccion = opcion(r.get('nivel_instruccion')) or ''
+            if instruccion not in dict(Paciente.INSTRUCCION):
+                instruccion = ''
+            if p is not None and (ec or r.get('ocupacion') or instruccion):
+                Paciente.objects.filter(pk=p.pk).update(estado_civil=ec or '', ocupacion=(r.get('ocupacion') or '')[:100],
+                                                        nivel_instruccion=instruccion)
 
     def _ficha(self, p, r):
         from apps.clinica.consultas import _guardar_paciente
@@ -134,7 +138,7 @@ class Command(Base):
                                     'enfermedades_cronicas': r.get('enfermedades_cronicas'),
                                     'cirugias': r.get('cirugias_previas')},
             'go.habitos': {'tabaquismo': si(r.get('tabaquismo')), 'alcohol': si(r.get('alcoholismo')),
-                           'transfusiones': si(r.get('transfusiones')), 'instruccion': opcion(r.get('nivel_instruccion'))},
+                           'transfusiones': si(r.get('transfusiones'))},
             'go.familiares': {'antecedentes': fam, 'autoinmunes': r.get('antec_autoinmunes'),
                               'geneticas': r.get('antec_geneticas'), 'otros': r.get('antec_otros')},
             'go.gineco': {

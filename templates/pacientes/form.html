@@ -42,6 +42,7 @@
     <div class="row g-2">
       <div class="col-md-4" data-solo-adulto {% if es_menor %}hidden{% endif %}>{% include 'partials/campo.html' with campo=form.ocupacion %}</div>
       <div class="col-md-3" data-solo-adulto {% if es_menor %}hidden{% endif %}>{% include 'partials/campo.html' with campo=form.estado_civil %}</div>
+      <div class="col-md-3" data-solo-adulto {% if es_menor %}hidden{% endif %}>{% include 'partials/campo.html' with campo=form.nivel_instruccion %}</div>
       <div class="col-6 col-md-2">{% include 'partials/campo.html' with campo=form.grupo_sanguineo %}</div>
       <div class="col-6 col-md-3">{% include 'partials/campo.html' with campo=form.seguro %}</div>
       <div class="col-12">{% include 'partials/campo.html' with campo=form.observaciones %}</div>

@@ -109,6 +109,7 @@
         {% if paciente.direccion or paciente.ciudad %}<div><i class="bi bi-geo-alt me-1"></i>{{ paciente.direccion }}{% if paciente.ciudad %} · {{ paciente.ciudad }}{% endif %}</div>{% endif %}
         {% if paciente.contacto_emergencia %}<div class="mt-1"><b>Emergencia:</b> {{ paciente.contacto_emergencia }}</div>{% endif %}
         {% if paciente.ocupacion and not paciente.es_menor %}<div><b>Ocupación:</b> {{ paciente.ocupacion }}</div>{% endif %}
+        {% if paciente.nivel_instruccion and not paciente.es_menor %}<div><b>Nivel de instrucción:</b> {{ paciente.get_nivel_instruccion_display }}</div>{% endif %}
         {% if paciente.grupo_sanguineo %}<div><b>Grupo sanguíneo:</b> {{ paciente.get_grupo_sanguineo_display }}</div>{% endif %}
         {% if paciente.seguro %}<div><b>Seguro:</b> {{ paciente.seguro }}</div>{% endif %}
         {% if paciente.referido_por %}<div><b>Referido por:</b> {{ paciente.referido_por }}</div>{% endif %}

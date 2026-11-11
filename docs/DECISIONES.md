@@ -89,3 +89,12 @@
 - La ven los médicos (y soporte); asistentes y administración no. Configuración `observaciones_visibles`:
   TODOS (por defecto) o AUTOR. No sale en récipe ni informe.
 - «Ya no fijar» funciona aunque la consulta esté cerrada (no es dato clínico); queda en auditoría.
+
+### ADR-066 (2026-11-11) — Antecedentes personales de ginecología como Ginea, sin duplicar datos
+- `go.habitos` v2 muestra alergias, enfermedades crónicas, cirugías previas, medicación actual y grupo sanguíneo.
+  Son campos VINCULADOS (`clinica.consultas.VINCULADOS`): se leen y guardan en `AntecedenteBase` / `Paciente`,
+  no en la sección (la alerta de alergias, la IA y «Antecedentes generales» ven lo mismo).
+- Nivel de instrucción pasa a `Paciente.nivel_instruccion` (migración copia lo que había en `go.habitos`).
+- `go.gineco` v2: ciclo de 1 a 365 días (antes mínimo 10).
+- «Antecedentes generales» guarda solo los campos visibles: un campo oculto por la plantilla ya no se borra.
+  La plantilla «Primera consulta con ficha completa» oculta allí lo que ya está en «Antecedentes personales».

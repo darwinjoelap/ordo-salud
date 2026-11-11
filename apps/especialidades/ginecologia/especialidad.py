@@ -38,7 +38,10 @@ CONSULTA_GINEA = ['go.tipo', SIGNOS_GO, MOTIVO, *FICHA_ABIERTA, EXAMEN, 'go.estu
                   'nucleo.prescripcion', ORDENES, 'go.notas', ('go.prenatal', {'colapsada': True})]
 PRENATAL = [TIPO_PRENATAL, SIGNOS_GO, 'go.prenatal', MOTIVO, *FICHA_ABIERTA, EXAMEN, 'go.estudios', DIAGNOSTICOS,
             PLAN, 'nucleo.prescripcion', ORDENES, 'go.notas']
-PRIMERA = ['go.tipo', SIGNOS_GO, MOTIVO, 'nucleo.antecedentes', *FICHA_ABIERTA, EXAMEN, 'go.estudios',
+# Los antecedentes generales sin lo que ya está en «Antecedentes personales» (alergias, crónicas, cirugías…).
+PRIMERA = ['go.tipo', SIGNOS_GO, MOTIVO, ('nucleo.antecedentes', {'ajustes': {'ocultos': [
+    'alergias', 'medicacion_actual', 'enfermedades_cronicas', 'cirugias', 'transfusiones', 'habitos',
+    'antecedentes_familiares']}}), *FICHA_ABIERTA, EXAMEN, 'go.estudios',
            DIAGNOSTICOS, PLAN, 'nucleo.prescripcion', ORDENES, 'go.notas', ('go.prenatal', {'colapsada': True})]
 
 PLANTILLAS = [
@@ -47,7 +50,7 @@ PLANTILLAS = [
     PlantillaDef('Control prenatal', PRENATAL,
                  descripcion='Control del embarazo primero: EG y FPP calculadas, altura uterina, FCF.'),
     PlantillaDef('Primera consulta con ficha completa', PRIMERA,
-                 descripcion='Igual a la consulta ginecológica, más los antecedentes generales.'),
+                 descripcion='Igual a la consulta ginecológica, más hospitalizaciones y otros antecedentes.'),
 ]
 
 

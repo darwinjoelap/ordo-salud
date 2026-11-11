@@ -51,6 +51,9 @@ class Paciente(TenantModel, Auditable):
         DIVORCIADO = 'DIVORCIADO', 'Divorciado/a'
         VIUDO = 'VIUDO', 'Viudo/a'
 
+    INSTRUCCION = [('PRIMARIA', 'Primaria'), ('SECUNDARIA', 'Secundaria'), ('TECNICO', 'Técnico'),
+                   ('UNIVERSITARIO', 'Universitario'), ('POSTGRADO', 'Postgrado')]
+
     class Grupo(models.TextChoices):
         A_POS = 'A+', 'A+'
         A_NEG = 'A-', 'A-'
@@ -77,6 +80,7 @@ class Paciente(TenantModel, Auditable):
     ocupacion = models.CharField('Ocupación', max_length=100, blank=True)
     estado_civil = models.CharField('Estado civil', max_length=12, choices=EstadoCivil.choices, blank=True)
     grupo_sanguineo = models.CharField('Grupo sanguíneo', max_length=3, choices=Grupo.choices, blank=True)
+    nivel_instruccion = models.CharField('Nivel de instrucción', max_length=14, choices=INSTRUCCION, blank=True)
     seguro = models.CharField('Seguro / aseguradora', max_length=100, blank=True)
     contacto_emergencia = models.CharField('Contacto de emergencia', max_length=150, blank=True)
     referido_por = models.CharField('Referido por / cómo llegó', max_length=120, blank=True)

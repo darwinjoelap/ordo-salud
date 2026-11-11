@@ -18,6 +18,9 @@ obesidad, alergia + IA, asma + procedimiento, RN prematuro, adolescente, gemelas
 hoy/mañana/no asistió, datos incompletos, borradores). Pendiente detectado: **edad corregida en prematuros** (hoy
 percentiles por edad cronológica). Próximos paquetes: ginecología, cardiología pediátrica, medicina general.
 
+## 2026-11-11 tarde — ADR-066 antecedentes personales de ginecología
+Tras desplegar: `sincronizar_especialidades` y `refrescar_plantillas ginecologia` (Railway). Migración `pacientes 0004`.
+
 ## 2026-11-11 — ADR-065 observación importante · récipe con peso/talla · consultas sin cerrar en inicio
 Migraciones `clinica 0010` y `configuracion 0010`. SW `f23`. Sugerencias IA sin esquema forzado (bucle de ceros).
 

@@ -15,17 +15,25 @@ TIPOS_CONSULTA = [['GINECOLOGICA', 'Ginecológica'], ['PRENATAL', 'Control prena
                   ['PUERPERIO', 'Puerperio']]
 
 # ── Ficha ginecológica (PACIENTE) — mismos campos, etiquetas y orden que la ficha clínica de Ginea ─────────────
-# (Ginea `pacientes/forms.py::PacienteCompletoForm`). Los datos personales y alergias, enfermedades crónicas,
-# cirugías y medicación viven en el núcleo (ficha del paciente y «Antecedentes generales»).
+# (Ginea `pacientes/forms.py::PacienteCompletoForm`). Los datos personales (nivel de instrucción, grupo sanguíneo…)
+# viven en la ficha del paciente; alergias, crónicas, cirugías y medicación, en «Antecedentes generales».
 
-PERSONALES = SeccionDef('go.habitos', 'Antecedentes personales', ambito='PACIENTE', orden=21, esquema={'campos': [
-    {'clave': 'tabaquismo', 'tipo': 'si_no', 'etiqueta': 'Tabaquismo', 'ancho': 3},
-    {'clave': 'alcohol', 'tipo': 'si_no', 'etiqueta': 'Alcoholismo', 'ancho': 3},
-    {'clave': 'transfusiones', 'tipo': 'si_no', 'etiqueta': 'Transfusiones', 'ancho': 3},
-    {'clave': 'instruccion', 'tipo': 'opcion', 'etiqueta': 'Nivel de instrucción', 'ancho': 3,
-     'opciones': [['PRIMARIA', 'Primaria'], ['SECUNDARIA', 'Secundaria'], ['TECNICO', 'Técnico'],
-                  ['UNIVERSITARIO', 'Universitario'], ['POSTGRADO', 'Postgrado']]},
-]})
+# v2 (2026-11-11, como Ginea): alergias, enfermedades crónicas, cirugías previas, medicación actual y grupo sanguíneo
+# aquí mismo. Son los MISMOS datos de «Antecedentes generales» y de la ficha del paciente (`consultas.VINCULADOS`):
+# se leen y se guardan allá, así la alerta de alergias y la IA siguen viéndolos. El nivel de instrucción pasó a los
+# datos del paciente.
+PERSONALES = SeccionDef('go.habitos', 'Antecedentes personales', ambito='PACIENTE', orden=21, version=2, esquema={
+    'campos': [
+        {'clave': 'alergias', 'tipo': 'texto', 'etiqueta': 'Alergias', 'ancho': 6, 'ayuda': 'Vacío = niega.'},
+        {'clave': 'enfermedades_cronicas', 'tipo': 'texto', 'etiqueta': 'Enfermedades crónicas', 'ancho': 6},
+        {'clave': 'cirugias', 'tipo': 'texto', 'etiqueta': 'Cirugías previas', 'ancho': 6},
+        {'clave': 'medicacion_actual', 'tipo': 'texto', 'etiqueta': 'Medicación actual', 'ancho': 6},
+        {'clave': 'grupo_sanguineo', 'tipo': 'opcion', 'etiqueta': 'Grupo sanguíneo', 'ancho': 3,
+         'opciones': [[g, g] for g in ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')]},
+        {'clave': 'tabaquismo', 'tipo': 'si_no', 'etiqueta': 'Tabaquismo', 'ancho': 3},
+        {'clave': 'alcohol', 'tipo': 'si_no', 'etiqueta': 'Alcoholismo', 'ancho': 3},
+        {'clave': 'transfusiones', 'tipo': 'si_no', 'etiqueta': 'Transfusiones', 'ancho': 3},
+    ]})
 
 FAMILIARES = SeccionDef('go.familiares', 'Antecedentes familiares', ambito='PACIENTE', orden=22, esquema={'campos': [
     {'clave': 'antecedentes', 'tipo': 'opciones', 'etiqueta': 'Antecedentes familiares',
@@ -36,7 +44,8 @@ FAMILIARES = SeccionDef('go.familiares', 'Antecedentes familiares', ambito='PACI
     {'clave': 'otros', 'tipo': T, 'etiqueta': 'Otros antecedentes familiares', 'filas': 2},
 ]})
 
-GINECO = SeccionDef('go.gineco', 'Historia gineco-obstétrica', ambito='PACIENTE', orden=23, esquema={'campos': [
+# v2 (2026-11-11): el ciclo ya no exige mínimo 10 días (lo pidió la doctora).
+GINECO = SeccionDef('go.gineco', 'Historia gineco-obstétrica', ambito='PACIENTE', orden=23, version=2, esquema={'campos': [
     {'clave': 'menarquia', 'tipo': 'numero', 'etiqueta': 'Menarquía (edad)', 'decimales': 0, 'min': 6, 'max': 25,
      'ancho': 3},
     {'clave': 'histerectomia', 'tipo': 'si_no', 'etiqueta': 'Histerectomía', 'ancho': 3},
@@ -50,8 +59,8 @@ GINECO = SeccionDef('go.gineco', 'Historia gineco-obstétrica', ambito='PACIENTE
      'ayuda': 'Bilateral = menopausia quirúrgica.'},
     {'clave': 'histerectomia_fecha', 'tipo': 'texto', 'etiqueta': 'Histerectomía (año o edad)', 'ancho': 3,
      'visible_si': CON_HISTERECTOMIA},
-    {'clave': 'ciclo_dias', 'tipo': 'numero', 'etiqueta': 'Duración del ciclo (días)', 'decimales': 0, 'min': 10,
-     'max': 120, 'ancho': 3, 'no_aplica_si': CON_HISTERECTOMIA},
+    {'clave': 'ciclo_dias', 'tipo': 'numero', 'etiqueta': 'Duración del ciclo (días)', 'decimales': 0, 'min': 1,
+     'max': 365, 'ancho': 3, 'no_aplica_si': CON_HISTERECTOMIA},
     {'clave': 'ciclo_regular', 'tipo': 'si_no', 'etiqueta': 'Ciclo regular', 'ancho': 3,
      'no_aplica_si': CON_HISTERECTOMIA},
     {'clave': 'fur', 'tipo': 'fecha', 'etiqueta': 'FUR (Fecha última regla)', 'ancho': 3,

@@ -27,6 +27,10 @@ from .models import (
 )
 
 ANTECEDENTES = 'nucleo.antecedentes'
+# Campos que otras secciones de ficha muestran pero que viven en un solo lugar (p. ej. «Antecedentes personales»
+# de ginecología): se leen y se guardan en Antecedentes generales o en los datos del paciente.
+VINCULADOS = {'alergias': 'antecedente', 'medicacion_actual': 'antecedente', 'enfermedades_cronicas': 'antecedente',
+              'cirugias': 'antecedente', 'grupo_sanguineo': 'paciente'}
 CAMPOS_ANTECEDENTES = ['alergias', 'medicacion_actual', 'enfermedades_cronicas', 'cirugias', 'hospitalizaciones',
                        'transfusiones', 'habitos', 'antecedentes_familiares', 'otros']
 
@@ -157,7 +161,8 @@ def datos_guardados(consulta):
                 datos[item['seccion_id']] = ({c: getattr(base, c) for c in CAMPOS_ANTECEDENTES if getattr(base, c)}
                                              if base else {})
             else:
-                datos[item['seccion_id']] = vigentes.get(item['seccion_id'], {})
+                datos[item['seccion_id']] = leer_vinculados(consulta.paciente, item,
+                                                            vigentes.get(item['seccion_id'], {}))
     return datos
 
 
@@ -193,8 +198,46 @@ def items_ficha(codigo_especialidad):
 
 def datos_ficha(paciente, items):
     ids = [i['seccion_id'] for i in items]
-    return {r.seccion_id: r.datos for r in RegistroSeccionPaciente.objects.filter(
+    datos = {r.seccion_id: r.datos for r in RegistroSeccionPaciente.objects.filter(
         paciente=paciente, seccion_id__in=ids, vigente=True)}
+    for item in items:
+        if _vinculados(item):
+            datos[item['seccion_id']] = leer_vinculados(paciente, item, datos.get(item['seccion_id'], {}))
+    return datos
+
+
+def _vinculados(item):
+    if item.get('codigo') == ANTECEDENTES:
+        return []
+    return [c['clave'] for c in item.get('campos', []) if c['clave'] in VINCULADOS]
+
+
+def leer_vinculados(paciente, item, datos):
+    """Pone en los datos de la sección los valores actuales de los campos vinculados."""
+    claves = _vinculados(item)
+    if not claves:
+        return datos
+    datos = dict(datos or {})
+    base = AntecedenteBase.objects.filter(paciente=paciente).first()
+    for c in claves:
+        valor = getattr(paciente, c, '') if VINCULADOS[c] == 'paciente' else (getattr(base, c, '') if base else '')
+        if valor:
+            datos[c] = valor
+        else:
+            datos.pop(c, None)
+    return datos
+
+
+def _guardar_vinculados(paciente, claves, datos):
+    base, _ = AntecedenteBase.objects.get_or_create(paciente=paciente)
+    cambios = [c for c in claves if VINCULADOS[c] == 'antecedente' and (datos.get(c) or '') != getattr(base, c)]
+    for c in cambios:
+        setattr(base, c, datos.get(c) or '')
+    if cambios:
+        base.save()
+    if 'grupo_sanguineo' in claves and (datos.get('grupo_sanguineo') or '') != paciente.grupo_sanguineo:
+        paciente.grupo_sanguineo = datos.get('grupo_sanguineo') or ''
+        paciente.save(update_fields=['grupo_sanguineo'])
 
 
 def lectura_ficha(paciente, codigo_especialidad):
@@ -229,12 +272,21 @@ def _guardar_paciente(consulta, item, datos, paciente=None):
     paciente = paciente or consulta.paciente
     if item['codigo'] == ANTECEDENTES:
         base, _ = AntecedenteBase.objects.get_or_create(paciente=paciente)
-        cambios = [c for c in CAMPOS_ANTECEDENTES if (datos.get(c) or '') != getattr(base, c)]
+        # Solo los campos que se mostraron: un campo oculto por la plantilla no borra lo que ya estaba
+        visibles = {c['clave'] for c in item['campos']} if item.get('campos') else set(CAMPOS_ANTECEDENTES)
+        cambios = [c for c in CAMPOS_ANTECEDENTES if c in visibles and (datos.get(c) or '') != getattr(base, c)]
         for c in cambios:
             setattr(base, c, datos.get(c) or '')
         if cambios:
             base.save()
         return
+    vinculados = _vinculados(item)
+    if vinculados:
+        calculados = {c['clave'] for c in item.get('campos', []) if c['tipo'] == 'calculado'}
+        if not any(k not in calculados for k in datos):
+            return                      # llegó vacía (no se mostró o no se tocó): no borra nada
+        _guardar_vinculados(paciente, vinculados, datos)
+        datos = {k: v for k, v in datos.items() if k not in vinculados}     # viven allá, no se duplican aquí
     actual = RegistroSeccionPaciente.objects.filter(paciente=paciente, seccion_id=item['seccion_id'],
                                                     vigente=True).first()
     if actual is not None and actual.datos == datos:
