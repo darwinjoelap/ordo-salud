@@ -18,6 +18,9 @@ obesidad, alergia + IA, asma + procedimiento, RN prematuro, adolescente, gemelas
 hoy/mañana/no asistió, datos incompletos, borradores). Pendiente detectado: **edad corregida en prematuros** (hoy
 percentiles por edad cronológica). Próximos paquetes: ginecología, cardiología pediátrica, medicina general.
 
+## 2026-11-11 — ADR-065 observación importante · récipe con peso/talla · consultas sin cerrar en inicio
+Migraciones `clinica 0010` y `configuracion 0010`. SW `f23`. Sugerencias IA sin esquema forzado (bucle de ceros).
+
 ## 2026-11-09 noche — ADR-064 agenda por médico
 Con «Los médicos pueden ver todos los pacientes y todas las agendas» apagada (por defecto), cada médico ve solo su
 agenda. Migración `configuracion 0009` (solo cambia el texto de la opción).

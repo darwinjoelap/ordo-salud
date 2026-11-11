@@ -82,3 +82,10 @@
   `?p=todos`/`?p=<otro>` se ignoran; cita ajena, editar, estado, atender y recordatorio dan 404; agenda solo para sí.
 - Ve los bloqueos de todo el consultorio pero no puede borrarlos. Titular, administración y asistente ven todo.
 - Motivo: una sola regla de privacidad; la cita lleva el nombre del paciente. Opción 2 descartada (otra casilla).
+
+### ADR-065 (2026-11-11) — Observación importante de la consulta y del paciente
+- `Consulta.observacion_importante` (texto) + `observacion_fija`. Sin fijar: se recuerda solo en la consulta siguiente
+  (la inmediatamente anterior a la que se abre). Fija: en todas las consultas y en la ficha hasta «Ya no fijar».
+- La ven los médicos (y soporte); asistentes y administración no. Configuración `observaciones_visibles`:
+  TODOS (por defecto) o AUTOR. No sale en récipe ni informe.
+- «Ya no fijar» funciona aunque la consulta esté cerrada (no es dato clínico); queda en auditoría.

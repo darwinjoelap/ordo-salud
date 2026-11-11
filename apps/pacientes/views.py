@@ -104,6 +104,8 @@ def detalle(request, pk):
         contexto['proximas_citas'] = contexto['proximas_citas'].filter(profesional=m.perfil_activo)   # ADR-064
     contexto['proximas_citas'] = contexto['proximas_citas'][:5]
     if ve_historia:
+        from apps.clinica import observaciones
+        contexto['observaciones'] = observaciones.para(request.membresia, paciente)
         from apps.clinica.selectors import resumen_paciente
         contexto.update(resumen_paciente(request, paciente))
     from apps.clinica.views_procedimientos import puede_registrar

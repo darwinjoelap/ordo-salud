@@ -18,6 +18,13 @@
   </div>
 </div>
 {% if consulta.estado == 'ANULADA' %}<div class="alert alert-danger py-2 small">Anulada: {{ consulta.motivo_anulacion }}</div>{% endif %}
+{% if ve_observacion and consulta.observacion_importante %}
+<div class="border border-warning-subtle rounded p-2 px-3 mb-3 small" style="background:var(--bs-warning-bg-subtle)">
+  <i class="bi {% if consulta.observacion_fija %}bi-pin-angle-fill text-danger{% else %}bi-bookmark-star-fill text-warning{% endif %} me-1"></i>
+  <b>Observación importante</b> <span class="text-muted">· {% if consulta.observacion_fija %}fija: se muestra en todas las consultas{% else %}se muestra en la próxima consulta{% endif %}</span>
+  <div class="ms-4">{{ consulta.observacion_importante|linebreaksbr }}</div>
+</div>
+{% endif %}
 {% for item, filas in lectura %}
   <div class="card os-seccion {% if item.ambito == 'PACIENTE' %}os-ambito-paciente{% endif %} mb-2">
     <div class="card-header py-2">{{ item.nombre }}

@@ -13,6 +13,7 @@
 {% if accesos %}<div class="d-flex flex-wrap gap-2 mb-2">{% for a in accesos %}<a href="{{ a.url }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi {{ a.icono }} me-1"></i>{{ a.titulo }}{% if a.aviso %} <span class="badge text-bg-{{ a.aviso.1 }} ms-1">{{ a.aviso.0 }}</span>{% endif %}</a>{% endfor %}</div>{% endif %}
 {% if dictado %}{% include 'dictado/_barra.html' %}{% endif %}
 {% if antecedentes.tiene_alergias %}<div class="os-alerta-alergia p-2 px-3 mb-2 small"><i class="bi bi-exclamation-triangle-fill me-1"></i><b>Alergias:</b> {{ antecedentes.alergias }}</div>{% endif %}
+{% include 'clinica/_observaciones.html' %}
 {% if previas %}
 <details class="mb-3 small"><summary class="text-muted">Consultas anteriores ({{ previas|length }})</summary>
   <ul class="list-unstyled mt-1 mb-0">{% for c in previas %}<li><a href="{% url 'clinica:consulta' c.pk %}" target="_blank">{{ c.fecha_hora|date:"d/m/Y" }}</a> · {{ c.profesional }} · {{ c.motivo|truncatechars:60|default:"—" }}{% if c.diagnostico %} · <b>{{ c.diagnostico|truncatechars:60 }}</b>{% endif %}</li>{% endfor %}</ul>
@@ -48,6 +49,19 @@
       </div>
     </div>
   {% endfor %}
+  <div class="card mb-3 border-warning-subtle" id="observacion-importante">
+    <div class="card-header"><i class="bi bi-bookmark-star me-1 text-warning"></i>Observación importante</div>
+    <div class="card-body">
+      <label class="form-label small text-muted" for="obs-texto">Algo que quieras recordar en la próxima consulta de este paciente (no sale en el récipe ni en el informe).</label>
+      <textarea class="form-control" id="obs-texto" name="observacion_importante" rows="2" maxlength="1000"
+                placeholder="Ej.: revisar el resultado de la hematología; preguntar si cumplió la dieta">{{ obs_texto }}</textarea>
+      <div class="form-check mt-2">
+        <input class="form-check-input" type="checkbox" id="obs-fija" name="observacion_fija" {% if obs_fija %}checked{% endif %}>
+        <label class="form-check-label" for="obs-fija"><b>Dejarla fija</b></label>
+        <div class="form-text">Sin marcar, se muestra solo en la próxima consulta. Marcada, se muestra en <b>todas</b> las consultas de este paciente y en su ficha hasta que la desmarques (o toques «Ya no fijar»).</div>
+      </div>
+    </div>
+  </div>
   <datalist id="cie10-opciones"></datalist>
   <div class="os-barra-acciones d-flex gap-2 justify-content-end flex-wrap">
     {% if faltan %}<span class="small text-muted me-auto align-self-center">Para cerrar falta: {{ faltan|join:", " }}</span>{% endif %}

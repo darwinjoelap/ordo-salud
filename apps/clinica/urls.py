@@ -34,6 +34,7 @@ urlpatterns = [
     path('consultas/<int:pk>/editar/', vc.editar, name='consulta_editar'),
     path('consultas/<int:pk>/imprimir/', vc.imprimir, name='consulta_imprimir'),
     path('consultas/<int:pk>/anular/', vc.anular, name='consulta_anular'),
+    path('consultas/<int:pk>/observacion/soltar/', vc.observacion_soltar, name='observacion_soltar'),
     path('consultas/<int:pk>/adjuntar/', vc.adjuntar, name='consulta_adjuntar'),
     path('consultas/<int:pk>/enmendar/<int:seccion_id>/', vc.enmendar, name='consulta_enmendar'),
     path('adjuntos/<int:pk>/', vc.adjunto, name='adjunto'),

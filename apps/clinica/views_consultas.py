@@ -17,7 +17,7 @@ from apps.dictado.views import vincular as vincular_dictado
 from apps.pacientes.models import Paciente, normalizar_texto
 
 from . import consultas as srv
-from . import registro
+from . import observaciones, registro
 from .formularios import FormularioSeccion
 from .models import Adjunto, Cie10, Consulta, PlantillaHistoria
 
@@ -121,6 +121,7 @@ def nueva(request, paciente_pk):
                 paciente=paciente, profesional=perfil, plantilla=consulta.plantilla, tipo=tipo, lugar=lugar,
                 datos_por_seccion={item['seccion_id']: f.datos_limpios for item, f in formularios}, cita=cita,
                 fecha_hora=_inicio(request.POST.get('inicio')), cerrar=accion == 'cerrar', usuario=request.user)
+            observaciones.guardar(creada, request.POST)
             auditoria.registrar(request, 'CREAR', creada, paciente_id=paciente.pk)
             vincular_dictado(request, creada)
             _aviso_control(request, creada, desde)
@@ -137,6 +138,9 @@ def nueva(request, paciente_pk):
     return render(request, 'clinica/consulta_form.html', {
         'titulo': f'Nueva consulta · {paciente}', 'consulta': consulta, 'formularios': formularios, 'nueva': True,
         'cita': cita, 'previas': consultas_visibles(request, paciente)[:5],
+        'observaciones': observaciones.para(request.membresia, paciente, consulta),
+        'obs_texto': request.POST.get('observacion_importante', '') if request.method == 'POST' else '',
+        'obs_fija': request.POST.get('observacion_fija') == 'on' if request.method == 'POST' else False,
         'accesos': registro.accesos_consulta(consulta.especialidad.codigo, paciente),
         'dictado': _dictado(request),
         'antecedentes': getattr(paciente, 'antecedentes', None), 'faltan': [], **_glosario(request, paciente)})
@@ -153,6 +157,7 @@ def editar(request, pk):
         if all(f.is_valid() for _, f in formularios):
             desde = timezone.now()
             srv.guardar_secciones(consulta, {item['seccion_id']: f.datos_limpios for item, f in formularios})
+            observaciones.guardar(consulta, request.POST)
             auditoria.registrar(request, 'EDITAR', consulta, paciente_id=consulta.paciente_id)
             vincular_dictado(request, consulta)
             _aviso_control(request, consulta, desde)
@@ -174,6 +179,11 @@ def editar(request, pk):
     return render(request, 'clinica/consulta_form.html', {
         'titulo': f'Consulta · {consulta.paciente}', 'consulta': consulta, 'formularios': formularios,
         'previas': previas, 'antecedentes': antecedentes, 'faltan': srv.faltantes(consulta),
+        'observaciones': observaciones.para(request.membresia, consulta.paciente, consulta),
+        'obs_texto': request.POST.get('observacion_importante', '') if request.method == 'POST'
+        else consulta.observacion_importante,
+        'obs_fija': request.POST.get('observacion_fija') == 'on' if request.method == 'POST'
+        else consulta.observacion_fija,
         'accesos': registro.accesos_consulta(consulta.especialidad.codigo, consulta.paciente),
         'dictado': _dictado(request),
         **_glosario(request, consulta.paciente)})
@@ -198,9 +208,29 @@ def detalle(request, pk):
         'titulo': f'Consulta · {consulta.paciente}', 'consulta': consulta, 'lectura': lectura,
         'vacias': [i for i in consulta.estructura if i['seccion_id'] not in con_datos],
         'es_autor': _es_autor(request, consulta),
+        've_observacion': observaciones.puede_ver(request.membresia) and (
+            request.tenant.configuracion.observaciones_visibles == 'TODOS' or _es_autor(request, consulta)),
         'enmiendas': consulta.enmiendas.select_related('seccion', 'creado_por'),
         'adjuntos': consulta.adjuntos.all(), 'notas': consulta.notas_evolucion.select_related('creado_por'),
         'hoy': timezone.localdate()})
+
+
+@login_required
+@requiere('historia.ver')
+@require_POST
+def observacion_soltar(request, pk):
+    """Quita lo «fijo» de una observación importante: deja de recordarse en las próximas consultas."""
+    c = get_object_or_404(Consulta.objects.select_related('paciente'), pk=pk)
+    consulta = observaciones.soltable(request.membresia, c.paciente, pk)
+    if consulta is None:
+        raise Http404
+    Consulta.objects.filter(pk=pk).update(observacion_fija=False)
+    auditoria.registrar(request, 'EDITAR', consulta, paciente_id=consulta.paciente_id,
+                        detalle='Observación importante: ya no queda fija')
+    messages.success(request, 'La observación ya no queda fija.')
+    destino = request.POST.get('volver', '')
+    return redirect(destino if destino.startswith('/') and not destino.startswith('//')
+                    else reverse('pacientes:detalle', args=[consulta.paciente_id]))
 
 
 @login_required

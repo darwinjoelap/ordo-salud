@@ -45,6 +45,11 @@ class ConfiguracionTenant(models.Model):
         'Los médicos pueden ver todos los pacientes y todas las agendas', default=False,
         help_text='Apagado: cada médico ve sus pacientes (los que atendió, tiene citados o registró), los nuevos '
                   'sin historia y solo su agenda. Titular, administradores y asistentes siempre ven todo.')
+    observaciones_visibles = models.CharField(
+        'Quién ve las observaciones importantes', max_length=6, default='TODOS',
+        choices=[('TODOS', 'Todos los médicos del consultorio'), ('AUTOR', 'Solo el médico que la escribió')],
+        help_text='La observación importante de una consulta se recuerda en la siguiente (o en todas si se deja '
+                  'fija). Asistentes y administración no la ven.')
     horas_edicion_consulta = models.PositiveSmallIntegerField(
         'Horas para editar una consulta', default=24,
         help_text='Pasado ese tiempo la consulta se cierra sola; después solo se corrige con una enmienda.')

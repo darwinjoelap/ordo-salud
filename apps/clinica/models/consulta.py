@@ -64,6 +64,9 @@ class Consulta(TenantModel, Auditable):
     cerrada_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='+')
     motivo_anulacion = models.CharField('Motivo de anulación', max_length=250, blank=True)
+    # Observación importante (ADR-065): se muestra en la consulta siguiente; si está fija, en todas hasta soltarla
+    observacion_importante = models.TextField('Observación importante', max_length=1000, blank=True)
+    observacion_fija = models.BooleanField('Dejarla fija', default=False)
 
     class Meta:
         verbose_name = 'Consulta'

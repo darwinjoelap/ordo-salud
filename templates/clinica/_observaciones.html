@@ -1,0 +1,21 @@
+{# Observación importante (ADR-065): la de la consulta anterior y las fijas del paciente. Recibe: observaciones #}
+{% if observaciones.anterior or observaciones.fijas %}
+<div class="os-observacion border border-warning-subtle rounded p-2 px-3 mb-2 small" style="background:var(--bs-warning-bg-subtle)">
+  {% if observaciones.anterior %}{% with o=observaciones.anterior %}
+  <div class="mb-1"><i class="bi bi-bookmark-star-fill text-warning me-1"></i><b>Observación importante de la consulta</b>
+    <span class="text-muted">del {{ o.fecha_hora|date:"d/m/Y" }} · {{ o.profesional }}</span>
+    <div class="ms-4">{{ o.observacion_importante|linebreaksbr }}</div></div>
+  {% endwith %}{% endif %}
+  {% for o in observaciones.fijas %}
+  <div class="d-flex justify-content-between gap-2 align-items-start">
+    <div><i class="bi bi-pin-angle-fill text-danger me-1"></i><b>Observación importante del paciente</b>
+      <span class="text-muted">· fija desde el {{ o.fecha_hora|date:"d/m/Y" }} · {{ o.profesional }}</span>
+      <div class="ms-4">{{ o.observacion_importante|linebreaksbr }}</div></div>
+    <form method="post" action="{% url 'clinica:observacion_soltar' o.pk %}" class="flex-shrink-0"
+          onsubmit="return confirm('Dejará de mostrarse en las próximas consultas. ¿Quitar?')">{% csrf_token %}
+      <input type="hidden" name="volver" value="{{ request.get_full_path }}">
+      <button class="btn btn-sm btn-link p-0 text-muted" title="Ya no mostrarla en las próximas consultas"><i class="bi bi-pin-angle me-1"></i>Ya no fijar</button></form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
