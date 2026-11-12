@@ -124,9 +124,11 @@ def crear_consulta_completa(*, paciente, profesional, plantilla, tipo, lugar, da
     consulta = abrir_consulta(paciente=paciente, profesional=profesional, plantilla=plantilla, tipo=tipo,
                               lugar=lugar, fecha_hora=fecha_hora)
     guardar_secciones(consulta, datos_por_seccion)
+    from apps.agenda.servicios import vincular_cita_del_dia, vincular_consulta
     if cita is not None and cita.profesional_id == profesional.pk and not cita.consulta_id:
-        from apps.agenda.servicios import vincular_consulta
         vincular_consulta(cita, consulta, profesional)
+    else:                       # atendida desde la ficha del paciente: si tenía cita hoy con este médico, se cierra
+        vincular_cita_del_dia(consulta)
     if cerrar:
         with contextlib.suppress(ErrorDeNegocio):     # si falta algo queda en curso; la vista avisa qué falta
             cerrar_consulta(consulta, usuario)

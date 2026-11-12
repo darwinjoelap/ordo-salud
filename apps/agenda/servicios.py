@@ -150,10 +150,33 @@ def vincular_consulta(cita, consulta, perfil):
     cita.estado = Cita.Estado.ATENDIDA
     cita.save(update_fields=['consulta', 'estado', 'actualizado_en'])
     tipo = cita.tipo
-    if tipo and tipo.servicio_id and tipo.servicio.activo and not cita.cargos.exists():
+    # Sin cargo doble: ni si la cita ya tenía uno ni si la consulta ya se cobró aparte
+    if (tipo and tipo.servicio_id and tipo.servicio.activo and not cita.cargos.exists()
+            and not consulta.cargos.exists()):
         from apps.cobros.servicios import crear_cargo
         crear_cargo(paciente=cita.paciente, servicio=tipo.servicio, descripcion=tipo.servicio.nombre,
                     precio_usd=tipo.servicio.precio_usd, consulta=consulta, cita=cita, profesional=perfil)
+
+
+def cita_pendiente_de(consulta):
+    """
+    La cita activa del mismo paciente, con el mismo médico y el mismo día que la consulta, sin consulta todavía.
+    Para cuando se atiende desde la ficha del paciente (o «Nueva consulta») y no desde «Atender» en la agenda.
+    """
+    fecha = timezone.localtime(consulta.fecha_hora).date()
+    return (Cita.objects.filter(paciente_id=consulta.paciente_id, profesional_id=consulta.profesional_id, fecha=fecha,
+                                estado__in=Cita.ACTIVAS, consulta__isnull=True)
+            .order_by('hora_inicio', 'id').first())
+
+
+def vincular_cita_del_dia(consulta):
+    """Si la consulta no vino de una cita pero el paciente tenía cita ese día con ese médico, la marca atendida."""
+    if Cita.objects.filter(consulta=consulta).exists():
+        return None
+    cita = cita_pendiente_de(consulta)
+    if cita is not None:
+        vincular_consulta(cita, consulta, consulta.profesional)
+    return cita
 
 
 def turnos_libres(profesional, fecha):

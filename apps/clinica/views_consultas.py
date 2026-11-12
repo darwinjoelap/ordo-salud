@@ -103,6 +103,8 @@ def nueva(request, paciente_pk):
     if request.method == 'POST' and not request.POST.get('completa'):
         consulta = srv.abrir_consulta(paciente=paciente, profesional=perfil, plantilla=plantilla, tipo=tipo,
                                       lugar=lugar)
+        from apps.agenda.servicios import vincular_cita_del_dia
+        vincular_cita_del_dia(consulta)
         auditoria.registrar(request, 'CREAR', consulta, paciente_id=paciente.pk)
         return redirect('clinica:consulta_editar', pk=consulta.pk)
     if request.method == 'GET' and cita is not None and cita.consulta_id:
