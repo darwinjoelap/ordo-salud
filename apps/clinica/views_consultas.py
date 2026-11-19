@@ -17,12 +17,12 @@ from django.views.decorators.http import require_POST
 from apps.configuracion.models import Lugar
 from apps.core import auditoria
 from apps.core.excepciones import ErrorDeNegocio
-from apps.core.permisos import es_soporte, requiere
+from apps.core.permisos import es_soporte, puede_usar_preoperatorio, requiere
 from apps.dictado.views import vincular as vincular_dictado
 from apps.pacientes.models import Paciente, normalizar_texto
 
 from . import consultas as srv
-from . import observaciones, registro
+from . import observaciones, preoperatorio, registro
 from .formularios import FormularioSeccion
 from .models import Adjunto, Cie10, Consulta, PlantillaHistoria
 
@@ -31,11 +31,16 @@ MAX_ADJUNTO = 10 * 1024 * 1024
 
 def _consulta_visible(request, pk):
     consulta = get_object_or_404(Consulta.objects.select_related(
-        'paciente', 'profesional__membresia__usuario', 'especialidad', 'tenant__configuracion', 'lugar'), pk=pk)
+        'paciente', 'profesional__membresia__usuario', 'especialidad', 'tenant__configuracion', 'lugar',
+        'preoperatorio'), pk=pk)
     if not srv.puede_ver(request.membresia, consulta):
         auditoria.registrar(request, 'EXCEPCION', consulta, paciente_id=consulta.paciente_id,
                             detalle='Intento de ver una consulta sin permiso')
         raise PermissionDenied
+    if hasattr(consulta, 'preoperatorio'):
+        from apps.pacientes.selectors import puede_ver_paciente
+        if not puede_ver_paciente(request.membresia, consulta.paciente):
+            raise PermissionDenied
     return consulta
 
 
@@ -51,6 +56,11 @@ def _formularios(consulta, data=None):
                                  prefix=f's{item["seccion_id"]}', contexto=contexto, exigir_requeridos=False)
         formularios.append((item, form))
     return formularios
+
+
+def _datos_secciones(formularios, datos, *, parcial=False):
+    return {item['seccion_id']: form.datos_limpios for item, form in formularios
+            if not parcial or any(campo.html_name in datos for campo in form)}
 
 
 def _aviso_control(request, consulta, desde):
@@ -85,7 +95,7 @@ def _volver_al_inicio(request, consulta):
 
 @login_required
 @requiere('consultas.crear')
-def nueva(request, paciente_pk):
+def nueva(request, paciente_pk, *, es_preoperatoria=False):
     """
     GET: formulario completo de una consulta nueva (aún no existe; se puede llenar sin conexión).
     POST con `completa`: crea la consulta con todo lo llenado. POST sin `completa` (compatibilidad):
@@ -102,6 +112,17 @@ def nueva(request, paciente_pk):
     independiente = datos.get('independiente') == '1'
     cita_id = datos.get('cita')
     intento = datos.get('intento', '')
+    form_cirugia = None
+    if es_preoperatoria:
+        if not puede_usar_preoperatorio(request.membresia):
+            raise PermissionDenied
+        if not paciente.activo or cita_id:
+            raise Http404
+        if request.method == 'POST' and not datos.get('completa'):
+            return HttpResponse('Envía el formulario de evaluación completo.', status=400)
+        independiente = True
+        form_cirugia = preoperatorio.CirugiaForm(
+            request.POST if request.method == 'POST' else None, prefix='cirugia')
     inicio_independiente = None
     cita = None
     if request.method == 'POST' and any(
@@ -121,7 +142,8 @@ def nueva(request, paciente_pk):
             return HttpResponse('Esta cita ya no está disponible para iniciar una consulta.', status=409)
     else:
         firma = signing.Signer(salt=f'clinica.inicio.{request.tenant.pk}.{request.user.pk}.{perfil.pk}.'
-                                    f'{perfil.especialidad_id}.{paciente.pk}')
+                                    f'{perfil.especialidad_id}.{paciente.pk}'
+                                    + ('.preoperatorio' if es_preoperatoria else ''))
         if request.method == 'POST':
             if not independiente:
                 return HttpResponse('Elige la cita o inicia una consulta independiente desde la ficha.', status=409)
@@ -142,13 +164,16 @@ def nueva(request, paciente_pk):
     plantilla = None
     plantillas = PlantillaHistoria.objects.filter(Q(profesional__isnull=True) | Q(profesional=perfil),
                                                  especialidad=perfil.especialidad, activa=True)
-    if (datos.get('plantilla') or '').isdigit():
+    if not es_preoperatoria and (datos.get('plantilla') or '').isdigit():
         plantilla = get_object_or_404(plantillas, pk=datos['plantilla'])
     elif cita is not None and cita.tipo_id and cita.tipo.plantilla_id:
         plantilla = plantillas.filter(pk=cita.tipo.plantilla_id).first()
-    lugar = Lugar.objects.filter(pk=datos.get('lugar') or 0).first() or (cita.lugar if cita else None)
-    tipo = datos.get('tipo') if datos.get('tipo') in Consulta.Tipo.values else (
-        cita.tipo.tipo_consulta if cita is not None and cita.tipo_id else Consulta.Tipo.PRIMERA)
+    if es_preoperatoria:
+        lugar, tipo = None, Consulta.Tipo.OTRA
+    else:
+        lugar = Lugar.objects.filter(pk=datos.get('lugar') or 0).first() or (cita.lugar if cita else None)
+        tipo = datos.get('tipo') if datos.get('tipo') in Consulta.Tipo.values else (
+            cita.tipo.tipo_consulta if cita is not None and cita.tipo_id else Consulta.Tipo.PRIMERA)
 
     if request.method == 'POST' and not request.POST.get('completa'):
         try:
@@ -163,19 +188,28 @@ def nueva(request, paciente_pk):
         auditoria.registrar(request, 'CREAR', consulta, paciente_id=paciente.pk)
         return redirect('clinica:consulta_editar', pk=consulta.pk)
 
-    consulta = srv.consulta_nueva(paciente=paciente, profesional=perfil, plantilla=plantilla, tipo=tipo, lugar=lugar)
+    try:
+        consulta = srv.consulta_nueva(paciente=paciente, profesional=perfil, plantilla=plantilla,
+                                      tipo=tipo, lugar=lugar, es_preoperatoria=es_preoperatoria)
+    except ErrorDeNegocio as e:
+        if not es_preoperatoria:
+            raise
+        messages.warning(request, str(e))
+        return redirect('pacientes:detalle', pk=paciente.pk)
     formularios = _formularios(consulta, request.POST if request.method == 'POST' else None)
     if request.method == 'POST':
-        if all(f.is_valid() for _, f in formularios):
+        cirugia_valida = form_cirugia is None or form_cirugia.is_valid()
+        if all(f.is_valid() for _, f in formularios) and cirugia_valida:
             accion = request.POST.get('accion')
             desde = timezone.now()
             try:
                 with transaction.atomic():
                     creada, es_nueva = srv.iniciar_consulta_completa(
                         paciente=paciente, profesional=perfil, plantilla=consulta.plantilla, tipo=tipo, lugar=lugar,
-                        datos_por_seccion={item['seccion_id']: f.datos_limpios for item, f in formularios},
+                        datos_por_seccion=_datos_secciones(formularios, datos, parcial=es_preoperatoria),
                         cita=cita, inicio_independiente=inicio_independiente, fecha_hora=_inicio(request.POST.get('inicio')),
-                        cerrar=accion == 'cerrar', usuario=request.user)
+                        cerrar=accion == 'cerrar', usuario=request.user,
+                        datos_cirugia=form_cirugia.cleaned_data if form_cirugia is not None else None)
                     if not es_nueva:
                         return _volver_al_inicio(request, creada)
                     observaciones.guardar(creada, request.POST)
@@ -196,7 +230,8 @@ def nueva(request, paciente_pk):
         messages.error(request, 'Revisa los campos marcados en rojo; no se guardó nada.')
     from .selectors import consultas_visibles
     return render(request, 'clinica/consulta_form.html', {
-        'titulo': f'Nueva consulta · {paciente}', 'consulta': consulta, 'formularios': formularios, 'nueva': True,
+        'titulo': f'{"Evaluación preoperatoria" if es_preoperatoria else "Nueva consulta"} · {paciente}',
+        'consulta': consulta, 'formularios': formularios, 'nueva': True, 'form_cirugia': form_cirugia,
         'cita': cita, 'independiente': independiente, 'intento': intento,
         'previas': consultas_visibles(request, paciente)[:5],
         'observaciones': observaciones.para(request.membresia, paciente, consulta),
@@ -211,13 +246,24 @@ def nueva(request, paciente_pk):
 @requiere('historia.ver')
 def editar(request, pk):
     consulta = _consulta_visible(request, pk)
+    evaluacion = getattr(consulta, 'preoperatorio', None)
     if not srv.puede_editar(request.membresia, consulta):
         return redirect('clinica:consulta', pk=pk)
-    formularios = _formularios(consulta, request.POST if request.method == 'POST' else None)
+    datos = request.POST if request.method == 'POST' else None
+    formularios = _formularios(consulta, datos)
+    form_cirugia = preoperatorio.CirugiaForm(datos, instance=evaluacion, prefix='cirugia') if evaluacion else None
     if request.method == 'POST':
-        if all(f.is_valid() for _, f in formularios):
+        cirugia_valida = form_cirugia is None or form_cirugia.is_valid()
+        if all(f.is_valid() for _, f in formularios) and cirugia_valida:
             desde = timezone.now()
-            srv.guardar_secciones(consulta, {item['seccion_id']: f.datos_limpios for item, f in formularios})
+            try:
+                srv.guardar_secciones(consulta, _datos_secciones(formularios, datos, parcial=bool(evaluacion)),
+                                      datos_cirugia=form_cirugia.cleaned_data if form_cirugia is not None else None)
+            except ErrorDeNegocio as e:
+                if not evaluacion:
+                    raise
+                messages.warning(request, str(e))
+                return redirect('clinica:consulta', pk=pk)
             observaciones.guardar(consulta, request.POST)
             auditoria.registrar(request, 'EDITAR', consulta, paciente_id=consulta.paciente_id)
             vincular_dictado(request, consulta)
@@ -240,6 +286,7 @@ def editar(request, pk):
     return render(request, 'clinica/consulta_form.html', {
         'titulo': f'Consulta · {consulta.paciente}', 'consulta': consulta, 'formularios': formularios,
         'previas': previas, 'antecedentes': antecedentes, 'faltan': srv.faltantes(consulta),
+        'form_cirugia': form_cirugia,
         'observaciones': observaciones.para(request.membresia, consulta.paciente, consulta),
         'obs_texto': request.POST.get('observacion_importante', '') if request.method == 'POST'
         else consulta.observacion_importante,
@@ -265,6 +312,10 @@ def detalle(request, pk):
     auditoria.registrar(request, 'VER', consulta, paciente_id=consulta.paciente_id)
     lectura = srv.lectura(consulta)
     con_datos = {item['seccion_id'] for item, _ in lectura}
+    evaluacion = getattr(consulta, 'preoperatorio', None)
+    puede_continuar = _es_autor(request, consulta)
+    if evaluacion:
+        puede_continuar = puede_continuar and puede_usar_preoperatorio(request.membresia)
     return render(request, 'clinica/consulta.html', {
         'titulo': f'Consulta · {consulta.paciente}', 'consulta': consulta, 'lectura': lectura,
         'vacias': [i for i in consulta.estructura if i['seccion_id'] not in con_datos],
@@ -272,6 +323,7 @@ def detalle(request, pk):
         've_observacion': observaciones.puede_ver(request.membresia) and (
             request.tenant.configuracion.observaciones_visibles == 'TODOS' or _es_autor(request, consulta)),
         'enmiendas': consulta.enmiendas.select_related('seccion', 'creado_por'),
+        'evaluacion_preoperatoria': evaluacion, 'puede_continuar': puede_continuar,
         'adjuntos': consulta.adjuntos.all(), 'notas': consulta.notas_evolucion.select_related('creado_por'),
         'hoy': timezone.localdate()})
 

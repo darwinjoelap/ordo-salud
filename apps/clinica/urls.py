@@ -28,6 +28,8 @@ urlpatterns = [
     path('secciones/<int:pk>/editar/', vp.seccion_editar, name='seccion_editar'),
     path('secciones/<int:pk>/activa/', vp.seccion_activa, name='seccion_activa'),
     path('pacientes/<int:paciente_pk>/consultas/nueva/', vc.nueva, name='consulta_nueva'),
+    path('pacientes/<int:paciente_pk>/evaluacion-preoperatoria/nueva/', vc.nueva,
+         {'es_preoperatoria': True}, name='preoperatorio_nuevo'),
     path('consultas/calcular/', vc.calcular, name='calcular'),
     path('pacientes/<int:paciente_pk>/ficha/<slug:codigo>/', vc.ficha_especialidad, name='ficha_especialidad'),
     path('consultas/<int:pk>/', vc.detalle, name='consulta'),

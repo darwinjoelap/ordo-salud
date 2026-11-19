@@ -76,6 +76,23 @@ def tiene_permiso(request, codigo):
     return codigo in permisos_de(getattr(request, 'membresia', None))
 
 
+def puede_usar_preoperatorio(membresia):
+    """Comprueba la habilitación clínica dentro del consultorio activo."""
+    from apps.core.tenancy import tenant_actual
+
+    tenant = tenant_actual()
+    if (tenant is None or membresia is None or es_soporte(membresia) or not membresia.activa
+            or membresia.tenant_id != tenant.pk):
+        return False
+    perfil = membresia.perfil_activo
+    if perfil is None or perfil.tenant_id != tenant.pk:
+        return False
+    config = tenant.configuracion
+    return (config.preoperatorio_activo
+            and tenant.especialidades.filter(pk=perfil.especialidad_id).exists()
+            and config.preoperatorio_especialidades.filter(pk=perfil.especialidad_id).exists())
+
+
 def requiere(codigo):
     """Decorador: 403 si la membresía activa no tiene el permiso."""
     if codigo not in PERMISOS:

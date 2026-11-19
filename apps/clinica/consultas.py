@@ -10,9 +10,10 @@ from django.utils import timezone
 
 from apps.core.excepciones import ErrorDeNegocio
 from apps.core.fechas import edad_meses
+from apps.core.permisos import es_soporte, puede_usar_preoperatorio
 from apps.pacientes.models import AntecedenteBase
 
-from . import esquemas, registro
+from . import esquemas, preoperatorio, registro
 from .models import (
     Cie10,
     Consulta,
@@ -25,6 +26,8 @@ from .models import (
     SeccionClinica,
     SignosVitales,
 )
+from .models.consulta import EvaluacionPreoperatoria
+
 
 ANTECEDENTES = 'nucleo.antecedentes'
 # Campos que otras secciones de ficha muestran pero que viven en un solo lugar (p. ej. «Antecedentes personales»
@@ -37,9 +40,15 @@ CAMPOS_ANTECEDENTES = ['alergias', 'medicacion_actual', 'enfermedades_cronicas',
 
 # ── Permisos sobre una consulta ───────────────────────────────────────────────
 
+def _borrador_preoperatorio_bloqueado(membresia, consulta):
+    return (consulta.editable and hasattr(consulta, 'preoperatorio')
+            and not puede_usar_preoperatorio(membresia))
+
+
 def puede_ver(membresia, consulta):
-    """Visibilidad configurable por consultorio (ADR-008). El soporte ve todo (ADR-057)."""
-    from apps.core.permisos import es_soporte
+    """Visibilidad configurable por consultorio (ADR-008), con permiso para borradores preoperatorios."""
+    if _borrador_preoperatorio_bloqueado(membresia, consulta):
+        return False
     if es_soporte(membresia):
         return True
     perfil = membresia.perfil_activo if membresia else None
@@ -56,11 +65,12 @@ def puede_ver(membresia, consulta):
 
 
 def puede_editar(membresia, consulta):
-    from apps.core.permisos import es_soporte
+    if not consulta.editable or _borrador_preoperatorio_bloqueado(membresia, consulta):
+        return False
     if es_soporte(membresia):
-        return consulta.editable
+        return True
     perfil = membresia.perfil_activo if membresia else None
-    return perfil is not None and consulta.profesional_id == perfil.pk and consulta.editable
+    return perfil is not None and consulta.profesional_id == perfil.pk
 
 
 # ── Abrir ─────────────────────────────────────────────────────────────────────
@@ -74,50 +84,63 @@ def plantilla_para(profesional, especialidad=None):
             or qs.filter(profesional__isnull=True).first())
 
 
+def _estructura_seccion(seccion, *, obligatoria=False, colapsada=False, ajustes=None):
+    return {
+        'seccion_id': seccion.pk, 'codigo': seccion.codigo, 'nombre': seccion.nombre,
+        'version': seccion.version, 'ambito': seccion.ambito,
+        'obligatoria': obligatoria, 'colapsada': colapsada,
+        'campos': esquemas.campos_efectivos(seccion.esquema, ajustes),
+    }
+
+
 def congelar_estructura(plantilla):
-    estructura = []
-    for item in plantilla.items.select_related('seccion').order_by('orden', 'id'):
-        s = item.seccion
-        if not s.activa:
-            continue
-        estructura.append({
-            'seccion_id': s.pk, 'codigo': s.codigo, 'nombre': s.nombre, 'version': s.version, 'ambito': s.ambito,
-            'obligatoria': item.obligatoria, 'colapsada': item.colapsada,
-            'campos': esquemas.campos_efectivos(s.esquema, item.ajustes),
-        })
-    return estructura
+    return [_estructura_seccion(item.seccion, obligatoria=item.obligatoria, colapsada=item.colapsada,
+                                ajustes=item.ajustes)
+            for item in plantilla.items.select_related('seccion').order_by('orden', 'id') if item.seccion.activa]
+
+
+def _estructura_preoperatoria():
+    secciones = {s.codigo: s for s in SeccionClinica.objects.filter(
+        codigo__in=preoperatorio.SECCIONES, activa=True, tenant__isnull=True)}
+    if len(secciones) != len(preoperatorio.SECCIONES):
+        raise ErrorDeNegocio('Faltan secciones clínicas comunes para iniciar la evaluación.')
+    return [_estructura_seccion(secciones[codigo]) for codigo in preoperatorio.SECCIONES]
 
 
 @transaction.atomic
 def abrir_consulta(*, paciente, profesional, plantilla=None, tipo=Consulta.Tipo.PRIMERA, lugar=None,
-                   fecha_hora=None, inicio_independiente=None):
-    plantilla = plantilla or plantilla_para(profesional)
-    if plantilla is None:
+                   fecha_hora=None, inicio_independiente=None, es_preoperatoria=False):
+    if not es_preoperatoria:
+        plantilla = plantilla or plantilla_para(profesional)
+    if plantilla is None and not es_preoperatoria:
         raise ErrorDeNegocio('No hay plantillas de historia para tu especialidad. Crea una en «Plantillas».')
-    if plantilla.profesional_id not in (None, profesional.pk):
+    if plantilla and plantilla.profesional_id not in (None, profesional.pk):
         raise ErrorDeNegocio('Esa plantilla es de otro profesional.')
     if not paciente.activo:
         raise ErrorDeNegocio('El paciente está inactivo.')
     return Consulta.objects.create(
         paciente=paciente, profesional=profesional, especialidad=profesional.especialidad, plantilla=plantilla,
-        lugar=lugar, estructura=congelar_estructura(plantilla), fecha_hora=fecha_hora or timezone.now(), tipo=tipo,
+        lugar=lugar, estructura=_estructura_preoperatoria() if es_preoperatoria else congelar_estructura(plantilla),
+        fecha_hora=fecha_hora or timezone.now(), tipo=tipo,
         inicio_independiente=inicio_independiente)
 
 
-def consulta_nueva(*, paciente, profesional, plantilla=None, tipo=Consulta.Tipo.PRIMERA, lugar=None):
+def consulta_nueva(*, paciente, profesional, plantilla=None, tipo=Consulta.Tipo.PRIMERA, lugar=None,
+                   es_preoperatoria=False):
     """Consulta SIN guardar, con la estructura de la plantilla: para mostrar el formulario completo antes de
     crearla (así se puede llenar sin conexión y se crea al enviarse)."""
-    plantilla = plantilla or plantilla_para(profesional)
-    if plantilla is None:
+    if not es_preoperatoria:
+        plantilla = plantilla or plantilla_para(profesional)
+    if plantilla is None and not es_preoperatoria:
         raise ErrorDeNegocio('No hay plantillas de historia para tu especialidad. Crea una en «Plantillas».')
     return Consulta(paciente=paciente, profesional=profesional, especialidad=profesional.especialidad,
-                    plantilla=plantilla, lugar=lugar, estructura=congelar_estructura(plantilla),
-                    fecha_hora=timezone.now(), tipo=tipo, tenant=paciente.tenant)
+                    plantilla=plantilla, lugar=lugar, tipo=tipo, fecha_hora=timezone.now(), tenant=paciente.tenant,
+                    estructura=_estructura_preoperatoria() if es_preoperatoria else congelar_estructura(plantilla))
 
 
 @transaction.atomic
 def iniciar_consulta(*, paciente, profesional, plantilla, tipo, lugar, cita=None, fecha_hora=None,
-                     inicio_independiente=None):
+                     inicio_independiente=None, es_preoperatoria=False):
     """Serializa por paciente y reconoce el inicio por cita o por UUID independiente."""
     from apps.agenda.models import Cita
     from apps.agenda.servicios import vincular_consulta
@@ -148,7 +171,8 @@ def iniciar_consulta(*, paciente, profesional, plantilla, tipo, lugar, cita=None
         if previa is not None:
             return previa, False
     consulta = abrir_consulta(paciente=paciente, profesional=profesional, plantilla=plantilla, tipo=tipo,
-                              lugar=lugar, fecha_hora=fecha_hora, inicio_independiente=inicio_independiente)
+                              lugar=lugar, fecha_hora=fecha_hora, inicio_independiente=inicio_independiente,
+                              es_preoperatoria=es_preoperatoria)
     if cita is not None:
         vincular_consulta(cita, consulta, profesional)
     return consulta, True
@@ -156,13 +180,15 @@ def iniciar_consulta(*, paciente, profesional, plantilla, tipo, lugar, cita=None
 
 @transaction.atomic
 def iniciar_consulta_completa(*, paciente, profesional, plantilla, tipo, lugar, datos_por_seccion, cita=None,
-                              fecha_hora=None, cerrar=False, usuario=None, inicio_independiente=None):
+                              fecha_hora=None, cerrar=False, usuario=None, inicio_independiente=None,
+                              datos_cirugia=None):
     consulta, creada = iniciar_consulta(paciente=paciente, profesional=profesional, plantilla=plantilla, tipo=tipo,
                                         lugar=lugar, cita=cita, fecha_hora=fecha_hora,
-                                        inicio_independiente=inicio_independiente)
+                                        inicio_independiente=inicio_independiente,
+                                        es_preoperatoria=datos_cirugia is not None)
     if not creada:
         return consulta, False
-    guardar_secciones(consulta, datos_por_seccion)
+    guardar_secciones(consulta, datos_por_seccion, datos_cirugia=datos_cirugia)
     if cerrar:
         with contextlib.suppress(ErrorDeNegocio):
             cerrar_consulta(consulta, usuario)
@@ -369,7 +395,7 @@ def _bloquear_consulta(consulta):
 
 
 @transaction.atomic
-def guardar_secciones(consulta, datos_por_seccion):
+def guardar_secciones(consulta, datos_por_seccion, *, datos_cirugia=None):
     """datos_por_seccion: {seccion_id: datos_limpios}. Solo en consultas en curso."""
     consulta = _bloquear_consulta(consulta)
     if not consulta.editable:
@@ -380,6 +406,9 @@ def guardar_secciones(consulta, datos_por_seccion):
     for item in orden:
         if item['seccion_id'] in datos_por_seccion:
             _guardar(consulta, item, datos_por_seccion[item['seccion_id']])
+    if datos_cirugia is not None:
+        EvaluacionPreoperatoria.objects.update_or_create(
+            consulta=consulta, defaults={**datos_cirugia, 'tenant': consulta.tenant})
     consulta.save(update_fields=['actualizado_en'])
     return consulta
 
@@ -396,6 +425,9 @@ def faltantes(consulta):
         campos = esquemas.requeridos_vacios(i['campos'], valores)
         if campos:
             salida.append(f'{i["nombre"]} ({", ".join(campos)})')
+    evaluacion = getattr(consulta, 'preoperatorio', None)
+    if evaluacion:
+        salida.extend(preoperatorio.faltantes(evaluacion))
     return salida
 
 
@@ -407,6 +439,14 @@ def cerrar_consulta(consulta, usuario=None, *, automatico=False):
     pendientes = faltantes(consulta)
     if pendientes:
         raise ErrorDeNegocio('Para cerrar la consulta completa: ' + ', '.join(pendientes) + '.')
+    if hasattr(consulta, 'preoperatorio'):
+        # El cierre conserva también antecedentes consultados sin editar en este borrador.
+        datos = datos_guardados(consulta)
+        for item in consulta.estructura:
+            if item['ambito'] == 'PACIENTE':
+                RegistroSeccion.objects.get_or_create(
+                    consulta=consulta, seccion_id=item['seccion_id'],
+                    defaults={'datos': datos.get(item['seccion_id'], {}), 'version_seccion': item['version']})
     consulta.estado = Consulta.Estado.CERRADA
     consulta.cerrada_en = timezone.now()
     consulta.cerrada_por = None if automatico else usuario

@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 
 from apps.core import auditoria
 from apps.core.excepciones import ErrorDeNegocio
-from apps.core.permisos import requiere, tiene_permiso
+from apps.core.permisos import puede_usar_preoperatorio, requiere, tiene_permiso
 
 from . import selectors, servicios
 from .forms import AntecedenteBaseForm, PacienteForm, RepresentanteForm
@@ -111,6 +111,17 @@ def detalle(request, pk):
         contexto['observaciones'] = observaciones.para(request.membresia, paciente)
         from apps.clinica.selectors import resumen_paciente
         contexto.update(resumen_paciente(request, paciente))
+        from apps.clinica.models import Consulta
+
+        if m.perfil_activo:
+            borradores = Consulta.objects.filter(
+                paciente=paciente, profesional=m.perfil_activo, estado=Consulta.Estado.BORRADOR)
+            en_curso = contexto['consulta_en_curso']
+            if en_curso is not None and hasattr(en_curso, 'preoperatorio'):
+                contexto['consulta_en_curso'] = borradores.filter(preoperatorio__isnull=True).first()
+            if paciente.activo and puede_usar_preoperatorio(m):
+                contexto['puede_preoperatorio'] = True
+                contexto['preoperatorios_en_curso'] = borradores.filter(preoperatorio__isnull=False)[:5]
     from apps.clinica.views_procedimientos import puede_registrar
     contexto['puede_procedimiento'] = puede_registrar(request)
     if not ve_historia and contexto['puede_procedimiento']:      # la asistente ve los procedimientos (no la historia)

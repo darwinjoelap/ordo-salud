@@ -72,6 +72,11 @@ class ConfiguracionTenant(models.Model):
         help_text='En la agenda del día aparecen los pacientes que cumplen ese tiempo desde su última consulta (y no '
                   'tienen cita pendiente), con un mensaje por WhatsApp para ofrecerles atención. 0 = no recordar.')
     # Módulos
+    preoperatorio_activo = models.BooleanField('Habilitar evaluación preoperatoria', default=False)
+    preoperatorio_especialidades = models.ManyToManyField(
+        'plataforma.Especialidad', blank=True, related_name='+', verbose_name='Especialidades autorizadas',
+        help_text='Solo los profesionales de las especialidades seleccionadas pueden iniciar y editar evaluaciones.',
+    )
     dictado_activo = models.BooleanField('Dictado por voz', default=False, editable=False,
                                          help_text='Lo activa la plataforma según el plan.')
     sugerencias_ia = models.BooleanField('Sugerir indicaciones con IA', default=False, editable=False,

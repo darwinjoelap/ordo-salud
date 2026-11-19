@@ -83,6 +83,28 @@ class Consulta(TenantModel, Auditable):
         return self.estado == self.Estado.BORRADOR
 
 
+class EvaluacionPreoperatoria(TenantModel):
+    """Datos quirúrgicos. El estado y la autoría viven en la consulta."""
+
+    class Caracter(models.TextChoices):
+        ELECTIVA = 'ELECTIVA', 'Electiva'
+        URGENTE = 'URGENTE', 'Urgente'
+        EMERGENCIA = 'EMERGENCIA', 'De emergencia'
+
+    consulta = models.OneToOneField(Consulta, on_delete=models.PROTECT, related_name='preoperatorio')
+    procedimiento = models.CharField('Procedimiento previsto', max_length=250, blank=True)
+    motivo = models.TextField('Diagnóstico o motivo de la cirugía', max_length=2000, blank=True)
+    caracter = models.CharField('Carácter de la cirugía', max_length=10, choices=Caracter.choices, blank=True)
+    fecha_prevista = models.DateField('Fecha prevista', null=True, blank=True)
+    cirujano = models.CharField('Cirujano', max_length=150, blank=True)
+    centro = models.CharField('Centro quirúrgico', max_length=180, blank=True)
+    anestesia = models.CharField('Anestesia prevista', max_length=150, blank=True)
+
+    class Meta(TenantModel.Meta):
+        verbose_name = 'Evaluación preoperatoria'
+        verbose_name_plural = 'Evaluaciones preoperatorias'
+
+
 class RegistroSeccion(TenantModel):
     consulta = models.ForeignKey(Consulta, on_delete=models.CASCADE, related_name='registros')
     seccion = models.ForeignKey('clinica.SeccionClinica', on_delete=models.PROTECT, related_name='+')

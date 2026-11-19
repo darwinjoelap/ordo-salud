@@ -1,4 +1,5 @@
 from django import forms
+from django.db import transaction
 
 from apps.core.forms import FormBase, validar_unico_en_tenant
 from apps.core.imagenes import validar_imagen
@@ -12,6 +13,7 @@ GRUPOS = {
     'historia': ('Historia clínica', ['visibilidad_historia', 'medicos_ven_todos_pacientes', 'observaciones_visibles',
                                          'horas_edicion_consulta',
                                          'formula_sc']),
+    'preoperatorio': ('Evaluación preoperatoria', ['preoperatorio_activo', 'preoperatorio_especialidades']),
     'agenda': ('Agenda', ['hora_inicio_agenda', 'hora_fin_agenda', 'duracion_cita_min',
                           'recordatorio_sin_consulta_meses']),
     'cobros': ('Cobros', ['tasa_referencia']),
@@ -38,6 +40,9 @@ class ConfiguracionForm(FormBase, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from . import whatsapp
+        especialidades = self.fields['preoperatorio_especialidades']
+        especialidades.queryset = (self.instance.tenant.especialidades.all() if self.instance.tenant_id
+                                   else especialidades.queryset.none())
         self.fields['recordatorio_sin_consulta_meses'].help_text = (
             'Sugiere un recordatorio al superar el plazo desde la última asistencia clínica. 0 = desactivar.'
         )
@@ -82,6 +87,7 @@ class ConfiguracionForm(FormBase, forms.ModelForm):
             self.add_error('hora_fin_agenda', 'El fin de la jornada debe ser posterior al inicio.')
         return datos
 
+    @transaction.atomic
     def save(self, commit=True):
         config = super().save(commit=False)
         for campo in ('logo', 'membrete'):
@@ -91,6 +97,7 @@ class ConfiguracionForm(FormBase, forms.ModelForm):
                     archivo.delete(save=False)
         if commit:
             config.save()
+            self.save_m2m()
         return config
 
 

@@ -6,7 +6,7 @@
   <div>
     <a href="{% url 'pacientes:detalle' p.pk %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> Ficha</a>
     <h1 class="h4 mb-0 mt-1">{{ p.nombre_completo }} <span class="small text-muted fw-normal">{{ p.edad_texto }} · {{ p.get_sexo_display }} · {{ p.documento }}</span></h1>
-    <div class="small text-muted">{{ consulta.get_tipo_display }} · {{ consulta.fecha_hora|date:"d/m/Y" }} {{ consulta.fecha_hora|hora12 }}{% if consulta.lugar %} · {{ consulta.lugar }}{% endif %} · plantilla «{{ consulta.plantilla|default:'—' }}»</div>
+    <div class="small text-muted">{% if form_cirugia %}Evaluación preoperatoria{% else %}{{ consulta.get_tipo_display }}{% endif %} · {{ consulta.fecha_hora|date:"d/m/Y" }} {{ consulta.fecha_hora|hora12 }}{% if consulta.lugar %} · {{ consulta.lugar }}{% endif %}{% if not form_cirugia %} · plantilla «{{ consulta.plantilla|default:'—' }}»{% endif %}</div>
   </div>
   {% if nueva %}<span class="badge text-bg-info">Nueva{% if independiente %} · independiente{% endif %}{% if cita %} · cita {{ cita.hora_inicio|hora12 }}{% endif %}</span>{% else %}<span class="badge text-bg-warning">En curso</span>{% endif %}
 </div>
@@ -20,16 +20,26 @@
 </details>
 {% endif %}
 
-<form method="post" id="form-consulta" autocomplete="off" data-offline-titulo="Consulta · {{ consulta.paciente.nombre_completo }}">{% csrf_token %}
+<form method="post" id="form-consulta" autocomplete="off"{% if form_cirugia %} data-offline="off"{% endif %} data-offline-titulo="Consulta · {{ consulta.paciente.nombre_completo }}">{% csrf_token %}
   {% if nueva %}
     <input type="hidden" name="completa" value="1">
     {% if independiente %}<input type="hidden" name="independiente" value="1">
       <input type="hidden" name="intento" value="{{ intento }}">{% endif %}
     <input type="hidden" name="inicio" value="" data-os-inicio>
-    <input type="hidden" name="plantilla" value="{{ consulta.plantilla_id }}">
+    {% if not form_cirugia %}<input type="hidden" name="plantilla" value="{{ consulta.plantilla_id }}">{% endif %}
     <input type="hidden" name="tipo" value="{{ consulta.tipo }}">
     {% if consulta.lugar_id %}<input type="hidden" name="lugar" value="{{ consulta.lugar_id }}">{% endif %}
     {% if cita %}<input type="hidden" name="cita" value="{{ cita.pk }}">{% endif %}
+  {% endif %}
+  {% if form_cirugia %}
+    <section class="card mb-3">
+      <h2 class="h6 card-header">Cirugía prevista</h2>
+      <div class="card-body row g-3">
+        {% for campo in form_cirugia %}
+          <div class="{% if campo.name == 'motivo' %}col-12{% else %}col-md-6{% endif %}">{% include 'partials/campo.html' with campo=campo %}</div>
+        {% endfor %}
+      </div>
+    </section>
   {% endif %}
   <div class="d-flex flex-wrap align-items-center gap-2 mb-2 small os-barra-secciones">
     <span class="text-muted">{{ formularios|length }} secciones · la ficha del paciente <span class="os-chip">se conserva entre consultas</span></span>

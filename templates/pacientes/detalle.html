@@ -13,6 +13,9 @@
     {% if 'cobros.gestionar' in permisos %}<a href="{% url 'cobros:cuenta' paciente.pk %}" class="btn btn-outline-success btn-sm"><i class="bi bi-cash-coin me-1"></i>Cuenta</a>{% endif %}
     {% if ve_historia and paciente.activo %}{% menu_documentos paciente %}{% endif %}
     {% if puede_procedimiento and paciente.activo %}<a href="{% url 'clinica:procedimiento_nuevo' paciente.pk %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-bandaid me-1"></i>Procedimiento</a>{% endif %}
+    {% if puede_preoperatorio %}
+      <a href="{% url 'clinica:preoperatorio_nuevo' paciente.pk %}" class="btn btn-outline-primary btn-sm">Evaluación preoperatoria</a>
+    {% endif %}
     {% if 'consultas.crear' in permisos and paciente.activo %}
       {% if consulta_en_curso %}<a href="{% url 'clinica:consulta_editar' consulta_en_curso.pk %}" class="btn btn-warning btn-sm"><i class="bi bi-pencil me-1"></i>Continuar consulta en curso</a>{% endif %}
       <button class="btn btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#nueva-consulta"><i class="bi bi-clipboard2-plus me-1"></i>Nueva consulta</button>
@@ -39,6 +42,14 @@
     </div>
   </form>
 </div>
+{% endif %}
+
+{% if preoperatorios_en_curso %}
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    {% for evaluacion in preoperatorios_en_curso %}
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'clinica:consulta_editar' evaluacion.pk %}">Continuar evaluación del {{ evaluacion.fecha_hora|date:"d/m/Y" }} · {{ evaluacion.fecha_hora|hora12 }}</a>
+    {% endfor %}
+  </div>
 {% endif %}
 
 {% if ve_historia and antecedentes.tiene_alergias %}
