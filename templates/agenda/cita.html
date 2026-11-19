@@ -7,21 +7,35 @@
     <div class="text-muted">{{ cita.fecha|date:"l j \d\e F"|lower|capfirst }}{% if cita.hora_inicio %} · {{ cita.hora_inicio|hora12 }} – {{ cita.hora_fin|hora12 }}{% else %} · sin hora (tentativa){% endif %}</div>
     <div class="small text-muted">{{ cita.profesional }} · {{ cita.especialidad }}{% if cita.tipo %} · {{ cita.tipo }}{% endif %}{% if cita.lugar %} · {{ cita.lugar }}{% endif %}{% if cita.sobrecupo %} · <b>sobrecupo</b>{% endif %}</div>
   </div>
-  <span class="badge fs-6 text-bg-{{ cita.color }}">{{ cita.get_estado_display }}</span>
+  <div class="d-flex flex-wrap align-items-center gap-1">
+    <span class="badge fs-6 text-bg-{{ cita.color }}">{{ cita.get_estado_display }}</span>
+    {% include 'agenda/_estado_cobro.html' with c=cita %}
+  </div>
 </div>
 <div class="row g-3">
   <div class="col-lg-7">
     <div class="card card-body mb-3">
+      {% if servicios_previstos %}
+        <div class="mb-2"><strong>Servicios previstos</strong>
+          <ul class="small mb-0">
+            {% for linea in servicios_previstos %}<li>{{ linea.nombre }}{% if cita.servicios_explicitos %} · {{ linea.precio_usd|usd }}{% endif %}</li>{% endfor %}
+          </ul>
+          {% if not cita.servicios_explicitos %}<span class="small text-muted">Predeterminado del tipo de cita</span>{% endif %}
+        </div>
+      {% endif %}
       {% if cita.motivo %}<div><b>Motivo:</b> {{ cita.motivo }}</div>{% endif %}
       {% if cita.notas %}<div class="small mt-1">{{ cita.notas|linebreaksbr }}</div>{% endif %}
       {% if cita.motivo_cancelacion %}<div class="small text-danger mt-1">Cancelación: {{ cita.motivo_cancelacion }}</div>{% endif %}
-      <div class="small text-muted mt-2">Agendada el {{ cita.creado_en|date:"d/m/Y" }}{% if cita.creado_por %} por {{ cita.creado_por.nombre_visible }}{% endif %}{% if cita.recordatorio_en %} · recordatorio enviado el {{ cita.recordatorio_en|date:"d/m/Y" }}{% endif %}</div>
+      <div class="small text-muted mt-2">Agendada el {{ cita.creado_en|date:"d/m/Y" }}{% if cita.creado_por %} por {{ cita.creado_por.nombre_visible }}{% endif %}{% if cita.recordatorio_en %} · intento de recordatorio registrado el {{ cita.recordatorio_en|date:"d/m/Y" }}{% endif %}</div>
     </div>
     <div class="d-flex flex-wrap gap-2">
       {% if puede_atender %}<form method="post" action="{% url 'agenda:atender' cita.pk %}"{% if not cita.consulta %} data-offline-alt="{% url 'clinica:consulta_nueva' cita.paciente_id %}?cita={{ cita.pk }}"{% endif %}>{% csrf_token %}<button class="btn btn-primary"><i class="bi bi-clipboard2-pulse me-1"></i>{% if cita.consulta %}Ver consulta{% else %}Atender{% endif %}</button></form>{% endif %}
       {% if cita.consulta and not puede_atender and 'historia.ver' in permisos %}<a href="{% url 'clinica:consulta' cita.consulta_id %}" class="btn btn-outline-primary">Ver consulta</a>{% endif %}
       {% if 'agenda.gestionar' in permisos %}
-        {% if whatsapp and cita.activa %}<form method="post" action="{% url 'agenda:recordatorio' cita.pk %}" target="_blank">{% csrf_token %}<button class="btn btn-success"><i class="bi bi-whatsapp me-1"></i>Recordatorio</button></form>{% endif %}
+        {% if cita.activa %}
+          {% url 'agenda:recordatorio' cita.pk as recordatorio %}
+          {% include 'agenda/_whatsapp.html' with etiqueta='Recordatorio' recordatorio=recordatorio csrf_token=csrf_token only %}
+        {% endif %}
         {% if cita.activa %}<a href="{% url 'agenda:cita_editar' cita.pk %}" class="btn btn-outline-secondary"><i class="bi bi-calendar2-week me-1"></i>Reprogramar</a>{% endif %}
         {% for estado, nombre in transiciones %}
           <form method="post" action="{% url 'agenda:cita_estado' cita.pk %}" {% if estado == 'CANCELADA' %}onsubmit="const m = prompt('Motivo de la cancelación (opcional)'); if (m === null) return false; this.motivo.value = m;"{% endif %}>{% csrf_token %}
@@ -29,6 +43,7 @@
             <button class="btn btn-outline-{% if estado == 'CANCELADA' or estado == 'NO_ASISTIO' %}danger{% elif estado == 'CONFIRMADA' %}success{% else %}secondary{% endif %}">{% if estado == 'PROGRAMADA' and cita.estado in 'CANCELADA NO_ASISTIO' %}Reactivar{% else %}{{ nombre }}{% endif %}</button>
           </form>
         {% endfor %}
+        {% if se_puede_eliminar %}<form method="post" action="{% url 'agenda:cita_eliminar' cita.pk %}" class="ms-auto" onsubmit="return confirm('¿Eliminar esta cita? Se borra de la agenda (queda registrado en la auditoría).')">{% csrf_token %}<button class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Eliminar cita</button></form>{% endif %}
       {% endif %}
     </div>
   </div>
@@ -41,4 +56,5 @@
     </div>
   </div>
 </div>
+{% include 'agenda/_modal_cobro.html' %}
 {% endblock %}

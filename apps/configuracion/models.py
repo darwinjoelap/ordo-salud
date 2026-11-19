@@ -67,6 +67,10 @@ class ConfiguracionTenant(models.Model):
     hora_inicio_agenda = models.TimeField('Inicio de la jornada', null=True, blank=True)
     hora_fin_agenda = models.TimeField('Fin de la jornada', null=True, blank=True)
     duracion_cita_min = models.PositiveSmallIntegerField('Duración predeterminada de la cita (min)', default=30)
+    recordatorio_sin_consulta_meses = models.PositiveSmallIntegerField(
+        'Recordar pacientes sin consulta después de (meses)', default=12,
+        help_text='En la agenda del día aparecen los pacientes que cumplen ese tiempo desde su última consulta (y no '
+                  'tienen cita pendiente), con un mensaje por WhatsApp para ofrecerles atención. 0 = no recordar.')
     # Módulos
     dictado_activo = models.BooleanField('Dictado por voz', default=False, editable=False,
                                          help_text='Lo activa la plataforma según el plan.')

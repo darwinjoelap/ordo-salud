@@ -1,0 +1,50 @@
+<p class="fw-semibold mb-1">{{ cita.paciente.nombre_completo }}</p>
+<p class="small text-muted mb-2">{{ cita.fecha|date:"d/m/Y" }} · {{ cita.hora_inicio|hora12|default:"Sin hora" }}</p>
+{% if advertencia %}<div class="alert alert-warning py-2" role="alert">{{ advertencia }}</div>{% endif %}
+{% if pago %}
+  <div class="alert {% if pago.anulado %}alert-warning{% else %}alert-success{% endif %} py-2" role="status">
+    {% if pago.anulado %}El pago original se anuló en Cuenta.
+    {% elif registrado %}Pago registrado para esta cita.
+    {% else %}Este pago ya estaba registrado para esta cita.{% endif %}
+    {% if not pago.anulado %} Importe aplicado {{ pago.monto_usd|usd }}.{% endif %}
+  </div>
+{% endif %}
+{% if cita.saldo_cita.estado == 'revision' %}
+  <p class="small mb-2">La cita tiene cargos o relaciones que requieren revisión antes de cobrar.</p>
+  <a href="{% url 'cobros:cuenta' cita.paciente_id %}" class="btn btn-outline-secondary btn-sm">Abrir Cuenta</a>
+{% else %}
+  {% if cita.saldo_cita.lineas %}
+    <ul class="list-group list-group-flush small mb-2">
+      {% for linea in cita.saldo_cita.lineas %}
+        <li class="list-group-item px-0 py-1 d-flex justify-content-between gap-2">
+          <span>{{ linea.cargo.descripcion }}</span>
+          <span class="text-nowrap">
+            {% if linea.cargo.estado == 'ANULADO' %}Anulado
+            {% elif linea.cargo.exonerado %}Exonerado
+            {% else %}{{ linea.saldo|usd }} de {{ linea.cargo.monto_usd|usd }}{% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  <p class="fw-semibold mb-1">Saldo exigible {{ cita.saldo_cita.saldo|usd }}{% if saldo_bs is not None %} · {{ saldo_bs|bs }}{% endif %}</p>
+  {% if tasa %}<p class="small text-muted mb-2">Tasa {{ tasa|numero_ve:4 }} Bs por {{ tasa_ref }}</p>{% endif %}
+  {% if not pago and cita.saldo_cita.cobrable and form %}
+    {% url 'agenda:cobrar_cita' cita.pk as cobrar %}
+    <form method="post" action="{{ cobrar }}" hx-post="{{ cobrar }}" hx-target="#cobro-rapido-contenido"
+          hx-swap="innerHTML" hx-sync="#cobro-rapido-contenido:drop" hx-disabled-elt="find button" data-offline="off">
+      {% csrf_token %}
+      {{ form.confirmacion }}
+      {% for error in form.confirmacion.errors %}<p class="text-danger small">{{ error }}</p>{% endfor %}
+      <div class="row g-2">
+        <div class="col-6">{% include 'partials/campo.html' with campo=form.monto %}</div>
+        <div class="col-6">{% include 'partials/campo.html' with campo=form.moneda %}</div>
+        <div class="col-6">{% include 'partials/campo.html' with campo=form.metodo %}</div>
+        <div class="col-6">{% include 'partials/campo.html' with campo=form.referencia %}</div>
+        <div class="col-12">{% include 'partials/campo.html' with campo=form.recibido %}</div>
+      </div>
+      <button class="btn btn-primary btn-sm mt-2">Confirmar cobro</button>
+    </form>
+  {% endif %}
+{% endif %}
+{% if actualizar_indicador %}{% include 'agenda/_estado_cobro.html' with c=cita actualizar=True %}{% endif %}

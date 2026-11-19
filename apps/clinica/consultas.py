@@ -90,7 +90,7 @@ def congelar_estructura(plantilla):
 
 @transaction.atomic
 def abrir_consulta(*, paciente, profesional, plantilla=None, tipo=Consulta.Tipo.PRIMERA, lugar=None,
-                   fecha_hora=None):
+                   fecha_hora=None, inicio_independiente=None):
     plantilla = plantilla or plantilla_para(profesional)
     if plantilla is None:
         raise ErrorDeNegocio('No hay plantillas de historia para tu especialidad. Crea una en «Plantillas».')
@@ -100,7 +100,8 @@ def abrir_consulta(*, paciente, profesional, plantilla=None, tipo=Consulta.Tipo.
         raise ErrorDeNegocio('El paciente está inactivo.')
     return Consulta.objects.create(
         paciente=paciente, profesional=profesional, especialidad=profesional.especialidad, plantilla=plantilla,
-        lugar=lugar, estructura=congelar_estructura(plantilla), fecha_hora=fecha_hora or timezone.now(), tipo=tipo)
+        lugar=lugar, estructura=congelar_estructura(plantilla), fecha_hora=fecha_hora or timezone.now(), tipo=tipo,
+        inicio_independiente=inicio_independiente)
 
 
 def consulta_nueva(*, paciente, profesional, plantilla=None, tipo=Consulta.Tipo.PRIMERA, lugar=None):
@@ -115,24 +116,63 @@ def consulta_nueva(*, paciente, profesional, plantilla=None, tipo=Consulta.Tipo.
 
 
 @transaction.atomic
-def crear_consulta_completa(*, paciente, profesional, plantilla, tipo, lugar, datos_por_seccion, cita=None,
-                            fecha_hora=None, cerrar=False, usuario=None):
-    """
-    Crea la consulta y guarda sus secciones en un solo paso (envío del formulario completo, quizá desde la cola
-    sin conexión: `fecha_hora` es la hora en que el médico abrió el formulario). Con cita, la marca atendida.
-    """
+def iniciar_consulta(*, paciente, profesional, plantilla, tipo, lugar, cita=None, fecha_hora=None,
+                     inicio_independiente=None):
+    """Serializa por paciente y reconoce el inicio por cita o por UUID independiente."""
+    from apps.agenda.models import Cita
+    from apps.agenda.servicios import vincular_consulta
+    from apps.cobros.servicios import bloquear_cuenta
+
+    if (cita is None) == (inicio_independiente is None):
+        raise ErrorDeNegocio('Elige iniciar desde la cita o crear una consulta independiente.')
+    fecha_hora = fecha_hora or timezone.now()
+    paciente = bloquear_cuenta(paciente.pk)
+    if profesional.tenant_id != paciente.tenant_id or not profesional.activo or not profesional.membresia.activa:
+        raise ErrorDeNegocio('El profesional no está disponible en este consultorio.')
+    if cita is not None:
+        cita = Cita.objects.select_for_update().filter(pk=cita.pk, paciente=paciente, profesional=profesional,
+                                                      especialidad=profesional.especialidad).first()
+        if cita is None:
+            raise ErrorDeNegocio('La cita no corresponde a este paciente o profesional.')
+        if cita.consulta_id:
+            previa = Consulta.objects.filter(pk=cita.consulta_id, paciente=paciente, profesional=profesional,
+                                            especialidad=cita.especialidad_id).first()
+            if previa is None:
+                raise ErrorDeNegocio('Revisa el vínculo entre la cita y su consulta.')
+            return previa, False
+        if not cita.activa:
+            raise ErrorDeNegocio('La cita ya no está disponible para iniciar una consulta.')
+    else:
+        previa = Consulta.objects.filter(paciente=paciente, profesional=profesional,
+                                         inicio_independiente=inicio_independiente).first()
+        if previa is not None:
+            return previa, False
     consulta = abrir_consulta(paciente=paciente, profesional=profesional, plantilla=plantilla, tipo=tipo,
-                              lugar=lugar, fecha_hora=fecha_hora)
-    guardar_secciones(consulta, datos_por_seccion)
-    from apps.agenda.servicios import vincular_cita_del_dia, vincular_consulta
-    if cita is not None and cita.profesional_id == profesional.pk and not cita.consulta_id:
+                              lugar=lugar, fecha_hora=fecha_hora, inicio_independiente=inicio_independiente)
+    if cita is not None:
         vincular_consulta(cita, consulta, profesional)
-    else:                       # atendida desde la ficha del paciente: si tenía cita hoy con este médico, se cierra
-        vincular_cita_del_dia(consulta)
+    return consulta, True
+
+
+@transaction.atomic
+def iniciar_consulta_completa(*, paciente, profesional, plantilla, tipo, lugar, datos_por_seccion, cita=None,
+                              fecha_hora=None, cerrar=False, usuario=None, inicio_independiente=None):
+    consulta, creada = iniciar_consulta(paciente=paciente, profesional=profesional, plantilla=plantilla, tipo=tipo,
+                                        lugar=lugar, cita=cita, fecha_hora=fecha_hora,
+                                        inicio_independiente=inicio_independiente)
+    if not creada:
+        return consulta, False
+    guardar_secciones(consulta, datos_por_seccion)
     if cerrar:
-        with contextlib.suppress(ErrorDeNegocio):     # si falta algo queda en curso; la vista avisa qué falta
+        with contextlib.suppress(ErrorDeNegocio):
             cerrar_consulta(consulta, usuario)
     consulta.refresh_from_db()
+    return consulta, True
+
+
+def crear_consulta_completa(**datos):
+    """Compatibilidad con los llamadores que solo necesitan la consulta."""
+    consulta, _ = iniciar_consulta_completa(**datos)
     return consulta
 
 
@@ -321,10 +361,17 @@ def _guardar(consulta, item, datos):
         funcion(consulta, datos)
 
 
+def _bloquear_consulta(consulta):
+    from apps.cobros.servicios import bloquear_cuenta
+
+    bloquear_cuenta(consulta.paciente_id)
+    return Consulta.objects.select_for_update(no_key=True).get(pk=consulta.pk)
+
+
 @transaction.atomic
 def guardar_secciones(consulta, datos_por_seccion):
     """datos_por_seccion: {seccion_id: datos_limpios}. Solo en consultas en curso."""
-    consulta = Consulta.objects.select_for_update().get(pk=consulta.pk)
+    consulta = _bloquear_consulta(consulta)
     if not consulta.editable:
         raise ErrorDeNegocio('La consulta está cerrada: para corregirla registra una enmienda.')
     # Primero la ficha (ámbito PACIENTE) y después lo de la consulta: así lo que un gancho de la consulta copia a
@@ -354,7 +401,7 @@ def faltantes(consulta):
 
 @transaction.atomic
 def cerrar_consulta(consulta, usuario=None, *, automatico=False):
-    consulta = Consulta.objects.select_for_update().get(pk=consulta.pk)
+    consulta = _bloquear_consulta(consulta)
     if not consulta.editable:
         raise ErrorDeNegocio('La consulta ya está cerrada o anulada.')
     pendientes = faltantes(consulta)
@@ -372,8 +419,12 @@ def anular_consulta(consulta, motivo):
     motivo = (motivo or '').strip()
     if len(motivo) < 5:
         raise ErrorDeNegocio('Indica el motivo de la anulación.')
+    from apps.cobros.validez_clinica import exigir_reversion_si_hay_pagos
+
+    consulta = _bloquear_consulta(consulta)
     if consulta.estado == Consulta.Estado.ANULADA:
         raise ErrorDeNegocio('La consulta ya está anulada.')
+    exigir_reversion_si_hay_pagos(consulta=consulta)
     consulta.estado = Consulta.Estado.ANULADA
     consulta.motivo_anulacion = motivo[:250]
     consulta.save(update_fields=['estado', 'motivo_anulacion', 'actualizado_en'])
@@ -386,6 +437,7 @@ def enmendar(consulta, seccion_id, datos, motivo):
     motivo = (motivo or '').strip()
     if len(motivo) < 5:
         raise ErrorDeNegocio('Indica el motivo de la enmienda.')
+    consulta = _bloquear_consulta(consulta)
     if consulta.estado != Consulta.Estado.CERRADA:
         raise ErrorDeNegocio('Solo se enmiendan consultas cerradas; las que están en curso se editan.')
     item = next((i for i in consulta.estructura if i['seccion_id'] == seccion_id), None)

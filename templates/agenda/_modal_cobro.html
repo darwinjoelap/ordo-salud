@@ -1,0 +1,23 @@
+{% if 'cobros.gestionar' in permisos %}
+<div class="modal fade" id="cobro-rapido-modal" tabindex="-1" aria-labelledby="cobro-rapido-titulo" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h2 class="modal-title h6" id="cobro-rapido-titulo">Cobro rápido</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" id="cobro-rapido-contenido" aria-live="polite">
+        <p class="text-muted mb-0">Cargando saldo…</p>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  const modal = document.getElementById('cobro-rapido-modal');
+  const contenido = document.getElementById('cobro-rapido-contenido');
+  const cargando = contenido.firstElementChild.cloneNode(true);
+  modal.addEventListener('show.bs.modal', () => contenido.replaceChildren(cargando.cloneNode(true)));
+})();
+</script>
+{% endif %}

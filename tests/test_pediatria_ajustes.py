@@ -72,7 +72,7 @@ class PediatriaAjustesTest(BaseTest):
         self.assertTrue(pdf.content.startswith(b'%PDF'))                # «<» y «&» no rompen el PDF
 
     def test_historia_clinica_completa(self):
-        self.cliente.post(f'/pacientes/{self.nino.pk}/consultas/nueva/', {})   # no importa si no guarda
+        self.assertEqual(self.iniciar_independiente(self.nino, {}).status_code, 302)
         r = self.cliente.post(f'/documentos/emitir/historia/?paciente={self.nino.pk}',
                               {'paciente': self.nino.pk, 'incluir_antecedentes': 'on'})
         self.assertEqual(r.status_code, 302)

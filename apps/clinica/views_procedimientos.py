@@ -3,15 +3,17 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
 
 from apps.core import auditoria
 from apps.core.excepciones import ErrorDeNegocio
 from apps.core.permisos import tiene_permiso
 from apps.pacientes.models import Paciente
-from apps.pacientes.selectors import puede_ver_paciente
+from apps.pacientes.selectors import puede_ver_paciente, puede_ver_todos
 
 from . import procedimientos as srv
 from . import registro
@@ -38,22 +40,46 @@ def _volver(request, paciente):
 
 @login_required
 def nuevo(request, paciente_pk):
+    from apps.agenda import servicios_previstos as previstos
     from apps.agenda.models import Cita
-    from apps.cobros.models import Servicio
+    from apps.cobros.servicios import bloquear_cuenta
     if not puede_registrar(request):
         raise PermissionDenied
     paciente = get_object_or_404(Paciente.objects.all(), pk=paciente_pk)
     if not puede_ver_paciente(request.membresia, paciente):
         raise PermissionDenied
     cita_id = request.POST.get('cita') or request.GET.get('cita')
-    cita = Cita.objects.filter(pk=cita_id, paciente=paciente).select_related('tipo').first() if cita_id else None
-    servicios = list(Servicio.objects.filter(activo=True).order_by('nombre'))
-    extras = _extras(request, paciente)
+    cita = None
     perfil = request.membresia.perfil_activo
+    if cita_id:
+        citas = Cita.objects.filter(paciente=paciente).select_related('tipo')
+        if not puede_ver_todos(request.membresia):
+            citas = citas.filter(profesional=perfil)
+        if not cita_id.isdigit():
+            raise Http404
+        cita = get_object_or_404(citas, pk=cita_id)
+        if not cita.activa or cita.consulta_id or cita.procedimientos.exists():
+            messages.warning(request, 'La cita ya no está disponible para registrar un procedimiento.')
+            return redirect('agenda:cita', pk=cita.pk)
+    lineas = previstos.lineas_de(cita) if cita else []
+    plan = {linea.servicio_id: linea for linea in lineas} if cita and cita.servicios_explicitos else {}
+    servicios = list(previstos.catalogo_procedimiento(cita, lineas).order_by('nombre'))
+    extras = _extras(request, paciente)
     if request.method == 'POST':
-        elegidos = [s for s in servicios if str(s.pk) in request.POST.getlist('servicios')]
+        pedidos = set(request.POST.getlist('servicios'))
+        elegidos = [s for s in servicios if str(s.pk) in pedidos]
         try:
+            if {str(s.pk) for s in elegidos} != pedidos:
+                raise ErrorDeNegocio('Algún servicio no está disponible.')
+            version = request.POST.get('version_cita')
+            try:
+                version_cita = parse_datetime(version) if cita and version else None
+            except ValueError:
+                version_cita = None
+            if cita and version and version_cita is None:
+                raise ErrorDeNegocio('No se pudo verificar la versión de la cita. Vuelve a abrir el procedimiento.')
             with transaction.atomic():
+                bloquear_cuenta(paciente.pk)
                 hechos = []
                 fecha = timezone.localdate()
                 for x in extras:
@@ -61,7 +87,8 @@ def nuevo(request, paciente_pk):
                 proc = srv.registrar(
                     paciente=paciente, profesional=perfil or (cita.profesional if cita else None), servicios=elegidos,
                     otro_concepto=request.POST.get('otro_concepto', ''), otro_monto=request.POST.get('otro_monto'),
-                    notas=request.POST.get('notas', ''), cita=cita, fecha=fecha, descripciones_extra=hechos)
+                    notas=request.POST.get('notas', ''), cita=cita, fecha=fecha, descripciones_extra=hechos,
+                    version_cita=version_cita)
         except ErrorDeNegocio as e:
             messages.error(request, str(e))
         else:
@@ -69,11 +96,13 @@ def nuevo(request, paciente_pk):
             total = f' · ${proc.total_usd:.2f} por cobrar' if proc.total_usd else ''
             messages.success(request, f'Procedimiento registrado: {proc.descripcion}{total}.')
             return redirect(_volver(request, paciente))
-    preseleccion = {str(cita.tipo.servicio_id)} if cita and cita.tipo and cita.tipo.servicio_id else set()
+    preseleccion = {str(linea.servicio_id) for linea in lineas}
     if request.method == 'POST':
         preseleccion = set(request.POST.getlist('servicios'))
+    opciones = [{'servicio': s, 'nombre': plan.get(s.pk, s).nombre, 'precio': plan.get(s.pk, s).precio_usd}
+                for s in servicios]
     return render(request, 'clinica/procedimiento_form.html', {
-        'titulo': f'Procedimiento · {paciente}', 'paciente': paciente, 'cita': cita, 'servicios': servicios,
+        'titulo': f'Procedimiento · {paciente}', 'paciente': paciente, 'cita': cita, 'servicios': opciones,
         'preseleccion': preseleccion, 'extras': extras, 'datos': request.POST,
         'volver': request.GET.get('volver', '')})
 
@@ -85,7 +114,7 @@ def anular(request, pk):
         raise PermissionDenied
     proc = get_object_or_404(Procedimiento.objects.select_related('paciente'), pk=pk)
     try:
-        srv.anular(proc, request.POST.get('motivo', ''))
+        proc = srv.anular(proc, request.POST.get('motivo', ''))
     except ErrorDeNegocio as e:
         messages.error(request, str(e))
     else:

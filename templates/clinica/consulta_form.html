@@ -8,7 +8,7 @@
     <h1 class="h4 mb-0 mt-1">{{ p.nombre_completo }} <span class="small text-muted fw-normal">{{ p.edad_texto }} · {{ p.get_sexo_display }} · {{ p.documento }}</span></h1>
     <div class="small text-muted">{{ consulta.get_tipo_display }} · {{ consulta.fecha_hora|date:"d/m/Y" }} {{ consulta.fecha_hora|hora12 }}{% if consulta.lugar %} · {{ consulta.lugar }}{% endif %} · plantilla «{{ consulta.plantilla|default:'—' }}»</div>
   </div>
-  {% if nueva %}<span class="badge text-bg-info">Nueva{% if cita %} · cita {{ cita.hora_inicio|hora12 }}{% endif %}</span>{% else %}<span class="badge text-bg-warning">En curso</span>{% endif %}
+  {% if nueva %}<span class="badge text-bg-info">Nueva{% if independiente %} · independiente{% endif %}{% if cita %} · cita {{ cita.hora_inicio|hora12 }}{% endif %}</span>{% else %}<span class="badge text-bg-warning">En curso</span>{% endif %}
 </div>
 {% if accesos %}<div class="d-flex flex-wrap gap-2 mb-2">{% for a in accesos %}<a href="{{ a.url }}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi {{ a.icono }} me-1"></i>{{ a.titulo }}{% if a.aviso %} <span class="badge text-bg-{{ a.aviso.1 }} ms-1">{{ a.aviso.0 }}</span>{% endif %}</a>{% endfor %}</div>{% endif %}
 {% if dictado %}{% include 'dictado/_barra.html' %}{% endif %}
@@ -23,6 +23,8 @@
 <form method="post" id="form-consulta" autocomplete="off" data-offline-titulo="Consulta · {{ consulta.paciente.nombre_completo }}">{% csrf_token %}
   {% if nueva %}
     <input type="hidden" name="completa" value="1">
+    {% if independiente %}<input type="hidden" name="independiente" value="1">
+      <input type="hidden" name="intento" value="{{ intento }}">{% endif %}
     <input type="hidden" name="inicio" value="" data-os-inicio>
     <input type="hidden" name="plantilla" value="{{ consulta.plantilla_id }}">
     <input type="hidden" name="tipo" value="{{ consulta.tipo }}">

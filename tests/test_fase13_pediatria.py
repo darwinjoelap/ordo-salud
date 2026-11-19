@@ -28,7 +28,7 @@ class PediatriaTest(BaseTest):
         if plantilla:
             with self.en_tenant():
                 datos['plantilla'] = PlantillaHistoria.objects.get(nombre=plantilla).pk
-        r = self.cliente.post(f'/pacientes/{(paciente or self.nino).pk}/consultas/nueva/', datos)
+        r = self.iniciar_independiente(paciente or self.nino, datos)
         self.assertEqual(r.status_code, 302)
         with self.en_tenant():
             return Consulta.objects.latest('id')

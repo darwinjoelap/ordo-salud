@@ -33,7 +33,7 @@ class ConsultaTest(BaseTest):
             self.s = {s.codigo: s.pk for s in SeccionClinica.objects.visibles()}
 
     def abrir(self, cliente=None):
-        r = (cliente or self.cliente).post(f'/pacientes/{self.paciente.pk}/consultas/nueva/', {'tipo': 'PRIMERA'})
+        r = self.iniciar_independiente(self.paciente, {'tipo': 'PRIMERA'}, cliente=cliente)
         self.assertEqual(r.status_code, 302, r.content[:300])
         with self.en_tenant():
             return Consulta.objects.latest('id')
@@ -205,7 +205,7 @@ class VisibilidadTest(BaseTest):
                              f'/consultas/{self.consulta.pk}/', fetch_redirect_response=False)
 
     def test_cardiologa_usa_plantilla_de_su_especialidad(self):
-        r = self.cardio.post(f'/pacientes/{self.paciente.pk}/consultas/nueva/', {'tipo': 'PRIMERA'})
+        r = self.iniciar_independiente(self.paciente, {'tipo': 'PRIMERA'}, cliente=self.cardio)
         self.assertEqual(r.status_code, 302)
         with self.en_tenant():
             c = Consulta.objects.latest('id')

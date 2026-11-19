@@ -1,0 +1,27 @@
+{% with saldo=c.saldo_cita %}
+<span id="estado-cobro-cita-{{ c.pk }}" aria-live="polite"{% if actualizar %} hx-swap-oob="true"{% endif %}>
+  {% if saldo.cobrable %}
+    {% if 'cobros.gestionar' in permisos %}
+      {% url 'agenda:cobrar_cita' c.pk as cobrar %}
+      <a href="{{ cobrar }}" class="badge text-bg-warning text-decoration-none"
+         hx-get="{{ cobrar }}" hx-target="#cobro-rapido-contenido" hx-swap="innerHTML" hx-sync="#cobro-rapido-contenido:replace"
+         data-bs-toggle="modal" data-bs-target="#cobro-rapido-modal"
+         title="Cobrar esta cita">{% if saldo.estado == 'abonado' %}Abonado{% else %}Pendiente{% endif %} · {{ saldo.saldo|usd }}</a>
+    {% else %}
+      <span class="badge text-bg-warning">{% if saldo.estado == 'abonado' %}Abonado{% else %}Pendiente{% endif %}</span>
+    {% endif %}
+  {% elif saldo.estado == 'pagado' %}
+    <span class="badge text-bg-success">Pagado</span>
+  {% elif saldo.estado == 'exonerado' %}
+    <span class="badge text-bg-light border">Exonerado</span>
+  {% elif saldo.estado == 'revision' %}
+    {% if 'cobros.gestionar' in permisos %}
+      <a href="{% url 'cobros:cuenta' c.paciente_id %}" class="badge text-bg-danger text-decoration-none">Revisar en Cuenta</a>
+    {% else %}
+      <span class="badge text-bg-danger">Requiere revisión</span>
+    {% endif %}
+  {% else %}
+    <span class="badge text-bg-light border">Sin cargo</span>
+  {% endif %}
+</span>
+{% endwith %}

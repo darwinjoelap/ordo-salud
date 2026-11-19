@@ -6,7 +6,8 @@
 </div>
 <div class="row g-3 mb-3">
   <div class="col-6 col-md-3"><div class="card card-body"><div class="small text-muted">Cobrado (USD equiv.)</div><div class="h4 mb-0">{{ total_usd|usd }}</div></div></div>
-  <div class="col-6 col-md-3"><div class="card card-body"><div class="small text-muted">Facturado del día</div><div class="h4 mb-0">{{ cargos_usd|usd }}</div></div></div>
+  <div class="col-6 col-md-3"><div class="card card-body"><div class="small text-muted">Sin aplicar de esos ingresos</div><div class="h4 mb-0">{{ sin_aplicar|usd }}</div></div></div>
+  <div class="col-6 col-md-3"><div class="card card-body"><div class="small text-muted">Cargos registrados del día</div><div class="h4 mb-0">{{ cargos_usd|usd }}</div></div></div>
 </div>
 <div class="row g-3">
   <div class="col-lg-4">
@@ -23,7 +24,7 @@
         <tr onclick="location.href='{% url 'cobros:cuenta' p.paciente_id %}'" role="button">
           <td data-label="Paciente">{{ p.paciente }}</td>
           <td data-label="Método">{{ p.get_metodo_display }}{% if p.referencia %} · {{ p.referencia }}{% endif %}</td>
-          <td data-label="Monto" class="text-end">{% if p.moneda == 'BS' %}{{ p.monto|bs }}{% else %}{{ p.monto|usd }}{% endif %}</td>
+          <td data-label="Monto" class="text-end">{% if p.moneda == 'BS' %}{{ p.monto|bs }}{% else %}{{ p.monto|usd }}{% endif %}{% if p.revision %}<div class="small">Aplicaciones en revisión</div>{% elif p.sin_aplicar %}<div class="small">Sin aplicar {{ p.sin_aplicar|usd }}</div>{% endif %}</td>
           <td data-label="Registró" class="small text-muted">{{ p.creado_por.get_full_name|default:p.creado_por|default:"—" }}</td>
         </tr>
       {% empty %}<tr><td colspan="4" class="text-center text-muted py-4">Sin pagos este día.</td></tr>{% endfor %}</tbody>

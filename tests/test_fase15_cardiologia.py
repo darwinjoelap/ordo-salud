@@ -99,7 +99,7 @@ class CardiologiaTest(BaseTest):
         with self.en_tenant():
             nombres = set(PlantillaHistoria.objects.filter(activa=True).values_list('nombre', flat=True))
         self.assertIn('Consulta de cardiología pediátrica', nombres)
-        r = self.cliente.post(f'/pacientes/{self.p.pk}/consultas/nueva/', {'tipo': 'PRIMERA'})
+        r = self.iniciar_independiente(self.p, {'tipo': 'PRIMERA'})
         self.assertEqual(r.status_code, 302)
         with self.en_tenant():
             c = Consulta.objects.latest('id')
@@ -122,7 +122,7 @@ class CardiologiaTest(BaseTest):
         datos.update({self.campo('cp.eco', k): v for k, v in ECO.items() if not isinstance(v, bool)})
         with self.en_tenant():
             datos['plantilla'] = PlantillaHistoria.objects.get(nombre='Consulta de cardiología pediátrica').pk
-        r = self.cliente.post(f'/pacientes/{self.p.pk}/consultas/nueva/', datos)
+        r = self.iniciar_independiente(self.p, datos)
         self.assertEqual(r.status_code, 302, getattr(r, 'context', None) and r.context.get('formularios'))
         with self.en_tenant():
             c = Consulta.objects.latest('id')

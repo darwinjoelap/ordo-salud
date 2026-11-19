@@ -19,7 +19,7 @@ class ProximoControlTest(BaseTest):
             self.paciente = Paciente.objects.create(nombres='Sofía', apellidos='Paz', sexo='F',
                                                     fecha_nacimiento=date(2022, 3, 1))
             self.s = {s.codigo: s.pk for s in SeccionClinica.objects.visibles()}
-        r = self.cliente.post(f'/pacientes/{self.paciente.pk}/consultas/nueva/', {'tipo': 'PRIMERA'})
+        r = self.iniciar_independiente(self.paciente, {'tipo': 'PRIMERA'})
         self.assertEqual(r.status_code, 302)
         with self.en_tenant():
             self.consulta = Consulta.objects.latest('id')
@@ -76,12 +76,15 @@ class CumpleanosYHorasTest(BaseTest):
         r = self.cliente.get('/agenda/')
         lista = r.context['cumpleanos']
         self.assertEqual([c['paciente'].nombres for c in lista], ['Ana', 'Mateo'])
-        nino = next(c for c in lista if c['paciente'] == self.nino)
-        self.assertIn('wa.me/584141112233', nino['url'])
-        self.assertIn('Hola%20Carla', nino['url'])
-        self.assertIn('cumple%204%20a%C3%B1os', nino['url'])
-        adulto = next(c for c in lista if c['paciente'] == self.adulto)
-        self.assertIn('Hola%20Ana', adulto['url'])
+        self.assertNotContains(r, 'https://wa.me/')
+        hoy = timezone.localdate().isoformat()
+        datos = {'accion': 'web', 'clave_intento': '00000000-0000-4000-8000-000000000001'}
+        nino = self.cliente.post(f'/agenda/cumpleanos/{self.nino.pk}/{hoy}/contacto/', datos).json()['destino']
+        self.assertIn('wa.me/584141112233', nino)
+        self.assertIn('Hola%20Carla', nino)
+        self.assertIn('cumple%204%20a%C3%B1os', nino)
+        adulto = self.cliente.post(f'/agenda/cumpleanos/{self.adulto.pk}/{hoy}/contacto/', datos).json()['destino']
+        self.assertIn('Hola%20Ana', adulto)
         self.assertContains(r, 'Felicitar')
 
     def test_panel_de_horas_marca_ocupadas(self):

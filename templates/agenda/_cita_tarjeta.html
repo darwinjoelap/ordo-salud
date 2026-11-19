@@ -17,14 +17,16 @@
         {% if c.notas %}<div class="small text-muted"><i class="bi bi-sticky me-1"></i>{{ c.notas|truncatechars:120 }}</div>{% endif %}
         {% for pr in c.procedimientos.all %}<div class="small text-success-emphasis"><i class="bi bi-bandaid me-1"></i>{{ pr.descripcion }}</div>{% endfor %}
         <div class="d-flex flex-wrap gap-1 mt-1">
-          {% if c.recordatorio_en %}<span class="badge text-bg-light border text-success"><i class="bi bi-check-circle me-1"></i>Recordatorio enviado</span>{% endif %}
-          {% if c.cobro == 'pagado' %}<span class="badge text-bg-success"><i class="bi bi-check-circle-fill me-1"></i>Pagado</span>
-          {% elif c.cobro == 'pendiente' %}{% if 'cobros.gestionar' in permisos %}<a href="{% url 'cobros:cuenta' c.paciente_id %}" class="badge text-bg-warning text-decoration-none"><i class="bi bi-clock-fill me-1"></i>Pago pendiente</a>{% else %}<span class="badge text-bg-warning"><i class="bi bi-clock-fill me-1"></i>Pago pendiente</span>{% endif %}{% endif %}
+          {% if c.recordatorio_en %}<span class="badge text-bg-light border text-success"><i class="bi bi-clock-history me-1"></i>Intento de recordatorio registrado</span>{% endif %}
+          {% include 'agenda/_estado_cobro.html' with c=c %}
           {% if c.consulta_id %}<a href="{% url 'clinica:consulta' c.consulta_id %}" class="badge text-bg-light border text-decoration-none"><i class="bi bi-journal-medical me-1"></i>Consulta</a>{% endif %}
         </div>
       </div>
-      <div class="d-flex gap-1 os-cita-acciones">
-        {% if c.activa and 'agenda.gestionar' in permisos %}<form method="post" action="{% url 'agenda:recordatorio' c.pk %}" target="_blank" data-offline="off">{% csrf_token %}<button class="btn btn-sm btn-outline-success" title="Recordatorio por WhatsApp" aria-label="Recordatorio por WhatsApp"><i class="bi bi-whatsapp"></i></button></form>{% endif %}
+      <div class="d-flex flex-wrap gap-1 os-cita-acciones">
+        {% if c.activa and 'agenda.gestionar' in permisos %}
+          {% url 'agenda:recordatorio' c.pk as recordatorio %}
+          {% include 'agenda/_whatsapp.html' with etiqueta='Recordatorio' recordatorio=recordatorio csrf_token=csrf_token only %}
+        {% endif %}
         {% if c.activa %}
           <button type="button" class="btn btn-sm btn-primary flex-grow-1" data-bs-toggle="modal" data-bs-target="#modal-atender"
             data-cita="{{ c.pk }}" data-paciente="{{ c.paciente_id }}" data-nombre="{{ c.paciente.nombre_completo }}"

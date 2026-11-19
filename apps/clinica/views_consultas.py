@@ -1,7 +1,12 @@
 """Consulta clínica: abrir, llenar con la plantilla, cerrar, enmendar, anular, imprimir y adjuntos (Fase 07)."""
+from uuid import UUID, uuid4
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core import signing
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -72,6 +77,12 @@ def _inicio(texto):
     return momento if ahora - timedelta(hours=72) <= momento <= ahora + timedelta(minutes=10) else None
 
 
+def _volver_al_inicio(request, consulta):
+    messages.info(request, 'Este inicio ya tiene una consulta. Revisa lo guardado antes de continuar.')
+    ruta = 'clinica:consulta_editar' if request.method == 'POST' and consulta.editable else 'clinica:consulta'
+    return redirect(ruta, pk=consulta.pk)
+
+
 @login_required
 @requiere('consultas.crear')
 def nueva(request, paciente_pk):
@@ -81,51 +92,98 @@ def nueva(request, paciente_pk):
     abre la consulta en curso y lleva a editarla.
     """
     from apps.agenda.models import Cita
+    from apps.agenda.servicios import citas_para_iniciar
     from apps.pacientes.selectors import puede_ver_paciente
     paciente = get_object_or_404(Paciente.objects.all(), pk=paciente_pk)
     if not puede_ver_paciente(request.membresia, paciente):
         raise PermissionDenied
     perfil = request.membresia.perfil_activo
     datos = request.POST if request.method == 'POST' else request.GET
+    independiente = datos.get('independiente') == '1'
+    cita_id = datos.get('cita')
+    intento = datos.get('intento', '')
+    inicio_independiente = None
     cita = None
-    if (datos.get('cita') or '').isdigit():
-        cita = Cita.objects.select_related('tipo__plantilla', 'lugar').filter(
-            pk=datos['cita'], paciente=paciente, profesional=perfil).first()
+    if request.method == 'POST' and any(
+        k in request.GET and request.GET[k] != datos.get(k) for k in ('cita', 'independiente')
+    ):
+        return HttpResponse('El inicio cambió. Revisa la ficha antes de continuar.', status=409)
+    if cita_id:
+        if independiente or intento or not cita_id.isdigit():
+            raise Http404
+        cita = get_object_or_404(Cita.objects.select_related('tipo__plantilla', 'lugar'),
+                                 pk=cita_id, paciente=paciente, profesional=perfil, especialidad=perfil.especialidad)
+        if cita.consulta_id:
+            previa = get_object_or_404(Consulta.objects.all(), pk=cita.consulta_id, paciente=paciente,
+                                       profesional=perfil, especialidad=cita.especialidad_id)
+            return _volver_al_inicio(request, previa)
+        if not cita.activa:
+            return HttpResponse('Esta cita ya no está disponible para iniciar una consulta.', status=409)
+    else:
+        firma = signing.Signer(salt=f'clinica.inicio.{request.tenant.pk}.{request.user.pk}.{perfil.pk}.'
+                                    f'{perfil.especialidad_id}.{paciente.pk}')
+        if request.method == 'POST':
+            if not independiente:
+                return HttpResponse('Elige la cita o inicia una consulta independiente desde la ficha.', status=409)
+            try:
+                inicio_independiente = UUID(firma.unsign(intento))
+            except (signing.BadSignature, ValueError):
+                return HttpResponse('No se pudo verificar este inicio. Revisa la ficha antes de continuar.', status=409)
+            previa = Consulta.objects.filter(paciente=paciente, profesional=perfil,
+                                             inicio_independiente=inicio_independiente).first()
+            if previa is not None:
+                return _volver_al_inicio(request, previa)
+        else:
+            if not independiente and citas_para_iniciar(paciente, perfil).exists():
+                messages.info(request, 'Elige la cita que deseas atender en la ficha.')
+                return redirect('pacientes:detalle', pk=paciente.pk)
+            independiente = True
+            intento = firma.sign(str(uuid4()))
     plantilla = None
+    plantillas = PlantillaHistoria.objects.filter(Q(profesional__isnull=True) | Q(profesional=perfil),
+                                                 especialidad=perfil.especialidad, activa=True)
     if (datos.get('plantilla') or '').isdigit():
-        plantilla = get_object_or_404(PlantillaHistoria.objects.filter(activa=True), pk=datos['plantilla'])
-    elif cita is not None and cita.tipo_id and cita.tipo.plantilla_id and cita.tipo.plantilla.activa:
-        plantilla = cita.tipo.plantilla
+        plantilla = get_object_or_404(plantillas, pk=datos['plantilla'])
+    elif cita is not None and cita.tipo_id and cita.tipo.plantilla_id:
+        plantilla = plantillas.filter(pk=cita.tipo.plantilla_id).first()
     lugar = Lugar.objects.filter(pk=datos.get('lugar') or 0).first() or (cita.lugar if cita else None)
     tipo = datos.get('tipo') if datos.get('tipo') in Consulta.Tipo.values else (
         cita.tipo.tipo_consulta if cita is not None and cita.tipo_id else Consulta.Tipo.PRIMERA)
 
     if request.method == 'POST' and not request.POST.get('completa'):
-        consulta = srv.abrir_consulta(paciente=paciente, profesional=perfil, plantilla=plantilla, tipo=tipo,
-                                      lugar=lugar)
-        from apps.agenda.servicios import vincular_cita_del_dia
-        vincular_cita_del_dia(consulta)
+        try:
+            consulta, creada = srv.iniciar_consulta(paciente=paciente, profesional=perfil, plantilla=plantilla,
+                                                    tipo=tipo, lugar=lugar, cita=cita,
+                                                    inicio_independiente=inicio_independiente)
+        except ErrorDeNegocio as e:
+            messages.warning(request, str(e))
+            return redirect('pacientes:detalle', pk=paciente.pk)
+        if not creada:
+            return _volver_al_inicio(request, consulta)
         auditoria.registrar(request, 'CREAR', consulta, paciente_id=paciente.pk)
         return redirect('clinica:consulta_editar', pk=consulta.pk)
-    if request.method == 'GET' and cita is not None and cita.consulta_id:
-        messages.info(request, 'Esta cita ya se atendió.')
-        return redirect('clinica:consulta', pk=cita.consulta_id)
 
     consulta = srv.consulta_nueva(paciente=paciente, profesional=perfil, plantilla=plantilla, tipo=tipo, lugar=lugar)
     formularios = _formularios(consulta, request.POST if request.method == 'POST' else None)
     if request.method == 'POST':
         if all(f.is_valid() for _, f in formularios):
             accion = request.POST.get('accion')
-            if cita is not None and cita.consulta_id:
-                messages.warning(request, 'La cita ya tenía una consulta: esta se guardó aparte.')
             desde = timezone.now()
-            creada = srv.crear_consulta_completa(
-                paciente=paciente, profesional=perfil, plantilla=consulta.plantilla, tipo=tipo, lugar=lugar,
-                datos_por_seccion={item['seccion_id']: f.datos_limpios for item, f in formularios}, cita=cita,
-                fecha_hora=_inicio(request.POST.get('inicio')), cerrar=accion == 'cerrar', usuario=request.user)
-            observaciones.guardar(creada, request.POST)
-            auditoria.registrar(request, 'CREAR', creada, paciente_id=paciente.pk)
-            vincular_dictado(request, creada)
+            try:
+                with transaction.atomic():
+                    creada, es_nueva = srv.iniciar_consulta_completa(
+                        paciente=paciente, profesional=perfil, plantilla=consulta.plantilla, tipo=tipo, lugar=lugar,
+                        datos_por_seccion={item['seccion_id']: f.datos_limpios for item, f in formularios},
+                        cita=cita, inicio_independiente=inicio_independiente, fecha_hora=_inicio(request.POST.get('inicio')),
+                        cerrar=accion == 'cerrar', usuario=request.user)
+                    if not es_nueva:
+                        return _volver_al_inicio(request, creada)
+                    observaciones.guardar(creada, request.POST)
+                    auditoria.registrar(request, 'CREAR', creada, paciente_id=paciente.pk)
+                    vincular_dictado(request, creada)
+            except ErrorDeNegocio as e:
+                messages.warning(request, str(e))
+                return redirect('pacientes:detalle', pk=paciente.pk)
             _aviso_control(request, creada, desde)
             if creada.estado == Consulta.Estado.CERRADA:
                 messages.success(request, 'Consulta guardada y cerrada.')
@@ -139,7 +197,8 @@ def nueva(request, paciente_pk):
     from .selectors import consultas_visibles
     return render(request, 'clinica/consulta_form.html', {
         'titulo': f'Nueva consulta · {paciente}', 'consulta': consulta, 'formularios': formularios, 'nueva': True,
-        'cita': cita, 'previas': consultas_visibles(request, paciente)[:5],
+        'cita': cita, 'independiente': independiente, 'intento': intento,
+        'previas': consultas_visibles(request, paciente)[:5],
         'observaciones': observaciones.para(request.membresia, paciente, consulta),
         'obs_texto': request.POST.get('observacion_importante', '') if request.method == 'POST' else '',
         'obs_fija': request.POST.get('observacion_fija') == 'on' if request.method == 'POST' else False,
@@ -279,7 +338,11 @@ def anular(request, pk):
     consulta = _consulta_visible(request, pk)
     if not _es_autor(request, consulta):
         raise PermissionDenied
-    srv.anular_consulta(consulta, request.POST.get('motivo'))
+    try:
+        consulta = srv.anular_consulta(consulta, request.POST.get('motivo'))
+    except ErrorDeNegocio as e:
+        messages.warning(request, str(e))
+        return redirect('clinica:consulta', pk=pk)
     auditoria.registrar(request, 'ANULAR', consulta, paciente_id=consulta.paciente_id,
                         detalle=request.POST.get('motivo', ''))
     messages.success(request, 'Consulta anulada. Queda en la historia marcada como anulada.')

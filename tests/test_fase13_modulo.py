@@ -26,7 +26,7 @@ class ModuloPediatriaTest(BaseTest):
             self.s = {s.codigo: s.pk for s in SeccionClinica.objects.visibles()}
 
     def consulta_con_medidas(self, peso='9,2', talla='75', pc='45'):
-        r = self.cliente.post(f'/pacientes/{self.nino.pk}/consultas/nueva/', {'tipo': 'PRIMERA'})
+        r = self.iniciar_independiente(self.nino, {'tipo': 'PRIMERA'})
         self.assertEqual(r.status_code, 302)
         from apps.clinica.models import Consulta
         with self.en_tenant():
@@ -191,7 +191,7 @@ class GlosarioTest(BaseTest):
         self.assertEqual(j['dosis'], '5 mL')
         self.assertEqual(j['frecuencia'], 'cada 6 horas')
         # la consulta muestra la barra del glosario en el récipe
-        r = self.cliente.post(f'/pacientes/{self.p.pk}/consultas/nueva/', {'tipo': 'PRIMERA'})
+        r = self.iniciar_independiente(self.p, {'tipo': 'PRIMERA'})
         self.assertContains(self.cliente.get(r['Location']), 'data-glosario')
         self.cliente.post(f'/medicamentos/{m.pk}/activar/')
         self.assertEqual(self.cliente.get(f'/medicamentos/{m.pk}/calcular/').status_code, 404)

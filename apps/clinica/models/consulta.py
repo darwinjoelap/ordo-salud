@@ -54,6 +54,7 @@ class Consulta(TenantModel, Auditable):
     lugar = models.ForeignKey('configuracion.Lugar', on_delete=models.SET_NULL, null=True, blank=True,
                               related_name='consultas')
     estructura = models.JSONField('Estructura congelada', default=list)
+    inicio_independiente = models.UUIDField(null=True, unique=True, editable=False)
     fecha_hora = models.DateTimeField('Fecha y hora')
     tipo = models.CharField('Tipo', max_length=10, choices=Tipo.choices, default=Tipo.PRIMERA)
     estado = models.CharField('Estado', max_length=10, choices=Estado.choices, default=Estado.BORRADOR,

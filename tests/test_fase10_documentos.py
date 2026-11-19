@@ -37,7 +37,7 @@ class DocumentosTest(BaseTest):
             self.paciente = Paciente.objects.create(nombres='Luisa', apellidos='Mora', sexo='F',
                                                     numero_documento='9000111', fecha_nacimiento='1990-05-04')
             s = {x.codigo: x.pk for x in SeccionClinica.objects.visibles()}
-        r = self.cliente.post(f'/pacientes/{self.paciente.pk}/consultas/nueva/', {'tipo': 'PRIMERA'})
+        r = self.iniciar_independiente(self.paciente, {'tipo': 'PRIMERA'})
         self.assertEqual(r.status_code, 302)
         with self.en_tenant():
             self.consulta = Consulta.objects.latest('id')

@@ -100,6 +100,9 @@ def detalle(request, pk):
                                                       estado__in=Cita.ACTIVAS)
                                   .select_related('profesional__membresia__usuario').order_by('fecha', 'hora_inicio'))
     m = request.membresia
+    if tiene_permiso(request, 'consultas.crear'):
+        from apps.agenda.servicios import citas_para_iniciar
+        contexto['citas_para_iniciar'] = citas_para_iniciar(paciente, m.perfil_activo)
     if m is not None and m.perfil_activo is not None and not selectors.puede_ver_todos(m):
         contexto['proximas_citas'] = contexto['proximas_citas'].filter(profesional=m.perfil_activo)   # ADR-064
     contexto['proximas_citas'] = contexto['proximas_citas'][:5]

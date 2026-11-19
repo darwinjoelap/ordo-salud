@@ -246,6 +246,7 @@ def query_sin(request, *claves):
 def finanzas_de(f):
     """Cobrado = pagos aplicados a cargos del período/filtros (así se puede atribuir a cada profesional)."""
     from apps.cobros.models import Cargo, PagoAplicado
+    from apps.cobros.saldos import lectura_financiera, lineas_de_cargos
     cargos = _aplicar(Cargo.objects.filter(fecha__range=(f.desde, f.hasta)).exclude(estado=Cargo.Estado.ANULADO), f,
                       campo_esp='consulta__especialidad')
     facturado = sum((c.monto_usd for c in cargos), CERO)
@@ -265,7 +266,8 @@ def finanzas_de(f):
                .annotate(t=Sum('monto_usd')))
     pendientes = _aplicar(Cargo.objects.filter(estado__in=[Cargo.Estado.PENDIENTE, Cargo.Estado.PARCIAL]), f,
                           campo_esp='consulta__especialidad')
-    por_cobrar = sum((c.saldo_usd for c in pendientes), CERO)
+    with lectura_financiera():
+        por_cobrar = sum((linea.exigible for linea in lineas_de_cargos(pendientes)), CERO)
     exonerados = cargos.filter(exonerado=True).count()
     return {'facturado': facturado, 'cobrado': cobrado, 'costo': costo, 'ingreso_real': cobrado - costo,
             'por_cobrar': por_cobrar, 'por_metodo': por_metodo, 'por_mes': por_mes, 'exonerados': exonerados}

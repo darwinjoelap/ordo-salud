@@ -1,0 +1,11 @@
+<form method="post" action="{{ recordatorio }}" class="d-inline-flex flex-wrap align-items-center gap-1"
+      data-whatsapp-agenda data-offline="off">
+  {% csrf_token %}
+  {% if token_contacto %}<input type="hidden" name="token_contacto" value="{{ token_contacto }}">{% endif %}
+  {% if mensaje %}<input type="hidden" name="mensaje" value="{{ mensaje }}">{% endif %}
+  <button type="button" data-whatsapp="validar" class="btn btn-sm btn-outline-success" hidden>Preparar Business</button>
+  <button type="button" data-whatsapp="business" class="btn btn-sm btn-outline-success" hidden>Abrir WhatsApp Business</button>
+  <button type="button" data-whatsapp="web" class="btn btn-sm btn-outline-success"><i class="bi bi-whatsapp me-1"></i>{{ etiqueta }}</button>
+  <button type="button" data-whatsapp="copiar" class="btn btn-sm btn-outline-secondary">Copiar mensaje</button>
+  <span class="small text-muted" role="status" data-whatsapp-estado></span>
+</form>

@@ -18,6 +18,118 @@ obesidad, alergia + IA, asma + procedimiento, RN prematuro, adolescente, gemelas
 hoy/mañana/no asistió, datos incompletos, borradores). Pendiente detectado: **edad corregida en prematuros** (hoy
 percentiles por edad cronológica). Próximos paquetes: ginecología, cardiología pediátrica, medicina general.
 
+## 2026-11-18 — Privacidad de contacto y PWA
+
+**Contención e inventario f28 (local, publicación pendiente).** Durante esta fase las instrucciones de
+cierre y limpieza de f27 que siguen son históricas. Conservar abiertos los perfiles afectados. Cerrar la
+última conexión a IndexedDB puede completar un borrado ya solicitado. El worker nuevo sirve rutas
+dinámicas solo por red y conserva las cachés anteriores para inventario. El aviso enumera nombres de
+almacenes, sin leer formularios ni audios. Una cola o una base existente pueden estar vacías.
+
+El POST de la cola con `X-Offline-Form: 1` recibe 403 antes de resolver la sesión o aceptar un recibo
+de idempotencia. Los clientes históricos examinados conservan el elemento en error para revisión manual.
+El formulario nativo con solo `_idem_key` también lo admite la idempotencia general. Mantener una pausa
+operativa en las pestañas antiguas requiere aprobación antes de publicar. No usar sus botones de envío
+ni enlaces WhatsApp. El comportamiento exacto de f25/f26 requiere ensayar los artefactos distribuidos.
+
+**Corrección de transición f27 (local).** El worker elimina la caché de páginas anterior y conserva las
+claves de borradores, la cola y la base de dictados. El aviso de la aplicación detecta indicios sin leer
+el contenido de los dictados ni mostrar datos a otra sesión. La descripción de f26 que sigue es histórica.
+
+**Control previo a publicar desde f25.** Coordinar una pausa de WhatsApp en pestañas antiguas e inventariar
+perfiles, dispositivos, pestañas y ventanas instaladas. Con la sesión y el consultorio originales, terminar
+los pendientes visibles y corroborar cada cambio en el registro correspondiente del servidor. Documentar
+el resultado por dispositivo sin copiar datos clínicos en el registro de despliegue. Una redirección o un
+timeout requieren conciliación manual antes de reintentar. Ante pendientes sin identificar, conservar el
+perfil y detener la actualización de ese dispositivo. Evitar pasar por f26 o borrar datos del sitio.
+Evitar cerrar sesión o cambiar de usuario en una pestaña antigua durante el rescate. Su código conserva
+sus propias reglas de descarte y caducidad. Si f26 ya solicitó borrar IndexedDB, f27 no puede cancelar esa
+solicitud ni restaurar datos eliminados.
+
+Tras confirmar el trabajo, cerrar todas las ventanas y pestañas antiguas, incluidas las de la PWA. Reabrir,
+comprobar el controlador f27 y probar con una autorización revocada que Agenda no abre ni copia el contacto.
+Un enlace directo ya entregado a una pestaña que ejecuta código anterior sigue disponible allí. Reemplazar
+el controlador de red no reemplaza el documento ni retira enlaces copiados fuera de Ordo.
+En el ensayo sintético con dos pestañas, mantener una conexión antigua a IndexedDB abierta al activar
+f27 y verificar que siga disponible. Inspeccionar Cache Storage después de cerrar sesión y entrar con
+otra cuenta. Solo deben quedar recursos públicos de la aplicación y la agenda debe fallar sin conexión.
+
+Cada apertura y copia en Agenda requiere un POST actual, con CSRF, alcance y destinatario revalidados. Las citas y
+cumpleaños conservan su regla de contacto y respetan «No contactar». Inactividad exige autorización vigente para
+el número del destinatario. En Android, «Preparar Business» habilita la acción y el segundo toque vuelve a validar.
+Si el navegador bloquea el salto a Business, usa «Abrir con wa.me», que vuelve a pasar por el servidor. Ninguna
+apertura confirma el envío. Los mensajes ya copiados y los enlaces guardados fuera de Ordo quedan bajo el control
+del dispositivo o de WhatsApp.
+
+SW `f26`. Las vistas y peticiones de la aplicación requieren red y usan `no-store`. Solo se almacenan recursos
+públicos permitidos. Se limpia la caché anterior, la cola de formularios y el audio pendiente antiguo. El dictado
+puede reintentarse mientras la pestaña siga abierta. Se conservan instalación y visor PDF. Para validar la
+actualización en una PWA instalada, cierra las pestañas antiguas y comprueba que el nuevo SW controló la página
+y eliminó `ordo-paginas-v1`, las claves `ofl:ordo-salud:` y la base `ordo-dictado`. Repite con logout y cambio
+de usuario. Verifica Business y wa.me en Android, iOS y escritorio, así como los rechazos antes de abrir o copiar.
+
+## 2026-11-18 — Correcciones de integridad antes de publicar
+
+El bloqueo común se toma primero sobre el paciente. Los inicios y cobros por cita toman después la cita de origen
+y luego las filas clínicas o financieras que necesiten. Las anulaciones toman paciente y atención. Los ganchos
+de consulta que actualizan la ficha o programan un control conservan el bloqueo del paciente. El admin de citas
+protege los vínculos clínicos y remite la eliminación a la agenda. Cuenta conserva FIFO entre cargos válidos. Los pagos aplicados requieren el flujo
+autorizado en Cuenta antes de anular la atención. La anulación conserva los importes históricos.
+
+El inicio desde una cita comprueba su consulta bajo bloqueo antes de crear. Un reintento abre la consulta existente.
+Desde la ficha, «Nueva consulta independiente» conserva plantilla, tipo y lugar y omite la vinculación automática.
+La relación única cita/consulta existente respalda el inicio. Estas correcciones no requieren migraciones.
+
+## 2026-11-18 — Cobro rápido por cita · fase 4
+
+Agenda muestra el saldo de los cargos enlazados por cita, consulta o procedimiento. Los cargos ambiguos y los saldos
+de citas canceladas o con ausencia se revisan en Cuenta. El pago confirmado se aplica solo a esa cita, sin excedentes.
+La conciliación general de Cuenta conserva el orden por antigüedad. Cobro rápido recalcula saldo y tasa bajo bloqueo,
+registra el pago y cada aplicación, y reconoce reintentos con la misma confirmación. Migración: `cobros 0006`.
+
+Verificación manual pendiente: abrir el modal desde tarjeta, fila sin hora y detalle, confirmar un abono en USD y otro
+en Bs, comprobar la actualización del indicador y el asiento en Caja, y revisar el aviso tras cambiar saldo o tasa.
+
+## 2026-11-18 — Servicios previstos al agendar · fase 3
+
+Agenda conserva Tipo de cita y permite guardar uno o varios servicios compatibles con el profesional. El nombre
+y precio USD se guardan con la selección. La consulta genera los cargos al iniciarse; un procedimiento presenta
+la selección para confirmar qué se realizó. Cargos previos se revisan en Cobros. Las citas antiguas conservan el
+predeterminado de Tipo de cita hasta guardar una selección explícita. Migración: `agenda 0007`.
+
+Verificación manual pendiente: selección en móvil al cambiar profesional y tipo, precios históricos en detalle y
+preselección de procedimientos, aviso por cargos previos y reenvío de un formulario desactualizado.
+
+## 2026-11-18 — Recordatorios sugeridos · fase 2
+
+La agenda de hoy propone seguimiento por episodio desde la última consulta cerrada o procedimiento no anulado. Una cita
+vinculada debe estar atendida. Las próximas citas activas suspenden la sugerencia. El plazo sigue en Configuración →
+Agenda (12 meses por defecto, 0 desactiva). El descarte y el envío declarado cierran el episodio, incluso si se cambia
+el plazo. Un intento pendiente se puede revisar y resolver. En ficha se registra el permiso de WhatsApp por número
+del adulto o del representante principal. Ordo abre un borrador manual y registra eventos sin guardar su mensaje.
+Migraciones nuevas: `pacientes 0005` y `agenda 0006`. Se reutiliza `configuracion 0011`.
+
+## 2026-11-18 — WhatsApp de agenda · fase 1
+
+Android intenta abrir Business al tocar la acción en agenda y ofrece un enlace alternativo a `wa.me`. iOS y
+escritorio usan `wa.me` y el sistema decide cómo abrirlo. Las acciones incluyen «Copiar mensaje». La marca de cita
+registra un intento en línea y la asistencia se sigue confirmando desde agenda. SW `f25`.
+
+Verificación manual pendiente con datos sintéticos y sin enviar mensajes:
+- Android en Chrome y en navegador integrado, con las dos apps, solo Business, solo personal y ninguna. Probar la
+  acción principal, la alternativa explícita y la copia, y comprobar el teléfono y los caracteres del borrador.
+- PWA instalada en Android. Actualizar desde la versión anterior, repetir las pruebas y volver a agenda para
+  comprobar la marca del intento. Con el registro sin conexión, comprobar el aviso de fallo.
+- iOS en Safari y PWA, y escritorio con y sin sesión de WhatsApp Web. Verificar el destino de `wa.me` y que el
+  contenido se pueda copiar, incluida la copia manual si se deniega acceso al portapapeles.
+- Repetir desde detalle y agenda diaria, cumpleaños y el aviso existente sin consulta. Salir del borrador sin
+  enviarlo y verificar que la cita conserve su estado y que Compartir acceso de Plataforma use su enlace habitual.
+
+## 2026-11-16 — WhatsApp Business primero · pacientes sin consulta · eliminar citas no atendidas
+El ajuste inicial intentaba abrir WhatsApp Business en Android, con alternativa `wa.me`. Agenda del día: «Hace N
+meses sin consulta» (Configuración → Agenda, 12 por defecto, 0 = apagado). Citas sin consulta/cobro/procedimiento se
+pueden eliminar (queda en auditoría). Migración `configuracion 0011`. SW `f24`. Comando `citas_sin_consulta`.
+
 ## 2026-11-11 tarde — ADR-066 antecedentes personales de ginecología
 Tras desplegar: `sincronizar_especialidades` y `refrescar_plantillas ginecologia` (Railway). Migración `pacientes 0004`.
 

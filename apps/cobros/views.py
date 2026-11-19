@@ -93,9 +93,8 @@ def pago_anular(request, pk):
 @login_required
 @requiere('cobros.gestionar')
 def por_cobrar(request):
-    filas = srv.por_cobrar()
     return render(request, 'cobros/por_cobrar.html', {
-        'titulo': 'Cuentas por cobrar', 'filas': filas, 'total': sum((f[1] for f in filas), 0)})
+        'titulo': 'Cuentas por cobrar', **srv.informe_por_cobrar()})
 
 
 @login_required

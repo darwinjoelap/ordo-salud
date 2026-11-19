@@ -1,0 +1,24 @@
+<section class="card mb-3" aria-labelledby="titulo-recordatorios">
+  <div class="card-body py-2">
+    <h2 class="small fw-semibold mb-2" id="titulo-recordatorios"><i class="bi bi-bell me-1"></i>Recordatorios sugeridos</h2>
+    <ul class="list-unstyled mb-0 overflow-auto" style="max-height: 18rem">
+      {% for paciente in sugerencias_inactividad %}
+        {% url 'agenda:recordatorio_inactividad' paciente.pk paciente.ultima_asistencia|date:'Y-m-d' meses_inactividad as url %}
+        <li class="d-flex flex-wrap justify-content-between align-items-center gap-2 py-1">
+          <span>
+            <a href="{% url 'pacientes:detalle' paciente.pk %}" class="fw-semibold">{{ paciente.nombre_completo }}</a>
+            <span class="small text-muted">Última asistencia hace {{ paciente.ultima_asistencia|timesince }}</span>
+            {% if paciente.intento_registrado %}<span class="badge text-bg-light border">Intento registrado</span>{% endif %}
+          </span>
+          <div class="d-flex gap-1">
+            <a href="{{ url }}" class="btn btn-sm btn-outline-success">{% if paciente.intento_registrado %}Revisar recordatorio{% else %}Enviar recordatorio{% endif %}</a>
+            <form method="post" action="{{ url }}" data-offline="off">
+              {% csrf_token %}
+              <button class="btn btn-sm btn-outline-secondary" name="accion" value="IGNORADO">Ignorar</button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>

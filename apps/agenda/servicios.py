@@ -2,7 +2,6 @@
 Reglas de la agenda (Fase 08). Los cambios de estado de una cita pasan SOLO por aquí.
 """
 import re
-import urllib.parse
 from datetime import date, datetime, time, timedelta
 
 from django.db import transaction
@@ -14,7 +13,8 @@ from apps.core.excepciones import ErrorDeNegocio
 from apps.core.fechas import hora12
 from apps.core.tenancy import tenant_actual
 
-from .models import Bloqueo, Cita, HorarioAtencion
+from . import servicios_previstos as previstos
+from .models import Bloqueo, Cita, HorarioAtencion, TipoCita
 
 TRANSICIONES = {
     'TENTATIVA': {'PROGRAMADA', 'CONFIRMADA', 'ATENDIDA', 'CANCELADA'},
@@ -64,7 +64,7 @@ def fuera_de_horario(*, profesional, fecha, hora_inicio, hora_fin):
 
 
 @transaction.atomic
-def guardar_cita(cita, *, sobrecupo=False):
+def guardar_cita(cita, *, sobrecupo=False, servicios=None, version=None):
     """
     Crea o actualiza una cita (instancia ya llenada desde el formulario). Reglas:
     - el profesional debe estar activo; la especialidad es la suya;
@@ -73,10 +73,36 @@ def guardar_cita(cita, *, sobrecupo=False):
     Devuelve (cita, avisos).
     """
     from apps.equipo.models import PerfilProfesional
+    from apps.pacientes.models import Paciente
+
+    tenant = tenant_actual()
+    if tenant is None or cita.tenant_id not in (None, tenant.pk):
+        raise ErrorDeNegocio('La cita no pertenece al consultorio activo.')
+    anterior = None
+    if cita.pk:
+        anterior = Cita.objects.select_for_update().filter(pk=cita.pk).first()
+        if anterior is None or not anterior.activa:
+            raise ErrorDeNegocio('Esta cita ya no está activa o ya no existe.')
+        if cita.paciente_id != anterior.paciente_id:
+            raise ErrorDeNegocio('No se puede cambiar el paciente de una cita existente.')
+        if (version or cita.actualizado_en) != anterior.actualizado_en:
+            raise ErrorDeNegocio('La cita cambió mientras la editabas. Vuelve a abrirla antes de guardar.')
+        cita.estado = anterior.estado
+        cita.servicios_explicitos = anterior.servicios_explicitos
+    elif not Paciente.objects.filter(pk=cita.paciente_id, activo=True).exists():
+        raise ErrorDeNegocio('El paciente no está disponible en este consultorio.')
     perfil = PerfilProfesional.objects.select_for_update().get(pk=cita.profesional_id)   # serializa por profesional
     if not perfil.activo or not perfil.membresia.activa:
         raise ErrorDeNegocio('Ese profesional no está activo.')
     cita.especialidad = perfil.especialidad
+    if cita.tipo_id and (not anterior or (cita.tipo_id, cita.especialidad_id) != (
+            anterior.tipo_id, anterior.especialidad_id)):
+        tipo = TipoCita.objects.filter(pk=cita.tipo_id, activo=True).first()
+        if tipo is None or tipo.especialidad_id not in (None, cita.especialidad_id):
+            raise ErrorDeNegocio('El tipo de cita no corresponde a la especialidad del profesional.')
+    lineas = previstos.preparar_plan(cita, anterior, servicios)
+    if lineas is not None:
+        cita.servicios_explicitos = True
     avisos = []
     if cita.hora_inicio is None:
         cita.hora_fin = None
@@ -107,6 +133,7 @@ def guardar_cita(cita, *, sobrecupo=False):
     if cita.fecha < timezone.localdate() and cita.pk is None:
         avisos.append('La cita quedó en una fecha pasada.')
     cita.save()
+    previstos.guardar_plan(cita, lineas)
     return cita, avisos
 
 
@@ -126,14 +153,17 @@ def cambiar_estado(cita, nuevo, motivo=''):
 
 
 @transaction.atomic
-def atender(cita, perfil):
+def iniciar_atencion(cita, perfil):
     """Abre la consulta de la cita (o vuelve a la ya abierta) y la marca atendida."""
     from apps.clinica.consultas import abrir_consulta
+    from apps.cobros.servicios import bloquear_cuenta
+
+    bloquear_cuenta(cita.paciente_id)
     cita = Cita.objects.select_for_update().get(pk=cita.pk)
-    if cita.consulta_id:
-        return cita.consulta
-    if cita.profesional_id != perfil.pk:
+    if cita.profesional_id != perfil.pk or cita.especialidad_id != perfil.especialidad_id:
         raise ErrorDeNegocio(f'La cita es con {cita.profesional}; solo esa persona puede atenderla.')
+    if cita.consulta_id:
+        return cita.consulta, False
     if not cita.activa:
         raise ErrorDeNegocio(f'La cita está «{cita.get_estado_display()}».')
     tipo = cita.tipo
@@ -141,42 +171,44 @@ def atender(cita, perfil):
                               plantilla=tipo.plantilla if tipo and tipo.plantilla_id and tipo.plantilla.activa else None,
                               tipo=tipo.tipo_consulta if tipo else 'PRIMERA', lugar=cita.lugar)
     vincular_consulta(cita, consulta, perfil)
+    return consulta, True
+
+
+def atender(cita, perfil):
+    consulta, _ = iniciar_atencion(cita, perfil)
     return consulta
 
 
+@transaction.atomic
 def vincular_consulta(cita, consulta, perfil):
-    """Marca la cita atendida con esa consulta y genera el cargo del servicio del tipo de cita (una sola vez)."""
+    """Vincula una atención y genera a lo sumo un cargo por servicio previsto."""
+    from apps.clinica.models import Consulta
+    from apps.cobros.servicios import bloquear_cuenta, crear_cargo
+
+    bloquear_cuenta(consulta.paciente_id)
+    cita = Cita.objects.select_for_update().get(pk=cita.pk)
+    if cita.consulta_id or not cita.activa:
+        return
+    if (cita.paciente_id, cita.profesional_id, cita.tenant_id) != (
+            consulta.paciente_id, perfil.pk, consulta.tenant_id) or consulta.profesional_id != perfil.pk:
+        raise ErrorDeNegocio('La consulta no corresponde a esta cita.')
+    consulta = Consulta.objects.get(pk=consulta.pk)
+    if consulta.estado == Consulta.Estado.ANULADA:
+        raise ErrorDeNegocio('No se puede vincular una consulta anulada.')
     cita.consulta = consulta
     cita.estado = Cita.Estado.ATENDIDA
     cita.save(update_fields=['consulta', 'estado', 'actualizado_en'])
-    tipo = cita.tipo
-    # Sin cargo doble: ni si la cita ya tenía uno ni si la consulta ya se cobró aparte
-    if (tipo and tipo.servicio_id and tipo.servicio.activo and not cita.cargos.exists()
-            and not consulta.cargos.exists()):
-        from apps.cobros.servicios import crear_cargo
-        crear_cargo(paciente=cita.paciente, servicio=tipo.servicio, descripcion=tipo.servicio.nombre,
-                    precio_usd=tipo.servicio.precio_usd, consulta=consulta, cita=cita, profesional=perfil)
+    if cita.cargos.exists() or consulta.cargos.exists():
+        return
+    for linea in previstos.lineas_de(cita):
+        crear_cargo(paciente=cita.paciente, servicio=linea.servicio, descripcion=linea.nombre,
+                    precio_usd=linea.precio_usd, consulta=consulta, cita=cita, profesional=perfil)
 
 
-def cita_pendiente_de(consulta):
-    """
-    La cita activa del mismo paciente, con el mismo médico y el mismo día que la consulta, sin consulta todavía.
-    Para cuando se atiende desde la ficha del paciente (o «Nueva consulta») y no desde «Atender» en la agenda.
-    """
-    fecha = timezone.localtime(consulta.fecha_hora).date()
-    return (Cita.objects.filter(paciente_id=consulta.paciente_id, profesional_id=consulta.profesional_id, fecha=fecha,
-                                estado__in=Cita.ACTIVAS, consulta__isnull=True)
-            .order_by('hora_inicio', 'id').first())
-
-
-def vincular_cita_del_dia(consulta):
-    """Si la consulta no vino de una cita pero el paciente tenía cita ese día con ese médico, la marca atendida."""
-    if Cita.objects.filter(consulta=consulta).exists():
-        return None
-    cita = cita_pendiente_de(consulta)
-    if cita is not None:
-        vincular_consulta(cita, consulta, consulta.profesional)
-    return cita
+def citas_para_iniciar(paciente, profesional):
+    return (Cita.objects.filter(paciente=paciente, profesional=profesional, especialidad=profesional.especialidad,
+                                fecha=hoy(), estado__in=Cita.ACTIVAS, consulta__isnull=True)
+            .select_related('tipo').order_by('hora_inicio', 'id'))
 
 
 def turnos_libres(profesional, fecha):
@@ -235,31 +267,38 @@ def semana_de(fecha):
 
 
 def numero_whatsapp(telefono):
-    """Teléfono venezolano → número para wa.me (0414… → 58414…). Vacío si no hay número."""
+    """Normalización histórica utilizada por Compartir acceso de Plataforma."""
     numero = re.sub(r'[^\d+]', '', telefono or '').lstrip('+')
     if numero.startswith('0'):
         numero = '58' + numero[1:]
     return numero if len(numero) >= 10 else ''
 
 
-def destinatario(paciente):
-    """(saludo, teléfono): si es menor y tiene representante con teléfono, se le escribe y se le saluda a él."""
-    representante = paciente.representante_principal if paciente.es_menor else None
-    if representante is not None and representante.telefono:
-        return representante.nombre.split()[0], representante.telefono, representante
-    return paciente.nombres.split()[0], paciente.telefono, None
+def destinatario(paciente, *, bloquear=False):
+    """Devuelve saludo y número del mismo destinatario, con preferencia por el representante."""
+    representante = None
+    if paciente.es_menor:
+        if bloquear:
+            representante = paciente.representantes.select_for_update().order_by('-es_principal', 'pk').first()
+        else:
+            representante = paciente.representante_principal
+    if representante is not None:
+        saludo = representante.nombre.split()[0]
+        if representante.whatsapp_seguimiento == 'NO':
+            return saludo, '', representante
+        if numero := whatsapp.numero_whatsapp(representante.telefono):
+            return saludo, numero, representante
+    numero = '' if paciente.whatsapp_seguimiento == 'NO' else whatsapp.numero_whatsapp(paciente.telefono)
+    return paciente.nombres.split()[0], numero, None
 
 
-def url_whatsapp(cita):
-    """Recordatorio por WhatsApp (de Pediae): si es menor, al representante."""
+def url_whatsapp(cita, *, bloquear=False):
+    """Enlace para pedir confirmación de asistencia por WhatsApp."""
     paciente = cita.paciente
-    representante = paciente.representante_principal if paciente.es_menor else None
-    telefono = (representante.telefono if representante and representante.telefono else '') or paciente.telefono
-    numero = numero_whatsapp(telefono)
+    saludo, numero, representante = destinatario(paciente, bloquear=bloquear)
     if not numero:
         return None
     config = cita.tenant.configuracion
-    saludo = (representante.nombre if representante else paciente.nombres).split()[0]
     lugar = (cita.lugar.nombre + (f' ({cita.lugar.direccion})' if cita.lugar.direccion else '')) if cita.lugar else ''
     texto = whatsapp.armar(config.plantilla_whatsapp, {
         'saludo': saludo, 'paciente': paciente.nombre_completo,
@@ -267,7 +306,13 @@ def url_whatsapp(cita):
         'profesional': cita.profesional.nombre_con_titulo, 'consultorio': config.nombre_display,
         'fecha': f'{cita.fecha:%d/%m/%Y}', 'hora': hora12(cita.hora_inicio) if cita.hora_inicio else '',
         'lugar': lugar})
-    return f'https://wa.me/{numero}?text={urllib.parse.quote(texto)}'
+    return whatsapp.enlace(numero, texto)
+
+
+def se_puede_eliminar(cita):
+    """Solo citas no atendidas: sin consulta, sin cobros y sin procedimientos (lo demás se cancela)."""
+    return (cita.estado != Cita.Estado.ATENDIDA and not cita.consulta_id and not cita.cargos.exists()
+            and not cita.procedimientos.exists())
 
 
 def marcar_recordatorio(cita):
@@ -286,6 +331,7 @@ def fecha_de(texto, por_defecto=None):
         return por_defecto or hoy()
 
 
+@transaction.atomic
 def programar_control(consulta, fecha):
     """
     «Próximo control» de una consulta → cita TENTATIVA sin hora (comportamiento de Pediae): mismo profesional y lugar,
@@ -294,11 +340,15 @@ def programar_control(consulta, fecha):
     Devuelve la cita (o None).
     """
     from apps.clinica.models import DiagnosticoConsulta
-    existente = (Cita.objects.filter(consulta_origen=consulta, estado__in=Cita.ACTIVAS)
+    from apps.cobros.servicios import bloquear_cuenta
+
+    bloquear_cuenta(consulta.paciente_id)
+    existente = (Cita.objects.select_for_update().filter(consulta_origen=consulta, estado__in=Cita.ACTIVAS)
                  .order_by('-creado_en').first())
     dia_consulta = timezone.localtime(consulta.fecha_hora).date() if consulta.fecha_hora else hoy()
     if not fecha or fecha <= dia_consulta:
-        if existente is not None and existente.estado == Cita.Estado.TENTATIVA and existente.hora_inicio is None:
+        if (existente is not None and existente.estado == Cita.Estado.TENTATIVA
+                and existente.hora_inicio is None and se_puede_eliminar(existente)):
             existente.delete()
         return None
     if existente is not None:
@@ -321,36 +371,33 @@ def programar_control(consulta, fecha):
         motivo=motivo[:200], consulta_origen=consulta)
 
 
-def cumpleanos(fecha, membresia=None):
-    """
-    Pacientes que cumplen años en `fecha` (de Pediae), con el enlace para felicitarlos por WhatsApp. Si es menor se
-    saluda al representante y se le escribe a él. El profesional ve los suyos (ADR-029). Los nacidos un 29/02
-    aparecen el 28/02 en los años no bisiestos.
-    """
+def pacientes_cumpleanos(fecha, membresia):
+    """Cumpleaños de la fecha con el alcance de pacientes de la membresía."""
     import calendar
 
     from apps.pacientes.models import Paciente
     from apps.pacientes.selectors import filtrar_propios, puede_ver_todos
-    qs = Paciente.objects.filter(activo=True, fecha_nacimiento__month=fecha.month, fecha_nacimiento__day=fecha.day)
-    if fecha.month == 2 and fecha.day == 28 and not calendar.isleap(fecha.year):
-        qs = Paciente.objects.filter(activo=True, fecha_nacimiento__month=2, fecha_nacimiento__day__in=(28, 29))
-    if membresia is not None and not puede_ver_todos(membresia):
-        qs = filtrar_propios(qs, membresia)
-    config = membresia.tenant.configuracion if membresia is not None else None
-    consultorio = config.nombre_display if config else 'el consultorio'
-    salida = []
-    for p in qs.prefetch_related('representantes').order_by('nombres', 'apellidos'):
-        edad = fecha.year - p.fecha_nacimiento.year
-        anios = f'{edad} año{"s" if edad != 1 else ""}'
-        saludo, telefono, representante = destinatario(p)
-        if representante is not None:
-            texto = (f'¡Hola {saludo}! El equipo de {consultorio} le desea a {p.nombres.split()[0]} un muy feliz '
-                     f'cumpleaños: hoy cumple {anios}. ¡Que pase un día excelente!')
-        else:
-            texto = (f'¡Hola {saludo}! El equipo de {consultorio} le desea un muy feliz cumpleaños. '
-                     f'¡Que pase un día excelente!')
-        numero = numero_whatsapp(telefono)
-        salida.append({'paciente': p, 'edad': edad, 'para': representante,
-                       'url': f'https://wa.me/{numero}?text={urllib.parse.quote(texto)}' if numero else None})
-    return salida
 
+    dias = (28, 29) if fecha.month == 2 and fecha.day == 28 and not calendar.isleap(fecha.year) else (fecha.day,)
+    qs = Paciente.objects.filter(activo=True, fecha_nacimiento__month=fecha.month, fecha_nacimiento__day__in=dias)
+    return qs if puede_ver_todos(membresia) else filtrar_propios(qs, membresia)
+
+
+def cumpleanos(fecha, membresia):
+    return [{'paciente': p, 'edad': fecha.year - p.fecha_nacimiento.year}
+            for p in pacientes_cumpleanos(fecha, membresia).order_by('nombres', 'apellidos')]
+
+
+def url_cumpleanos(paciente, fecha, consultorio):
+    saludo, numero, representante = destinatario(paciente, bloquear=True)
+    if not numero:
+        return None
+    if representante is not None:
+        edad = fecha.year - paciente.fecha_nacimiento.year
+        anios = f'{edad} año{"s" if edad != 1 else ""}'
+        texto = (f'¡Hola {saludo}! El equipo de {consultorio} le desea a {paciente.nombres.split()[0]} un muy feliz '
+                 f'cumpleaños: hoy cumple {anios}. ¡Que pase un día excelente!')
+    else:
+        texto = (f'¡Hola {saludo}! El equipo de {consultorio} le desea un muy feliz cumpleaños. '
+                 f'¡Que pase un día excelente!')
+    return whatsapp.enlace(numero, texto)

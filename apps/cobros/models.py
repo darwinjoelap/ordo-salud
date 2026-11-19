@@ -154,3 +154,14 @@ class PagoAplicado(TenantModel):
         verbose_name = 'Aplicación de pago'
         verbose_name_plural = 'Aplicaciones de pagos'
         constraints = [models.CheckConstraint(condition=Q(monto_usd__gt=0), name='aplicado_positivo')]
+
+
+class CobroRapidoCita(TenantModel, Auditable):
+    """Identidad del cobro y del intento confirmado desde agenda."""
+    cita = models.ForeignKey('agenda.Cita', on_delete=models.PROTECT, related_name='+')
+    pago = models.OneToOneField(Pago, on_delete=models.PROTECT, related_name='+')
+    clave = models.UUIDField(editable=False)
+    huella = models.CharField(max_length=64, editable=False)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['tenant', 'clave'], name='cobro_rapido_clave_unica')]

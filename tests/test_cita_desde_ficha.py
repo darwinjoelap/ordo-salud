@@ -22,15 +22,15 @@ class CitaDesdeFichaTest(BaseTest):
             self.cita = Cita.objects.create(paciente=self.p, profesional=self.perfil, especialidad=self.perfil.especialidad,
                                             fecha=timezone.localdate(), hora_inicio=time(9), hora_fin=time(9, 30))
 
-    def test_consulta_completa_sin_cita_vincula_la_del_dia(self):
+    def test_consulta_completa_vincula_la_cita_elegida(self):
         with self.en_tenant():
             c = crear_consulta_completa(paciente=self.p, profesional=self.perfil, plantilla=None, tipo='PRIMERA',
-                                        lugar=None, datos_por_seccion={})
+                                        lugar=None, datos_por_seccion={}, cita=self.cita)
             self.cita.refresh_from_db()
         self.assertEqual((self.cita.estado, self.cita.consulta_id), ('ATENDIDA', c.pk))
 
     def test_abrir_desde_la_ficha_tambien(self):
-        r = self.cliente.post(f'/pacientes/{self.p.pk}/consultas/nueva/', {'tipo': 'PRIMERA'})
+        r = self.cliente.post(f'/pacientes/{self.p.pk}/consultas/nueva/', {'tipo': 'PRIMERA', 'cita': self.cita.pk})
         self.assertEqual(r.status_code, 302)
         with self.en_tenant():
             self.cita.refresh_from_db()

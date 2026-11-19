@@ -33,12 +33,63 @@
     });
   }
 
-  // Al cerrar sesión se borran las páginas guardadas para usar sin conexión en este dispositivo (Fase 12)
-  document.addEventListener('submit', function (e) {
-    if (e.target.matches && e.target.matches('form[action$="/cuenta/salir/"]') && window.caches) {
-      caches.keys().then(function (claves) {
-        claves.filter(function (k) { return k.indexOf('ordo-paginas') === 0; }).forEach(function (k) { caches.delete(k); });
+  let revisionInventario = 0;
+  async function revisarPendientes() {
+    const aviso = document.getElementById('os-transicion-pwa');
+    if (!aviso) return;
+    const revision = ++revisionInventario;
+    const indicios = new Set();
+    function mostrar(enCurso = false) {
+      if (revision !== revisionInventario) return;
+      aviso.querySelectorAll('[data-estado]').forEach((el) => {
+        const estado = el.dataset.estado;
+        if (estado === 'sin-indicios') el.hidden = enCurso || indicios.size > 0;
+        else el.hidden = !(indicios.has(estado) || (enCurso && estado === 'incompleto'));
       });
+      if (indicios.size) aviso.open = true;
+    }
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const clave = localStorage.key(i);
+        if (!/^ofl:(ordo-salud|omnis):/.test(clave)) continue;
+        const tipo = /^ofl:[^:]+:[^:]+:[^:]+:(draft:.+|outbox|precarga)$/.exec(clave)?.[1];
+        if (tipo?.startsWith('draft:')) indicios.add('borrador');
+        else indicios.add(tipo || 'otro');
+      }
+    } catch (err) {
+      indicios.add('inaccesible');
+    }
+    mostrar(true);
+    try {
+      if (!window.caches?.keys) indicios.add('incompleto');
+      else if ((await window.caches.keys()).some((nombre) =>
+        nombre === 'ordo-paginas-v1' || nombre === 'omnis-paginas-v1')) indicios.add('paginas');
+    } catch (err) {
+      indicios.add('inaccesible');
+    }
+    mostrar(true);
+    try {
+      if (!window.indexedDB?.databases) indicios.add('incompleto');
+      else if ((await window.indexedDB.databases()).some((base) => base.name === 'ordo-dictado')) {
+        indicios.add('dictado');
+      }
+    } catch (err) {
+      indicios.add('inaccesible');
+    }
+    mostrar();
+  }
+  revisarPendientes();
+  if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('controllerchange', revisarPendientes);
+  window.addEventListener('storage', revisarPendientes);
+  window.addEventListener('pageshow', (evento) => {
+    if (!evento.persisted) return;
+    // Una página restaurada puede pertenecer a una sesión anterior. Bloquear su uso sin descartar el DOM.
+    const bloqueo = document.getElementById('os-pagina-restaurada');
+    if (bloqueo && !bloqueo.open) {
+      // El diálogo no permite volver a interactuar con el documento de la sesión anterior.
+      bloqueo.addEventListener('cancel', (e) => e.preventDefault(), {once: false});
+      bloqueo.querySelector('[data-os-recargar]').addEventListener('click', () => location.reload(), {once: true});
+      bloqueo.showModal();
     }
   });
 

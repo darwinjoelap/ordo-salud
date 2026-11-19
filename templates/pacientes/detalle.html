@@ -30,7 +30,12 @@
         {% for v, n in tipos_consulta %}<option value="{{ v }}" {% if v == 'CONTROL' and consultas %}selected{% elif v == 'PRIMERA' and not consultas %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
       {% if lugares %}<div class="col-md-3"><label class="form-label small">Lugar</label><select name="lugar" class="form-select">
         {% for l in lugares %}<option value="{{ l.pk }}">{{ l }}</option>{% endfor %}</select></div>{% endif %}
-      <div class="col-md-2"><button class="btn btn-primary w-100">Empezar</button></div>
+      <div class="col-auto d-flex flex-wrap gap-2">
+        {% for cita in citas_para_iniciar %}
+          <button class="btn btn-primary" name="cita" value="{{ cita.pk }}">Empezar cita #{{ cita.pk }} · {% if cita.hora_inicio %}{{ cita.hora_inicio|hora12 }}{% else %}Sin hora{% endif %}{% if cita.tipo %} · {{ cita.tipo.nombre }}{% endif %}</button>
+        {% endfor %}
+        <button class="btn btn-outline-secondary" name="independiente" value="1">Nueva consulta independiente</button>
+      </div>
     </div>
   </form>
 </div>

@@ -6,6 +6,7 @@ from django.apps import apps
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve, reverse
+from django.utils.cache import add_never_cache_headers
 
 from .excepciones import ErrorDeNegocio
 from .permisos import Rol
@@ -98,6 +99,21 @@ class TenantActivoMiddleware:
             return resolve(request.path_info).url_name == 'entrada_tenant'
         except Resolver404:
             return False
+
+
+class RespuestasPrivadasMiddleware:
+    """WhiteNoise sirve los estáticos aparte. Django no deja copias de sus respuestas dinámicas."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        respuesta = self.get_response(request)
+        manifiesto_publico = (request.path_info == '/manifest.webmanifest' and respuesta.status_code == 200
+                              and respuesta.get('Content-Type') == 'application/manifest+json')
+        if not manifiesto_publico:
+            add_never_cache_headers(respuesta)
+        return respuesta
 
 
 class ErrorDeNegocioMiddleware:

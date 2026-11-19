@@ -75,6 +75,7 @@ class Paciente(TenantModel, Auditable):
     telefono = models.CharField('Teléfono', max_length=25, blank=True)
     telefono_2 = models.CharField('Otro teléfono', max_length=25, blank=True)
     email = models.EmailField('Correo', blank=True)
+    whatsapp_seguimiento = models.CharField(max_length=15, blank=True, editable=False)
     direccion = models.CharField('Dirección', max_length=250, blank=True)
     ciudad = models.CharField('Ciudad', max_length=80, blank=True)
     ocupacion = models.CharField('Ocupación', max_length=100, blank=True)
@@ -170,6 +171,7 @@ class Representante(TenantModel, Auditable):
     numero_documento = models.CharField('N.º de documento', max_length=20, blank=True)
     telefono = models.CharField('Teléfono', max_length=25, blank=True)
     email = models.EmailField('Correo', blank=True)
+    whatsapp_seguimiento = models.CharField(max_length=15, blank=True, editable=False)
     ocupacion = models.CharField('Ocupación', max_length=100, blank=True)
     es_principal = models.BooleanField('Representante principal', default=True)
 

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block contenido %}
+<a href="{% url 'agenda:dia' %}" class="small">Volver a agenda</a>
+<div class="card card-body mt-2" style="max-width: 42rem">
+  <h1 class="h5">Recordatorio para {{ paciente.nombre_completo }}</h1>
+  {% if autorizado %}
+    <p class="small text-muted">Destinatario autorizado: {% if paciente.es_menor %}{{ contacto.nombre }} (representante){% else %}{{ paciente.nombre_completo }}{% endif %} · {{ contacto.telefono }}</p>
+    <form method="post" data-offline="off" autocomplete="off">
+      {% csrf_token %}
+      {% include 'partials/campo.html' with campo=form.mensaje %}
+      <button name="accion" value="preparar" class="btn btn-sm btn-outline-primary mt-2">Preparar mensaje</button>
+    </form>
+    {% if token_contacto %}
+      <div class="mt-2">
+        {% include 'agenda/_whatsapp.html' with etiqueta='Abrir WhatsApp' recordatorio=request.path mensaje=form.mensaje.value token_contacto=token_contacto csrf_token=csrf_token only %}
+      </div>
+      <p class="small text-muted mt-2 mb-0">Si cambias el texto, vuelve a preparar el mensaje antes de abrir WhatsApp.</p>
+    {% endif %}
+  {% else %}
+    <p>Para abrir WhatsApp, registra un teléfono válido y la autorización de seguimiento del destinatario en la ficha.</p>
+    <a href="{% url 'pacientes:detalle' paciente.pk %}">Abrir ficha del paciente</a>
+  {% endif %}
+  {% if token_contacto or paciente.intento_registrado %}
+    <form method="post" class="mt-3" data-offline="off">
+      {% csrf_token %}
+      {% if token_contacto %}<input type="hidden" name="token_contacto" value="{{ token_contacto }}">{% endif %}
+      <button name="accion" value="ENVIADO" class="btn btn-sm btn-success">Confirmar que envié el mensaje</button>
+    </form>
+  {% endif %}
+  <form method="post" class="mt-2" data-offline="off">
+    {% csrf_token %}
+    <button name="accion" value="IGNORADO" class="btn btn-sm btn-outline-secondary">Ignorar</button>
+  </form>
+</div>
+{% endblock %}

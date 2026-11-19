@@ -8,41 +8,17 @@
                   procesando: $('.os-dictado-procesando'), listo: $('.os-dictado-listo')};
   let grabador = null, trozos = [], segundos = 0, reloj = null, flujo = null, descartar = false;
   let pendiente = null;          // {audio: Blob, segundos, nombre, origen} que no se pudo enviar
-  const CLAVE = 'dictado:' + (caja.dataset.consulta ? 'c' + caja.dataset.consulta : 'p' + caja.dataset.paciente);
-
-  // ── Grabación pendiente en el equipo (IndexedDB): sobrevive a un corte de luz, de internet o a recargar ──────
-  function bd() {
-    return new Promise(function (ok, mal) {
-      if (!window.indexedDB) { mal(new Error('sin IndexedDB')); return; }
-      const r = indexedDB.open('ordo-dictado', 1);
-      r.onupgradeneeded = function () { r.result.createObjectStore('pendientes'); };
-      r.onsuccess = function () { ok(r.result); };
-      r.onerror = function () { mal(r.error); };
-    });
-  }
-  function guardarPendiente(p) {
-    return bd().then(function (db) { db.transaction('pendientes', 'readwrite').objectStore('pendientes').put(
-      {audio: p.audio, segundos: p.segundos, nombre: p.nombre, origen: p.origen, fecha: Date.now()}, CLAVE); })
-      .catch(function () {});
-  }
   function borrarPendiente() {
     pendiente = null;
     $('.os-dictado-pendiente').classList.add('d-none');
-    return bd().then(function (db) { db.transaction('pendientes', 'readwrite').objectStore('pendientes').delete(CLAVE); })
-      .catch(function () {});
   }
   function mostrarPendiente(p, motivo) {
     pendiente = p;
     const m = String(Math.floor((p.segundos || 0) / 60)).padStart(2, '0'), s = String((p.segundos || 0) % 60).padStart(2, '0');
     $('[data-pendiente-texto]').textContent = (motivo ? motivo + ' ' : '') + 'Hay una grabación sin enviar' +
-      (p.segundos ? ' (' + m + ':' + s + ')' : '') + '. Quedó guardada en este equipo.';
+      (p.segundos ? ' (' + m + ':' + s + ')' : '') + '. Disponible mientras esta pestaña siga abierta.';
     $('.os-dictado-pendiente').classList.remove('d-none');
   }
-  bd().then(function (db) {
-    const r = db.transaction('pendientes').objectStore('pendientes').get(CLAVE);
-    r.onsuccess = function () { if (r.result && r.result.audio) mostrarPendiente(r.result); };
-  }).catch(function () {});
-
   function ver(nombre) {
     Object.keys(vistas).forEach(function (k) { vistas[k].classList.toggle('d-none', k !== nombre); });
   }
@@ -74,7 +50,7 @@
       const blob = new Blob(trozos, {type: grabador.mimeType || 'audio/webm'});
       const p = {audio: blob, segundos: segundos, nombre: 'dictado.' + ((blob.type || '').includes('mp4') ? 'm4a' : 'webm'),
                  origen: 'grabacion'};
-      guardarPendiente(p).then(function () { enviar(p); });
+      enviar(p);
     };
     grabador.start(1000);
     reloj = setInterval(function () { if (grabador.state === 'recording') { segundos++; mostrarReloj(); } }, 1000);
@@ -244,7 +220,7 @@
       a.download = 'dictado-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.' + (pendiente.nombre.split('.').pop() || 'webm');
       a.click(); return;
     }
-    if (accion === 'descartar-pendiente' && confirm('¿Descartar la grabación guardada en este equipo?')) { borrarPendiente(); return; }
+    if (accion === 'descartar-pendiente' && confirm('¿Descartar la grabación pendiente?')) { borrarPendiente(); return; }
     if (accion === 'grabar' || accion === 'otra') grabar();
     else if (accion === 'pausar') pausar(b);
     else if (accion === 'terminar' && grabador) grabador.stop();

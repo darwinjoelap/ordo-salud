@@ -22,7 +22,7 @@ ORDO_VERSION = config('RAILWAY_GIT_COMMIT_SHA', default='dev')[:7]
 
 # ── Aplicaciones ──────────────────────────────────────────────────────────────
 DJANGO_APPS = [
-    'django.contrib.admin',
+    'apps.core.admin_site.AdminPlataformaConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -58,6 +58,8 @@ INSTALLED_APPS = ['apps.usuarios'] + DJANGO_APPS + [a for a in ORDO_APPS if a !=
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'apps.core.middleware.RespuestasPrivadasMiddleware',
+    'apps.offline.middleware.ContencionOfflineMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

@@ -4,6 +4,7 @@ Con un solo profesional en el consultorio, la interfaz oculta los selectores de 
 """
 from datetime import datetime, timedelta
 
+from django.conf import settings
 from django.db import models
 from django.db.models import Q
 
@@ -118,7 +119,8 @@ class Cita(TenantModel, Auditable):
     consulta_origen = models.ForeignKey('clinica.Consulta', on_delete=models.SET_NULL, null=True, blank=True,
                                         related_name='controles', editable=False,
                                         help_text='Consulta que indicó este control (próximo control).')
-    recordatorio_en = models.DateTimeField('Recordatorio enviado', null=True, blank=True)
+    servicios_explicitos = models.BooleanField(default=False, editable=False)
+    recordatorio_en = models.DateTimeField('Intento de recordatorio', null=True, blank=True)
     motivo_cancelacion = models.CharField('Motivo de cancelación', max_length=200, blank=True)
 
     class Meta:
@@ -150,3 +152,38 @@ class Cita(TenantModel, Auditable):
         if self.hora_inicio and self.hora_fin:
             return int((datetime.combine(self.fecha, self.hora_fin) - self.inicio) / timedelta(minutes=1))
         return None
+
+
+class ServicioPrevisto(TenantModel):
+    cita = models.ForeignKey(Cita, on_delete=models.CASCADE, related_name='servicios_previstos')
+    servicio = models.ForeignKey('cobros.Servicio', on_delete=models.PROTECT, related_name='+')
+    nombre = models.CharField(max_length=150)
+    precio_usd = models.DecimalField(max_digits=9, decimal_places=2)
+
+    class Meta:
+        ordering = ['nombre', 'pk']
+        constraints = [
+            models.UniqueConstraint(fields=['tenant', 'cita', 'servicio'], name='servicio_previsto_unico'),
+            models.CheckConstraint(condition=Q(precio_usd__gte=0), name='servicio_previsto_precio_no_negativo'),
+        ]
+
+
+class RecordatorioInactividad(TenantModel, Auditable):
+    class Estado(models.TextChoices):
+        INTENTO = 'INTENTO', 'Intento registrado'
+        ENVIADO = 'ENVIADO', 'Envío declarado'
+        IGNORADO = 'IGNORADO', 'Ignorado'
+
+    paciente = models.ForeignKey('pacientes.Paciente', on_delete=models.PROTECT, related_name='+')
+    ultima_asistencia = models.DateField()
+    meses = models.PositiveSmallIntegerField()
+    canal = models.CharField(max_length=10, default='WHATSAPP', editable=False)
+    estado = models.CharField(max_length=10, choices=Estado.choices)
+    resuelto_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True,
+                                    editable=False, related_name='+')
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['tenant', 'paciente', 'ultima_asistencia'],
+                                    name='recordatorio_inactividad_episodio_unico'),
+        ]

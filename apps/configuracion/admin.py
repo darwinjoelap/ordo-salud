@@ -6,9 +6,9 @@ from .models import ConfiguracionTenant, Lugar
 
 
 @admin.register(ConfiguracionTenant)
-class ConfiguracionTenantAdmin(admin.ModelAdmin):
+class ConfiguracionTenantAdmin(TenantModelAdmin):
     list_display = ['tenant', 'nombre_mostrar', 'visibilidad_historia', 'dictado_activo', 'actualizado_en']
-    readonly_fields = ['logo_pdf', 'dictado_activo']
+    readonly_fields = ['tenant', 'logo_pdf', 'dictado_activo']
 
 
 @admin.register(Lugar)

@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block contenido %}
+<a href="{% url 'agenda:cita' cita.pk %}" class="small">Volver a la cita</a>
+<div class="card card-body mt-2" style="max-width: 34rem">
+  <h1 class="h5">Cobro rápido</h1>
+  <div id="cobro-rapido-contenido">{% include 'agenda/_cobro_cita.html' %}</div>
+</div>
+{% endblock %}

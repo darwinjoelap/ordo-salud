@@ -14,8 +14,6 @@ def registrar(request, accion, objeto, *, paciente_id=None, detalle=''):
     """No falla nunca hacia el usuario: si no hay tenant activo, no registra."""
     if tenant_actual() is None:
         return None
-    if accion == 'VER' and request is not None and request.META.get('HTTP_X_OFFLINE_PREFETCH'):
-        return None      # la precarga sin conexión no es una lectura de la persona (se audita una vez en /offline/precache/)
     usuario = getattr(request, 'user', None) if request is not None else None
     return Auditoria.objects.create(
         usuario=usuario if usuario is not None and usuario.is_authenticated else None,

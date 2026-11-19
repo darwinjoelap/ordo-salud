@@ -100,7 +100,7 @@ class DictadoTest(BaseTest):
             s = SesionDictado.objects.get()
         self.assertEqual((s.tokens_entrada, s.modelo_ia), (9000, 'gemini-3.8-flash'))
         # al guardar la consulta, la sesión queda vinculada
-        self.cliente.post(f'/pacientes/{self.p.pk}/consultas/nueva/', {
+        self.iniciar_independiente(self.p, {
             'completa': '1', 'tipo': 'PRIMERA', 'plantilla': self.plantilla.pk, 'accion': 'guardar',
             'dictado': s.pk})
         with self.en_tenant():

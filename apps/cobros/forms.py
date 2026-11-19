@@ -55,3 +55,9 @@ class PagoForm(FormBase, forms.Form):
     metodo = forms.ChoiceField(label='Método', choices=Pago.Metodo.choices)
     referencia = forms.CharField(label='Referencia', max_length=60, required=False)
     notas = forms.CharField(label='Notas', max_length=200, required=False)
+
+
+class CobroRapidoForm(PagoForm):
+    notas = None
+    confirmacion = forms.CharField(widget=forms.HiddenInput, max_length=1500)
+    recibido = forms.BooleanField(label='Confirmo que recibí este pago')

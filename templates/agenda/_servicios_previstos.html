@@ -1,0 +1,22 @@
+<fieldset class="border rounded p-2">
+  <legend class="float-none w-auto px-1 h6 mb-1">Servicios previstos</legend>
+  {% for error in form.servicios.errors %}<p class="text-danger small mb-1">{{ error }}</p>{% endfor %}
+  {% if form.plan_bloqueado %}
+    <p class="small text-muted mb-1">La cita tiene atención o cargos registrados. Para corregir importes, revisa Cobros.</p>
+    {% for linea in form.lineas_actuales.values %}<div class="small">{{ linea.nombre }}{% if form.plan_explicito %} · {{ linea.precio_usd|usd }}{% endif %}</div>{% endfor %}
+  {% else %}
+    {{ form.servicios_presentes }}
+    <p class="small text-muted mb-1">El precio se guarda al elegir el servicio. La cita por sí sola no genera cargos.</p>
+    <div data-servicios-previstos data-explicito="{% if form.plan_explicito or form.is_bound %}1{% endif %}">
+      {% for opcion in form.opciones_servicios %}
+        <label class="d-flex align-items-center gap-2 py-1" data-servicio-especialidad="{{ opcion.servicio.especialidad_id|default_if_none:'' }}">
+          <input class="form-check-input m-0" type="checkbox" name="servicios" value="{{ opcion.servicio.pk }}" {% if opcion.marcado %}checked{% endif %}>
+          <span>{{ opcion.nombre }}{% if not opcion.servicio.activo %} <small class="text-muted">(inactivo)</small>{% endif %}</span>
+          <span class="small text-nowrap ms-auto">{{ opcion.precio|usd }}</span>
+          <span class="small text-danger d-none" data-incompatible>Cambia o desmarca este servicio</span>
+        </label>
+      {% endfor %}
+      <p class="small text-muted mb-0" data-sin-servicios role="status">No hay servicios para este profesional.</p>
+    </div>
+  {% endif %}
+</fieldset>

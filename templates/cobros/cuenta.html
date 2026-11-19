@@ -7,11 +7,12 @@
     {% if consulta %}<div class="small text-muted">Cobrando la consulta del {{ consulta.fecha|date:"d/m/Y" }} · {{ consulta.profesional }}</div>{% endif %}
   </div>
   <div class="text-end">
-    <div class="small text-muted">Saldo</div>
+    <div class="small text-muted">Deuda exigible</div>
     {% if saldo > 0 %}<div class="h4 mb-0 text-danger">Debe {{ saldo|usd }}</div>
-    {% elif saldo < 0 %}<div class="h4 mb-0 text-success">A favor {{ a_favor|usd }}</div>
-    {% else %}<div class="h4 mb-0 text-success">Al día</div>{% endif %}
+    {% else %}<div class="h4 mb-0">{{ saldo|usd }}</div>{% endif %}
     {% if tasa and saldo > 0 %}<div class="small text-muted">{{ saldo|bs:tasa.valor }} a la tasa {% if tasa.moneda == 'EUR' %}euro{% else %}dólar{% endif %} de hoy</div>{% endif %}
+    {% if hay_revision %}<div class="text-warning-emphasis">Saldo histórico en revisión {{ saldo_revision|usd }}</div>{% endif %}
+    {% if a_favor %}<div>Fondos sin aplicar {{ a_favor|usd }}</div>{% endif %}
   </div>
 </div>
 
@@ -49,17 +50,18 @@
       <div class="card-header bg-white fw-semibold">Cargos <span class="text-muted small fw-normal">· total {{ total_cargos|usd }}</span></div>
       <div class="table-responsive"><table class="table align-middle mb-0 os-tabla">
         <thead class="table-light"><tr><th>Fecha</th><th>Concepto</th><th class="text-end">Monto</th><th class="text-end">Saldo</th><th></th></tr></thead>
-        <tbody>{% for c in cargos %}
+        <tbody>{% for linea in lineas %}{% with c=linea.cargo %}
           <tr class="{% if c.estado == 'ANULADO' %}text-muted text-decoration-line-through{% endif %}">
             <td data-label="Fecha">{{ c.fecha|date:"d/m/Y" }}</td>
             <td data-label="Concepto">{{ c.descripcion }}
-              <div class="small text-muted">{% if c.profesional %}{{ c.profesional }} · {% endif %}{% if c.exonerado %}Exonerado · {% endif %}{% if c.descuento_usd %}Desc. {{ c.descuento_usd|usd }} · {% endif %}<span class="badge {% if c.estado == 'PAGADO' %}text-bg-success{% elif c.estado == 'PARCIAL' %}text-bg-info{% elif c.estado == 'ANULADO' %}text-bg-secondary{% else %}text-bg-warning{% endif %}">{{ c.get_estado_display }}</span></div></td>
+              <div class="small text-muted">{% if c.profesional and c.profesional.tenant_id == c.tenant_id %}{{ c.profesional }} · {% endif %}{% if c.exonerado %}Exonerado · {% endif %}{% if c.descuento_usd %}Desc. {{ c.descuento_usd|usd }} · {% endif %}{% if linea.revision %}<span class="badge text-bg-warning">En revisión</span> {% if c.invalido %}Atención anulada{% endif %}
+                {% else %}<span class="badge {% if c.estado == 'PAGADO' %}text-bg-success{% elif c.estado == 'PARCIAL' %}text-bg-info{% elif c.estado == 'ANULADO' %}text-bg-secondary{% else %}text-bg-warning{% endif %}">{{ c.get_estado_display }}</span>{% endif %}</div></td>
             <td data-label="Monto" class="text-end">{{ c.monto_usd|usd }}{% if c.monto_bs %}<div class="small text-muted">{{ c.monto_bs|bs }}</div>{% endif %}</td>
-            <td data-label="Saldo" class="text-end">{{ c.saldo_usd|usd }}</td>
+            <td data-label="Saldo" class="text-end">{{ linea.saldo|usd }}{% if linea.pagado %}<div class="small text-muted">Aplicado {{ linea.pagado|usd }}</div>{% endif %}</td>
             <td class="text-end">{% if c.estado == 'PENDIENTE' %}
               <form method="post" action="{% url 'cobros:cargo_anular' c.pk %}" onsubmit="var m=prompt('Motivo de la anulación');if(!m)return false;this.motivo.value=m;">{% csrf_token %}<input type="hidden" name="motivo"><button class="btn btn-link btn-sm text-danger p-0" title="Anular cargo"><i class="bi bi-x-circle"></i></button></form>{% endif %}</td>
           </tr>
-        {% empty %}<tr><td colspan="5" class="text-muted text-center py-3">Sin cargos.</td></tr>{% endfor %}</tbody>
+        {% endwith %}{% empty %}<tr><td colspan="5" class="text-muted text-center py-3">Sin cargos.</td></tr>{% endfor %}</tbody>
       </table></div>
     </div>
     <div class="card">
@@ -72,7 +74,7 @@
             <td data-label="Método">{{ p.get_metodo_display }}{% if p.referencia %} · {{ p.referencia }}{% endif %}
               {% if p.anulado %}<div class="small">Anulado: {{ p.motivo_anulacion }}</div>{% endif %}</td>
             <td data-label="Monto" class="text-end">{% if p.moneda == 'BS' %}{{ p.monto|bs }}<div class="small text-muted">tasa {{ p.tasa_ref }} {{ p.tasa|floatformat:"2g" }}</div>{% else %}{{ p.monto|usd }}{% endif %}</td>
-            <td data-label="USD" class="text-end">{{ p.monto_usd|usd }}</td>
+            <td data-label="USD" class="text-end">{{ p.monto_usd|usd }}{% if p.revision %}<div class="small">Aplicaciones en revisión</div>{% elif p.sin_aplicar %}<div class="small">Sin aplicar {{ p.sin_aplicar|usd }}</div>{% endif %}</td>
             <td class="text-end text-nowrap"><a href="{% url 'documentos:recibo' p.pk %}" target="_blank" data-pdf class="btn btn-link btn-sm p-0 me-2" title="Recibo"><i class="bi bi-receipt"></i></a>{% if not p.anulado %}
               <form method="post" class="d-inline" action="{% url 'cobros:pago_anular' p.pk %}" onsubmit="var m=prompt('Motivo de la anulación');if(!m)return false;this.motivo.value=m;">{% csrf_token %}<input type="hidden" name="motivo"><button class="btn btn-link btn-sm text-danger p-0" title="Anular pago"><i class="bi bi-x-circle"></i></button></form>{% endif %}</td>
           </tr>

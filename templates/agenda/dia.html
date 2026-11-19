@@ -33,10 +33,16 @@
     <div class="d-flex flex-column gap-2">{% for c in cumpleanos %}
       <div class="d-flex align-items-center justify-content-between gap-2">
         <span><a href="{% url 'pacientes:detalle' c.paciente.pk %}" class="fw-semibold text-decoration-none">{{ c.paciente.nombre_completo }}</a> <span class="small text-muted">{{ c.edad }} año{{ c.edad|pluralize }}</span></span>
-        {% if c.url %}<a href="{{ c.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-success text-nowrap" title="Felicitar{% if c.para %} a {{ c.para.nombre }}{% endif %} por WhatsApp"><i class="bi bi-whatsapp me-1"></i>Felicitar</a>
-        {% else %}<span class="badge text-bg-light border">Sin teléfono</span>{% endif %}
+        {% if 'agenda.gestionar' in permisos %}
+          {% url 'agenda:contacto_cumpleanos' c.paciente.pk fecha|date:'Y-m-d' as recordatorio %}
+          {% include 'agenda/_whatsapp.html' with etiqueta='Felicitar' recordatorio=recordatorio csrf_token=csrf_token only %}
+        {% endif %}
       </div>{% endfor %}</div>
   </div></div>
+  {% endif %}
+
+  {% if sugerencias_inactividad %}
+    {% include 'agenda/_sugerencias_inactividad.html' %}
   {% endif %}
 
   {% if con_hora %}<div class="d-flex flex-column gap-2 mb-3">{% for c in con_hora %}{% include 'agenda/_cita_tarjeta.html' %}{% endfor %}</div>{% endif %}
@@ -105,4 +111,5 @@ document.getElementById('modal-atender').addEventListener('show.bs.modal', funct
   if (fs) fs.action = '/agenda/citas/' + b.dataset.cita + '/estado/';
 });
 </script>
+{% include 'agenda/_modal_cobro.html' %}
 {% endblock %}

@@ -1,9 +1,12 @@
 from django import forms
+from django.db.models import Q
 
+from apps.cobros.models import Servicio
 from apps.core.forms import FormBase, validar_unico_en_tenant
 from apps.equipo.models import PerfilProfesional
 from apps.pacientes.models import Paciente
 
+from . import servicios_previstos as previstos
 from .models import Bloqueo, Cita, HorarioAtencion, TipoCita
 
 FECHA = forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d')
@@ -24,6 +27,9 @@ class CitaForm(FormBase, forms.ModelForm):
     paciente = forms.ModelChoiceField(queryset=Paciente.objects.none(), widget=forms.HiddenInput,
                                       error_messages={'required': 'Elige el paciente.'})
     profesional = ProfesionalChoice(label='Profesional', queryset=PerfilProfesional.objects.none())
+    servicios = forms.ModelMultipleChoiceField(queryset=Servicio.objects.none(), required=False)
+    servicios_presentes = forms.BooleanField(required=False, widget=forms.HiddenInput, initial=True)
+    version_cita = forms.DateTimeField(required=False, widget=forms.HiddenInput)
     sobrecupo = forms.BooleanField(label='Sobrecupo (agendar aunque ya haya otra cita a esa hora)', required=False)
 
     class Meta:
@@ -37,7 +43,20 @@ class CitaForm(FormBase, forms.ModelForm):
         self.fields['paciente'].queryset = Paciente.objects.filter(activo=True)
         # solo: el médico que solo ve su agenda (ADR-064) agenda únicamente para sí
         self.fields['profesional'].queryset = profesionales_activos().filter(pk=solo.pk) if solo else profesionales_activos()
-        self.fields['tipo'].queryset = TipoCita.objects.filter(activo=True)
+        self.fields['tipo'].queryset = TipoCita.objects.filter(Q(activo=True) | Q(pk=self.instance.tipo_id))
+        self.plan_bloqueado = self.instance.pk and previstos.plan_bloqueado(self.instance)
+        self.plan_explicito = self.instance.servicios_explicitos
+        if self.instance.pk:
+            self.initial['version_cita'] = self.instance.actualizado_en.isoformat()
+        lineas = previstos.lineas_de(self.instance) if self.instance.pk else []
+        self.lineas_actuales = {linea.servicio_id: linea for linea in lineas}
+        self.fields['servicios'].queryset = Servicio.objects.filter(Q(activo=True) | Q(pk__in=self.lineas_actuales))
+        self.initial['servicios'] = list(self.lineas_actuales)
+        self.especialidades_profesionales = dict(self.fields['profesional'].queryset.values_list('pk', 'especialidad_id'))
+        self.predeterminados_tipo = {
+            tipo.pk: [tipo.servicio_id, tipo.especialidad_id]
+            for tipo in self.fields['tipo'].queryset if tipo.servicio_id
+        }
         self.fields['lugar'].queryset = self.fields['lugar'].queryset.filter(activo=True)
         self.fields['lugar'].required = False
         self.fields['tipo'].required = False
@@ -52,6 +71,23 @@ class CitaForm(FormBase, forms.ModelForm):
             self.solo_un_profesional = True
         else:
             self.solo_un_profesional = False
+
+
+    def opciones_servicios(self):
+        seleccion = {str(pk) for pk in self['servicios'].value() or ()}
+        especialidades = self.especialidades_profesionales.values()
+        opciones = self.fields['servicios'].queryset.filter(
+            Q(especialidad__isnull=True) | Q(especialidad_id__in=especialidades) | Q(pk__in=self.lineas_actuales))
+        for servicio in opciones:
+            linea = self.lineas_actuales.get(servicio.pk)
+            yield {'servicio': servicio, 'marcado': str(servicio.pk) in seleccion,
+                   'nombre': linea.nombre if linea else servicio.nombre,
+                   'precio': linea.precio_usd if linea else servicio.precio_usd}
+
+    def ids_servicios(self):
+        if self.cleaned_data['servicios_presentes'] or self.cleaned_data['servicios']:
+            return [servicio.pk for servicio in self.cleaned_data['servicios']]
+        return None
 
 
 class HorarioForm(FormBase, forms.ModelForm):
@@ -116,3 +152,7 @@ class BloqueoForm(FormBase, forms.ModelForm):
         if datos.get('desde') and datos.get('hasta') and datos['hasta'] <= datos['desde']:
             self.add_error('hasta', 'Debe ser posterior al inicio.')
         return datos
+
+
+class MensajeInactividadForm(FormBase, forms.Form):
+    mensaje = forms.CharField(label='Mensaje', max_length=1000, widget=forms.Textarea(attrs={'rows': 4}))

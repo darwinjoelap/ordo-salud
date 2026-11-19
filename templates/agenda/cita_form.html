@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block contenido %}
 <a href="{% if cita %}{% url 'agenda:cita' cita.pk %}{% else %}{% url 'agenda:dia' %}{% endif %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> {% if cita %}Cita{% else %}Agenda{% endif %}</a>
 <h1 class="h4 mt-1">{{ titulo }}</h1>
 <form method="post" class="card card-body" style="max-width:820px">{% csrf_token %}
   {% for e in form.non_field_errors %}<div class="alert alert-danger py-1 small">{{ e }}</div>{% endfor %}
-  {{ form.paciente }}
+  {{ form.paciente }}{{ form.version_cita }}
   <label class="form-label">Paciente <span class="text-danger">*</span></label>
   <div id="paciente-elegido" class="mb-2 {% if not paciente %}d-none{% endif %}">
     <span class="os-chip fs-6"><i class="bi bi-person"></i> <span id="paciente-nombre">{{ paciente.nombre_completo }}</span></span>
@@ -20,6 +21,7 @@
   <div class="row g-2">
     <div class="col-md-6 {% if form.solo_un_profesional and not form.profesional.errors %}d-none{% endif %}">{% include 'partials/campo.html' with campo=form.profesional %}</div>
     <div class="col-md-6">{% include 'partials/campo.html' with campo=form.tipo %}</div>
+    <div class="col-12">{% include 'agenda/_servicios_previstos.html' %}</div>
     <div class="col-6 col-md-3">{% include 'partials/campo.html' with campo=form.fecha %}</div>
     <div class="col-6 col-md-3">{% include 'partials/campo.html' with campo=form.hora_inicio %}</div>
     <div class="col-md-6">{% include 'partials/campo.html' with campo=form.lugar %}</div>
@@ -34,6 +36,9 @@
 </form>
 {% endblock %}
 {% block extra_js %}
+{{ form.especialidades_profesionales|json_script:"profesionales-servicios" }}
+{{ form.predeterminados_tipo|json_script:"tipos-servicios" }}
+<script src="{% static 'js/servicios_previstos.js' %}" defer></script>
 <script>
 (function () {
   const oculto = document.getElementById('id_paciente');

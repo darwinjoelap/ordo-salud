@@ -19,8 +19,10 @@ URL_BCV = 'https://www.bcv.org.ve/'
 CLAVE_CACHE = 'ordo:tasa_vigente'
 
 
-def tasa_global():
+def tasa_global(*, sin_cache=False):
     """Última tasa BCV/plataforma (cacheada 5 min). None si no hay ninguna."""
+    if sin_cache:
+        return TasaCambio.objects.order_by('-fecha').first()
     tasa = cache.get(CLAVE_CACHE)
     if tasa is None:
         tasa = TasaCambio.objects.order_by('-fecha').first() or False
@@ -32,8 +34,10 @@ def _clave_tenant(tenant_id):
     return f'{CLAVE_CACHE}:tenant:{tenant_id}'
 
 
-def tasa_del_tenant(tenant):
+def tasa_del_tenant(tenant, *, sin_cache=False):
     """Última tasa cargada a mano por el consultorio (cacheada). None si no tiene."""
+    if sin_cache:
+        return TasaTenant.todos.filter(tenant=tenant).order_by('-fecha').first()
     clave = _clave_tenant(tenant.pk)
     tasa = cache.get(clave)
     if tasa is None:
@@ -59,15 +63,21 @@ def _con_valor(tasa, moneda, pedida):
     return t
 
 
-def tasa_vigente(tenant=None):
+def tasa_vigente(tenant=None, *, sin_cache=False):
     """
     Tasa que usa el consultorio: la más reciente entre la global y la suya; si son del mismo día, la suya.
     Sin tenant (plataforma, comandos), la global. Devuelve una copia con `.valor` (Bs por la divisa elegida por el
     consultorio), `.moneda` ('USD'/'EUR') y `.sin_euro` (eligió euro pero no hay tasa en euros: se usa el dólar).
     """
-    pedida = referencia(tenant)
-    global_ = tasa_global()
-    propia = tasa_del_tenant(tenant) if tenant is not None else None
+    if sin_cache and tenant is not None:
+        from apps.configuracion.models import ConfiguracionTenant
+
+        pedida = (ConfiguracionTenant.objects.filter(tenant=tenant)
+                  .values_list('tasa_referencia', flat=True).first() or 'USD')
+    else:
+        pedida = referencia(tenant)
+    global_ = tasa_global(sin_cache=sin_cache)
+    propia = tasa_del_tenant(tenant, sin_cache=sin_cache) if tenant is not None else None
     candidatas = [t for t in (propia, global_) if t]          # propia primero: gana a igual fecha
     if pedida == 'EUR':
         con_euro = [t for t in candidatas if t.bs_por_eur]

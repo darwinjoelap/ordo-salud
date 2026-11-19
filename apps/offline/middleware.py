@@ -7,7 +7,6 @@ Solo actúa en POST con `_idem_key` (o header X-Idempotency-Key), que agrega off
 - Con X-Offline-Form (fetch de offline.js) las redirecciones vuelven como JSON {ok, redirect}.
 - Sesión vencida → 401 {login: true}; clave aún en proceso → 409.
 - Respuestas 200 (errores de formulario), 4xx y 5xx liberan la clave para poder reintentar.
-- GET con X-Offline-Prefetch (precarga): no consume los mensajes pendientes del usuario.
 """
 import re
 from datetime import timedelta
@@ -17,6 +16,7 @@ from django.contrib import messages
 from django.db import IntegrityError, transaction
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import resolve_url
+from django.urls import Resolver404, resolve
 from django.utils import timezone
 
 from .models import SolicitudIdempotente
@@ -25,6 +25,24 @@ CLAVE_RE = re.compile(r'^[A-Za-z0-9-]{8,64}$')
 HEADER_OFFLINE = 'HTTP_X_OFFLINE_FORM'
 MINUTOS_PROCESANDO = 2
 DIAS_RETENCION = 7
+
+
+class ContencionOfflineMiddleware:
+    """Intercepta el protocolo de la cola antes de redirecciones, permisos y recibos previos."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.method == 'POST' and request.META.get(HEADER_OFFLINE) == '1':
+            try:
+                destino = resolve(request.path_info)
+            except Resolver404:
+                destino = None
+            if destino and destino.func.__module__.startswith('apps.'):
+                # El cliente conserva el elemento como error y solo lo reintenta manualmente.
+                return JsonResponse({'estado': 'revision_necesaria'}, status=403)
+        return self.get_response(request)
 
 
 def _clave(request):
@@ -56,18 +74,24 @@ class IdempotenciaMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.method == 'GET' and request.META.get('HTTP_X_OFFLINE_PREFETCH'):
-            response = self.get_response(request)
-            storage = getattr(request, '_messages', None)
-            if storage is not None:       # la precarga no "gasta" los mensajes del usuario
-                storage.used = False
-                storage._queued_messages = []
-                storage.added_new = False
-            return response
         if request.method != 'POST':
             return self.get_response(request)
         clave = _clave(request)
         if not clave:
+            return self.get_response(request)
+
+        # Estas operaciones verifican el intento dentro de la vista con permisos y contexto actuales.
+        # Un recibo de navegación antiguo no puede sustituir esa comprobación.
+        try:
+            ruta = resolve(request.path_info)
+        except Resolver404:
+            ruta = None
+        if ruta and ruta.view_name in (
+                'agenda:recordatorio', 'agenda:contacto_cumpleanos', 'agenda:recordatorio_inactividad',
+                'agenda:cobrar_cita'):
+            return self.get_response(request)
+        if ruta and ruta.view_name == 'clinica:consulta_nueva' and request.POST.get('independiente') == '1':
+            # H1 comprueba la firma ligada a este usuario, consultorio, perfil y paciente.
             return self.get_response(request)
 
         user = getattr(request, 'user', None)

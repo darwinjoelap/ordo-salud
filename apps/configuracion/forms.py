@@ -12,7 +12,8 @@ GRUPOS = {
     'historia': ('Historia clínica', ['visibilidad_historia', 'medicos_ven_todos_pacientes', 'observaciones_visibles',
                                          'horas_edicion_consulta',
                                          'formula_sc']),
-    'agenda': ('Agenda', ['hora_inicio_agenda', 'hora_fin_agenda', 'duracion_cita_min']),
+    'agenda': ('Agenda', ['hora_inicio_agenda', 'hora_fin_agenda', 'duracion_cita_min',
+                          'recordatorio_sin_consulta_meses']),
     'cobros': ('Cobros', ['tasa_referencia']),
 }
 
@@ -37,6 +38,9 @@ class ConfiguracionForm(FormBase, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from . import whatsapp
+        self.fields['recordatorio_sin_consulta_meses'].help_text = (
+            'Sugiere un recordatorio al superar el plazo desde la última asistencia clínica. 0 = desactivar.'
+        )
         if not (self.instance.plantilla_whatsapp or '').strip():
             self.initial['plantilla_whatsapp'] = whatsapp.PLANTILLA
 

@@ -70,6 +70,6 @@ que hereda `TenantModel`. La sección del módulo solo lo edita/muestra.
 - [ ] Plantillas iniciales razonables (revisadas con un médico de la especialidad)
 - [ ] Documentos PDF propios con encabezado del tenant y firma del profesional
 - [ ] Reportes propios registrados (si aplica)
-- [ ] Páginas offline nuevas agregadas a `PAGINAS_OFFLINE` del `sw.js` (si aplica)
+- [ ] Las páginas del módulo requieren red. Solo sus recursos estáticos públicos pueden incluirse en la precarga de la PWA.
 - [ ] Esquemas listos para el dictado (etiquetas claras, unidades declaradas)
 - [ ] Entrada en `DECISIONES.md` y fase cerrada en `HISTORIAL.md`

@@ -35,3 +35,10 @@ class BaseTest(TestCase):
 
     def en_tenant(self, tenant=None):
         return usando_tenant(tenant or self.tenant)
+
+    def iniciar_independiente(self, paciente, datos, *, cliente=None):
+        cliente = cliente or self.cliente
+        url = f'/pacientes/{paciente.pk}/consultas/nueva/'
+        formulario = cliente.get(url, {'independiente': '1'})
+        intento = formulario.context['intento'] if formulario.status_code == 200 else ''
+        return cliente.post(url, {**datos, 'independiente': '1', 'intento': intento})
