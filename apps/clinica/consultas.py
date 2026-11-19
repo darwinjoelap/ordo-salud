@@ -428,6 +428,9 @@ def faltantes(consulta):
     evaluacion = getattr(consulta, 'preoperatorio', None)
     if evaluacion:
         salida.extend(preoperatorio.faltantes(evaluacion))
+        valoracion = preoperatorio.valoracion_actual(evaluacion)
+        if valoracion and not valoracion.datos.get('validada'):
+            salida.append('Validar la conclusión preoperatoria')
     return salida
 
 

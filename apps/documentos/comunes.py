@@ -1,6 +1,6 @@
 """Documentos comunes a todas las especialidades (Fase 10)."""
 from . import forms
-from .generadores import clinicos, historia, recibo, recipe
+from .generadores import clinicos, historia, preoperatorio, recibo, recipe
 from .registro import DocumentoDef, registrar
 
 RECIPE = registrar(DocumentoDef('recipe', 'Récipe e indicaciones', prefijo='RCP', generar=recipe.generar,
@@ -23,3 +23,8 @@ HISTORIA = registrar(DocumentoDef('historia', 'Historia clínica completa', pref
                                   descripcion='Datos, antecedentes, fichas y consultas, para entregar o archivar.'))
 RECIBO = registrar(DocumentoDef('recibo', 'Recibo de pago', prefijo='RCB', generar=recibo.generar,
                                 icono='bi-receipt', orden=90, extra={'interno': True}))
+
+INFORME_PREOPERATORIO = registrar(DocumentoDef(
+    preoperatorio.CODIGO_INFORME, 'Informe de evaluación preoperatoria', prefijo='PRE',
+    generar=preoperatorio.generar, requiere_consulta=True, extra={'interno': True},
+))

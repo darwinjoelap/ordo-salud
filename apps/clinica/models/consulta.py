@@ -244,6 +244,54 @@ class Adjunto(TenantModel, Auditable):
         return self.nombre
 
 
+class ValoracionPreoperatoria(TenantModel, Auditable):
+    """Versión de la valoración manual. Cada guardado clínico agrega una versión."""
+
+    evaluacion = models.ForeignKey(EvaluacionPreoperatoria, on_delete=models.PROTECT, related_name='valoraciones')
+    datos = models.JSONField(default=dict)
+    motivo_enmienda = models.CharField(max_length=300, blank=True)
+
+    class Meta(TenantModel.Meta):
+        ordering = ['-pk']
+
+
+class EstudioPreoperatorio(TenantModel):
+    class Tipo(models.TextChoices):
+        LABORATORIO = 'LAB', 'Laboratorio'
+        ECG = 'ECG', 'ECG'
+        RADIOGRAFIA = 'RX', 'Radiografía'
+        OTRO = 'OTRO', 'Otro estudio'
+
+    valoracion = models.ForeignKey(ValoracionPreoperatoria, on_delete=models.PROTECT, related_name='estudios')
+    tipo = models.CharField(max_length=4, choices=Tipo.choices)
+    fecha = models.DateField(null=True, blank=True)
+    resultado = models.TextField(max_length=3000)
+    observaciones = models.TextField(max_length=2000, blank=True)
+    adjuntos = models.ManyToManyField(Adjunto, blank=True, related_name='+')
+
+    class Meta(TenantModel.Meta):
+        ordering = ['pk']
+
+
+class InformePreoperatorio(TenantModel):
+    """Copias emitidas, con y sin firma, protegidas por el acceso a DocumentoEmitido."""
+
+    evaluacion = models.ForeignKey(EvaluacionPreoperatoria, on_delete=models.PROTECT, related_name='informes')
+    documento = models.OneToOneField('documentos.DocumentoEmitido', on_delete=models.PROTECT,
+                                      related_name='informe_preoperatorio')
+    revision = models.PositiveIntegerField()
+    fuente = models.CharField(max_length=80)
+    pdf_firmado = models.BinaryField(editable=False)
+    pdf_sin_firma = models.BinaryField(editable=False)
+
+    class Meta(TenantModel.Meta):
+        ordering = ['-revision']
+        constraints = [
+            models.UniqueConstraint(fields=['evaluacion', 'revision'], name='preoperatorio_informe_revision_unica'),
+            models.UniqueConstraint(fields=['evaluacion', 'fuente'], name='preoperatorio_informe_fuente_unica'),
+        ]
+
+
 class NotaEvolucion(TenantModel, Auditable):
     """Nota corta con fecha agregada a una consulta (también cerrada): «Se entrega Holter con resultado normal…».
     No cambia la consulta: sale al pie del informe y en la historia."""

@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block contenido %}
+<a href="{% url 'clinica:consulta' consulta.pk %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> Consulta</a>
+<h1 class="h4 my-2">{% if enmienda %}Enmendar valoración preoperatoria{% else %}Valoración preoperatoria{% endif %}</h1>
+<p class="text-muted">{{ consulta.paciente }} · {{ consulta.fecha_hora|date:"d/m/Y" }}</p>
+
+<form method="post" data-offline="off" autocomplete="off">
+  {% csrf_token %}
+  {{ form.version }}
+  {% for error in form.version.errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+  {% for error in form.non_field_errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+  {% if enmienda %}
+    <div class="card card-body mb-3">{% include 'partials/campo.html' with campo=form.motivo_enmienda %}</div>
+  {% endif %}
+
+  <section class="card mb-3">
+    <h2 class="h6 card-header">Estudios complementarios</h2>
+    <div class="card-body">
+      {{ estudios.management_form }}
+      {{ estudios.non_form_errors }}
+      {% for estudio in estudios %}
+        <fieldset class="border rounded p-3 mb-2">
+          <legend class="float-none w-auto px-1 fs-6">{{ estudio.initial.tipo|yesno:"Estudio,Agregar estudio" }}</legend>
+          {{ estudio.non_field_errors }}
+          <div class="row g-2">
+            <div class="col-sm-6">{% include 'partials/campo.html' with campo=estudio.tipo %}</div>
+            <div class="col-sm-6">{% include 'partials/campo.html' with campo=estudio.fecha %}</div>
+            <div class="col-12">{% include 'partials/campo.html' with campo=estudio.resultado %}</div>
+            <div class="col-12">{% include 'partials/campo.html' with campo=estudio.observaciones %}</div>
+            {% if estudio.adjuntos.field.queryset.exists or estudio.adjuntos.errors %}
+              <div class="col-12">{% include 'partials/campo.html' with campo=estudio.adjuntos %}</div>
+            {% endif %}
+            {% if estudio.initial.tipo %}
+              <div class="col-12">{% include 'partials/campo.html' with campo=estudio.DELETE %}</div>
+            {% endif %}
+          </div>
+        </fieldset>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card mb-3">
+    <h2 class="h6 card-header">Clasificación ASA-PS</h2>
+    <div class="card-body row g-3">
+      <div class="col-12 small text-muted">Registra tu valoración clínica. La clasificación definitiva corresponde a anestesiología.</div>
+      <div class="col-md-6">{% include 'partials/campo.html' with campo=form.asa %}</div>
+      <div class="col-md-6 align-self-end">{% include 'partials/campo.html' with campo=form.asa_emergencia %}</div>
+      <div class="col-12">{% include 'partials/campo.html' with campo=form.asa_justificacion %}</div>
+      <div class="col-12">{% include 'partials/campo.html' with campo=form.asa_observaciones %}</div>
+    </div>
+  </section>
+
+  <section class="card mb-3">
+    <h2 class="h6 card-header">Capacidad funcional</h2>
+    <div class="card-body row g-3">
+      <div class="col-md-6">{% include 'partials/campo.html' with campo=form.mets_estado %}</div>
+      <div class="col-md-6">{% include 'partials/campo.html' with campo=form.mets %}</div>
+      <div class="col-md-6">{% include 'partials/campo.html' with campo=form.mets_metodo %}</div>
+      <div class="col-md-6">{% include 'partials/campo.html' with campo=form.mets_fecha %}</div>
+      <div class="col-12">{% include 'partials/campo.html' with campo=form.mets_observaciones %}</div>
+    </div>
+  </section>
+
+  <section class="card mb-3">
+    <h2 class="h6 card-header">Conclusiones y recomendaciones</h2>
+    <div class="card-body row g-3">
+      <div class="col-12">{% include 'partials/campo.html' with campo=form.riesgos %}</div>
+      <div class="col-12">{% include 'partials/campo.html' with campo=form.recomendaciones %}</div>
+      <div class="col-12">{% include 'partials/campo.html' with campo=form.pendientes %}</div>
+      <div class="col-12">{% include 'partials/campo.html' with campo=form.optimizacion %}</div>
+      <div class="col-12">{% include 'partials/campo.html' with campo=form.equipo_quirurgico %}</div>
+      <div class="col-12">{% include 'partials/campo.html' with campo=form.conclusion %}</div>
+      <div class="col-12">{% include 'partials/campo.html' with campo=form.validada %}</div>
+    </div>
+  </section>
+  <div class="d-flex gap-2 flex-wrap">
+    <button class="btn btn-primary">{% if enmienda %}Registrar enmienda{% else %}Guardar valoración{% endif %}</button>
+    {% if not enmienda %}<button name="continuar" value="estudios" class="btn btn-outline-secondary">Guardar y agregar otro estudio</button>{% endif %}
+  </div>
+</form>
+{% endblock %}

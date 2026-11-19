@@ -1,4 +1,5 @@
 """Consulta clínica: abrir, llenar con la plantilla, cerrar, enmendar, anular, imprimir y adjuntos (Fase 07)."""
+from datetime import date
 from uuid import UUID, uuid4
 
 from django.contrib import messages
@@ -226,6 +227,8 @@ def nueva(request, paciente_pk, *, es_preoperatoria=False):
                 messages.warning(request, 'Guardada, pero no se cerró. Falta: ' + ', '.join(srv.faltantes(creada)))
             else:
                 messages.success(request, 'Consulta guardada.')
+            if es_preoperatoria and accion == 'valorar':
+                return redirect('clinica:preoperatorio_valorar', pk=creada.pk)
             return redirect('clinica:consulta_editar', pk=creada.pk)
         messages.error(request, 'Revisa los campos marcados en rojo; no se guardó nada.')
     from .selectors import consultas_visibles
@@ -278,6 +281,8 @@ def editar(request, pk):
                 messages.success(request, 'Consulta cerrada.')
                 return redirect('clinica:consulta', pk=pk)
             messages.success(request, 'Consulta guardada.')
+            if evaluacion and request.POST.get('accion') == 'valorar':
+                return redirect('clinica:preoperatorio_valorar', pk=pk)
             return redirect('clinica:consulta_editar', pk=pk)
         messages.error(request, 'Revisa los campos marcados en rojo; no se guardó nada.')
     from .selectors import consultas_visibles
@@ -313,17 +318,36 @@ def detalle(request, pk):
     lectura = srv.lectura(consulta)
     con_datos = {item['seccion_id'] for item, _ in lectura}
     evaluacion = getattr(consulta, 'preoperatorio', None)
-    puede_continuar = _es_autor(request, consulta)
+    es_autor = _es_autor(request, consulta)
+    datos_preoperatorios = {}
     if evaluacion:
-        puede_continuar = puede_continuar and puede_usar_preoperatorio(request.membresia)
+        valoracion = preoperatorio.valoracion_actual(evaluacion)
+        puede_valorar = preoperatorio.puede_valorar(request.membresia, consulta)
+        estudios = []
+        if valoracion:
+            visibles = set(preoperatorio.adjuntos_visibles(consulta, request.membresia).values_list('pk', flat=True))
+            estudios = [(e, [a for a in e.adjuntos.all() if a.pk in visibles])
+                        for e in valoracion.estudios.prefetch_related('adjuntos')]
+        fecha_mets = valoracion.datos.get('mets_fecha') if valoracion else None
+        datos_preoperatorios = {
+            'fecha_mets': date.fromisoformat(fecha_mets) if fecha_mets else None, 'valoracion': valoracion, 'estudios_preoperatorios': estudios, 'puede_valorar': puede_valorar,
+            'puede_emitir_preoperatorio': puede_valorar and consulta.estado == Consulta.Estado.CERRADA
+            and valoracion and valoracion.datos.get('validada'),
+            'estado_mets': dict(preoperatorio.ESTADOS_METS).get(valoracion.datos.get('mets_estado')) if valoracion else '',
+            'informes_preoperatorios': evaluacion.informes.select_related('documento').defer('pdf_firmado', 'pdf_sin_firma'),
+            'enmiendas_preoperatorias': evaluacion.valoraciones.exclude(motivo_enmienda='')
+            .select_related('creado_por').defer('datos'),
+        }
     return render(request, 'clinica/consulta.html', {
         'titulo': f'Consulta · {consulta.paciente}', 'consulta': consulta, 'lectura': lectura,
         'vacias': [i for i in consulta.estructura if i['seccion_id'] not in con_datos],
-        'es_autor': _es_autor(request, consulta),
+        'es_autor': es_autor,
         've_observacion': observaciones.puede_ver(request.membresia) and (
             request.tenant.configuracion.observaciones_visibles == 'TODOS' or _es_autor(request, consulta)),
         'enmiendas': consulta.enmiendas.select_related('seccion', 'creado_por'),
-        'evaluacion_preoperatoria': evaluacion, 'puede_continuar': puede_continuar,
+        'evaluacion_preoperatoria': evaluacion,
+        'puede_continuar': datos_preoperatorios.get('puede_valorar', es_autor),
+        **datos_preoperatorios,
         'adjuntos': consulta.adjuntos.all(), 'notas': consulta.notas_evolucion.select_related('creado_por'),
         'hoy': timezone.localdate()})
 

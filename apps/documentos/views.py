@@ -8,6 +8,7 @@ from django.views.decorators.http import require_POST
 
 from apps.clinica.consultas import puede_ver
 from apps.clinica.models import Consulta
+from apps.clinica.preoperatorio import CODIGO_INFORME
 from apps.core import auditoria
 from apps.core.pdf import respuesta_pdf
 from apps.core.permisos import requiere, tiene_permiso
@@ -32,6 +33,13 @@ def _puede_ver_documento(request, doc):
         return tiene_permiso(request, 'cobros.gestionar')
     if not tiene_permiso(request, 'historia.ver'):
         return False
+    if doc.tipo == CODIGO_INFORME:
+        from apps.pacientes.selectors import puede_ver_paciente
+
+        return (doc.consulta_id is not None and doc.consulta.tenant_id == doc.tenant_id
+                and doc.consulta.paciente_id == doc.paciente_id
+                and puede_ver_paciente(request.membresia, doc.paciente)
+                and puede_ver(request.membresia, doc.consulta))
     return doc.consulta is None or puede_ver(request.membresia, doc.consulta)
 
 

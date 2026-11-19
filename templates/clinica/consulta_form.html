@@ -78,6 +78,7 @@
   <div class="os-barra-acciones d-flex gap-2 justify-content-end flex-wrap">
     {% if faltan %}<span class="small text-muted me-auto align-self-center">Para cerrar falta: {{ faltan|join:", " }}</span>{% endif %}
     <button name="accion" value="guardar" class="btn btn-outline-primary"><i class="bi bi-save me-1"></i>Guardar</button>
+    {% if form_cirugia %}<button name="accion" value="valorar" class="btn btn-outline-primary">Guardar y completar valoración</button>{% endif %}
     <button name="accion" value="cerrar" class="btn btn-primary" onclick="return confirm('Al cerrar, la consulta ya no se edita (solo con enmiendas). ¿Cerrar?')"><i class="bi bi-lock me-1"></i>Guardar y cerrar</button>
   </div>
 </form>

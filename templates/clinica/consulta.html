@@ -42,6 +42,77 @@
     </div>
   </section>
   {% endwith %}
+  <section class="card os-seccion mb-2">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center gap-2 flex-wrap">
+      <h2 class="h6 mb-0">Valoración preoperatoria</h2>
+      {% if puede_valorar %}
+        <a href="{% url 'clinica:preoperatorio_valorar' consulta.pk %}" class="btn btn-sm btn-outline-primary">
+          {% if consulta.editable %}Registrar o editar valoración{% else %}Enmendar valoración{% endif %}
+        </a>
+      {% endif %}
+    </div>
+    <div class="card-body small">
+      {% if valoracion %}
+        {% with v=valoracion.datos %}
+          <h3 class="h6">Estudios complementarios</h3>
+          {% for estudio, adjuntos_visibles in estudios_preoperatorios %}
+            <div class="mb-2">
+              <b>{{ estudio.get_tipo_display }}</b>{% if estudio.fecha %} · {{ estudio.fecha|date:"d/m/Y" }}{% endif %}
+              <div>{{ estudio.resultado|linebreaksbr }}</div>
+              {% if estudio.observaciones %}<div class="text-muted">{{ estudio.observaciones|linebreaksbr }}</div>{% endif %}
+              {% if adjuntos_visibles %}
+                <ul class="mb-0">{% for a in adjuntos_visibles %}
+                  <li><a href="{% url 'clinica:preoperatorio_adjunto' consulta.pk a.pk %}" target="_blank">{{ a.nombre }}</a></li>
+                {% endfor %}</ul>
+              {% endif %}
+            </div>
+          {% empty %}<p class="text-muted">Sin estudios consignados.</p>{% endfor %}
+          <dl class="row mb-2">
+            <dt class="col-sm-3">ASA-PS</dt><dd class="col-sm-9">
+              {% if v.asa %}ASA {{ v.asa }}{% if v.asa_emergencia %}E{% endif %}{% else %}No evaluada{% endif %}
+              {% if v.asa_justificacion %}<div>{{ v.asa_justificacion|linebreaksbr }}</div>{% endif %}
+              {% if v.asa_observaciones %}<div>{{ v.asa_observaciones|linebreaksbr }}</div>{% endif %}
+            </dd>
+            <dt class="col-sm-3">Capacidad funcional</dt><dd class="col-sm-9">
+              {{ estado_mets }}{% if v.mets %} · {{ v.mets }} METS{% endif %}{% if v.mets_metodo %} · {{ v.mets_metodo }}{% endif %}
+              {% if fecha_mets %} · {{ fecha_mets|date:"d/m/Y" }}{% endif %}
+              {% if v.mets_observaciones %}<div>{{ v.mets_observaciones|linebreaksbr }}</div>{% endif %}
+            </dd>
+            {% if v.riesgos %}<dt class="col-sm-3">Hallazgos y riesgos</dt><dd class="col-sm-9">{{ v.riesgos|linebreaksbr }}</dd>{% endif %}
+            {% if v.recomendaciones %}<dt class="col-sm-3">Recomendaciones</dt><dd class="col-sm-9">{{ v.recomendaciones|linebreaksbr }}</dd>{% endif %}
+            {% if v.pendientes %}<dt class="col-sm-3">Estudios e interconsultas</dt><dd class="col-sm-9">{{ v.pendientes|linebreaksbr }}</dd>{% endif %}
+            {% if v.optimizacion %}<dt class="col-sm-3">Optimización pendiente</dt><dd class="col-sm-9">{{ v.optimizacion|linebreaksbr }}</dd>{% endif %}
+            {% if v.equipo_quirurgico %}<dt class="col-sm-3">Cirugía y anestesiología</dt><dd class="col-sm-9">{{ v.equipo_quirurgico|linebreaksbr }}</dd>{% endif %}
+            {% if v.conclusion %}<dt class="col-sm-3">Conclusión clínica</dt><dd class="col-sm-9">{{ v.conclusion|linebreaksbr }}</dd>{% endif %}
+          </dl>
+          {% if v.validada %}<p class="mb-0 text-muted">Conclusión validada por {{ valoracion.creado_por.nombre_visible }} el {{ valoracion.creado_en|date:"d/m/Y" }}.</p>
+          {% else %}<p class="mb-0 text-muted">Conclusión pendiente de validación.</p>{% endif %}
+        {% endwith %}
+      {% else %}<p class="text-muted mb-0">Valoración pendiente de registro.</p>{% endif %}
+    </div>
+    {% if enmiendas_preoperatorias %}
+      <div class="card-body small border-top">
+        <h3 class="h6">Enmiendas de la valoración</h3>
+        <ul class="mb-0">{% for enmienda in enmiendas_preoperatorias %}
+          <li>{{ enmienda.creado_en|date:"d/m/Y" }} · {{ enmienda.creado_por.nombre_visible }} · {{ enmienda.motivo_enmienda }}</li>
+        {% endfor %}</ul>
+      </div>
+    {% endif %}
+    {% if informes_preoperatorios or puede_emitir_preoperatorio %}
+      <div class="card-body small border-top">
+        <h3 class="h6">Informe preoperatorio</h3>
+        {% if informes_preoperatorios %}<ul class="mb-2">{% for informe in informes_preoperatorios %}
+          <li><a href="{% url 'documentos:documento' informe.documento_id %}">Revisión {{ informe.revision }} · {{ informe.documento.numero }}</a>
+            · {{ informe.documento.fecha|date:"d/m/Y" }}{% if informe.documento.anulado %} · Anulado{% endif %}</li>
+        {% endfor %}</ul>{% endif %}
+        {% if puede_emitir_preoperatorio %}
+          <form method="post" action="{% url 'clinica:preoperatorio_emitir' consulta.pk %}" data-offline="off">
+            {% csrf_token %}<button class="btn btn-sm btn-outline-primary">Emitir informe PDF</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
 {% endif %}
 {% for item, filas in lectura %}
   <div class="card os-seccion {% if item.ambito == 'PACIENTE' %}os-ambito-paciente{% endif %} mb-2">
