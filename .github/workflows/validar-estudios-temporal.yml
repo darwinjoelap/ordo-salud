@@ -1,0 +1,43 @@
+name: Validar catálogo de estudios (temporal)
+on:
+  push:
+    branches: [feat/preoperatorio-estudios-catalogo-edad]
+permissions:
+  contents: read
+jobs:
+  catalogo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ordo_estudios
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ordo_estudios
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      SECRET_KEY: clave-pruebas-no-produccion
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      BASE_DOMAIN: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: python -m pip install --upgrade pip
+      - run: pip install -r requirements-dev.txt
+      - name: Syntax and models
+        run: |
+          python -m compileall -q apps/clinica apps/documentos tests
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+      - name: PostgreSQL targeted regressions
+        run: |
+          python manage.py test tests.test_catalogo_estudios tests.test_orden_estudios tests.test_preoperatorio_estudios_catalogo tests.test_escalas_preoperatorias tests.test_evaluacion_preoperatoria_etapa2 --noinput -v 2
