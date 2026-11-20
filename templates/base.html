@@ -106,21 +106,17 @@
       </div>
     {% endfor %}
     {% if user.is_authenticated and tenant %}
-      <details id="os-transicion-pwa" class="alert alert-warning py-2 mb-3">
-        <summary>Actualización de Ordo Salud. Revisa el trabajo pendiente antes de cerrar pestañas</summary>
-        <p data-estado="sin-indicios" hidden>No se detectaron indicios en los almacenes comprobados de este perfil.</p>
-        <p data-estado="borrador" hidden>Hay una clave de borrador pendiente de revisión.</p>
-        <p data-estado="outbox" hidden>Hay una cola anterior. Podría estar vacía.</p>
-        <p data-estado="precarga" hidden>Hay una marca de precarga.</p>
-        <p data-estado="otro" hidden>Hay un elemento anterior de formato desconocido.</p>
-        <p data-estado="paginas" hidden>Hay una caché histórica de páginas en este perfil.</p>
-        <p data-estado="dictado" hidden>Existe almacenamiento de dictado anterior. Su contenido está sin verificar.</p>
-        <p data-estado="incompleto" hidden>Inventario incompleto. Falta comprobar parte del almacenamiento.</p>
-        <p data-estado="inaccesible" hidden>Parte del almacenamiento es inaccesible.</p>
+      <section id="os-transicion-pwa" class="alert alert-warning alert-dismissible py-2 mb-3" hidden
+               aria-labelledby="os-transicion-titulo">
+        <h2 id="os-transicion-titulo" class="h6">Actualización de Ordo Salud</h2>
+        <button type="button" class="btn-close" data-os-cerrar-pendientes aria-label="Cerrar advertencia"></button>
+        <p data-estado="borrador" hidden>Este navegador conserva un borrador de formulario.</p>
+        <p data-estado="outbox" hidden>Este navegador conserva formularios en una cola anterior.</p>
+        <p data-estado="dictado" hidden>Este navegador conserva un dictado pendiente.</p>
         <p class="mb-0">Conserva el perfil y las pestañas antiguas abiertas. Evita reenviar formularios,
           cambiar de cuenta o usar sus enlaces de WhatsApp. Si pudo iniciarse un borrado de dictados,
           cerrar una pestaña podría completarlo. Consulta al responsable antes de cerrar o recargar.</p>
-      </details>
+      </section>
     {% endif %}
     <dialog id="os-pagina-restaurada" class="border rounded p-4 shadow">
       <h2 class="h5">Vuelve a comprobar tu sesión</h2>

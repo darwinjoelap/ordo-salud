@@ -3,84 +3,124 @@ const fs = require('node:fs');
 const test = require('node:test');
 const vm = require('node:vm');
 
-test('transición PWA conserva borrador, cola y dictado al activar el worker en otra pestaña', async () => {
-  const codigo = fs.readFileSync('static/js/pwa.js', 'utf8');
+function pantallaPwa(almacen, cantidadDictados = null) {
+  const eventos = {}, worker = {}, modal = {};
+  const estados = ['borrador', 'outbox', 'dictado'].map((estado) => ({dataset: {estado}, hidden: true}));
+  let cierres = 0, aperturas = 0, cerrarAviso, recargas = 0;
+  const aviso = {
+    hidden: true,
+    querySelectorAll: () => estados,
+    querySelector: () => ({addEventListener(_, fn) { cerrarAviso = fn; }}),
+  };
+  const indexedDB = {
+    databases: async () => cantidadDictados === null ? [] : [{name: 'ordo-dictado'}],
+    open(nombre) {
+      assert.equal(nombre, 'ordo-dictado');
+      aperturas++;
+      const apertura = {result: {
+        objectStoreNames: {contains: (nombre) => nombre === 'pendientes'},
+        transaction(almacen, modo) {
+          assert.equal(almacen, 'pendientes');
+          assert.equal(modo, 'readonly');
+          return {objectStore: () => ({count() {
+            const lectura = {result: cantidadDictados};
+            queueMicrotask(() => lectura.onsuccess());
+            return lectura;
+          }})};
+        },
+        close() { cierres++; },
+      }};
+      queueMicrotask(() => apertura.onsuccess());
+      return apertura;
+    },
+    deleteDatabase() { assert.fail('El aviso no debe borrar bases'); },
+  };
+  const dialogo = {
+    showModal() { this.open = true; },
+    addEventListener(evento, fn) { modal[evento] = fn; },
+    querySelector() { return {addEventListener(evento, fn) { modal[evento] = fn; }}; },
+  };
+  const navigator = {
+    userAgent: '', onLine: false,
+    serviceWorker: {addEventListener: (evento, fn) => { worker[evento] = fn; }},
+  };
+  vm.runInNewContext(fs.readFileSync('static/js/pwa.js', 'utf8'), {
+    navigator, location: {reload() { recargas++; }},
+    window: {
+      navigator, indexedDB, matchMedia: () => ({matches: false}),
+      caches: {keys() { assert.fail('Una caché hist?rica no indica trabajo pendiente'); }},
+      addEventListener: (evento, fn) => { eventos[evento] = fn; },
+    },
+    document: {
+      addEventListener() {},
+      getElementById: (id) => ({'os-transicion-pwa': aviso, 'os-pagina-restaurada': dialogo}[id]),
+    },
+    localStorage: {
+      get length() { return almacen.size; },
+      key: (i) => [...almacen.keys()][i],
+      getItem: (clave) => almacen.get(clave),
+      removeItem() { assert.fail('Cerrar el aviso no debe borrar datos'); },
+      clear() { assert.fail('El aviso no debe limpiar el almacenamiento'); },
+    },
+  });
+  return {eventos, worker, aviso, estados, dialogo, modal, cerrarAviso, recargas: () => recargas,
+    aperturas: () => aperturas, cierres: () => cierres};
+}
+
+test('aviso oculto en el HTML y con solo marcas, cola vacía o base de dictado vacía', async () => {
+  const plantilla = fs.readFileSync('templates/base.html', 'utf8');
+  assert.match(plantilla, /<section[^>]*id="os-transicion-pwa"[^>]*\bhidden\b/);
   const almacen = new Map([
-    ['ofl:ordo-salud:clinica:1:draft:/consulta/#form', '{"campos":[["nota","Sintética"]]}'],
-    ['ofl:ordo-salud:clinica:1:outbox', '[{"id":"sintetico","estado":"pendiente"}]'],
+    ['ofl:ordo-salud:clinica:1:precarga', '{}'],
+    ['ofl:omnis:clinica:1:otro', 'marca'],
+    ['ofl:omnis:clinica:1:outbox', '[null]'],
+    ['ofl:ordo-salud:clinica:1:outbox', '[]'],
+    ['ofl:ordo-salud:clinica:1:draft:/consulta/#form', '{"campos":[]}'],
   ]);
   const original = [...almacen];
-  const bases = [{name: 'ordo-dictado'}];
-  const dictado = new Map([['dictado:c1', new Uint8Array([1, 2, 3])]]);
-  let operacionesIDB = 0;
-  const indexedDB = {
-    databases: async () => bases,
-    open() { operacionesIDB++; },
-    deleteDatabase() { operacionesIDB++; dictado.clear(); },
-  };
-  function pestaña() {
-    const eventos = {}, worker = {}, modal = {};
-    const estados = ['borrador', 'inaccesible', 'incompleto', 'dictado', 'outbox', 'precarga', 'otro', 'paginas']
-      .map((estado) => ({dataset: {estado}, hidden: true}));
-    const aviso = {open: false, querySelectorAll: () => estados};
-    const dialogo = {
-      showModal() { this.open = true; },
-      addEventListener(evento, fn) { modal[evento] = fn; },
-      querySelector() { return {addEventListener(evento, fn) { modal[evento] = fn; }}; },
-    };
-    let recargas = 0;
-    const navigator = {
-      userAgent: '', onLine: false,
-      serviceWorker: {addEventListener: (evento, fn) => { worker[evento] = fn; }},
-    };
-    vm.runInNewContext(codigo, {
-      navigator, indexedDB, location: {reload() { recargas++; }},
-      window: {
-        navigator, indexedDB, matchMedia: () => ({matches: false}),
-        addEventListener: (evento, fn) => { eventos[evento] = fn; },
-      },
-      document: {
-        addEventListener() {},
-        getElementById: (id) => ({'os-transicion-pwa': aviso, 'os-pagina-restaurada': dialogo}[id]),
-      },
-      localStorage: {
-        get length() { return almacen.size; },
-        key: (i) => [...almacen.keys()][i],
-        getItem() { assert.fail('El inventario solo puede enumerar nombres'); },
-      },
-    });
-    return {eventos, worker, aviso, estados, dialogo, modal, recargas: () => recargas};
-  }
-  const antigua = {conexionAbierta: true};
-  const nueva = pestaña();
-  almacen.set('ofl:omnis:otro:9:precarga', '{}');
-  almacen.set('ofl:omnis:otro:9:campo', '');
-  await nueva.worker.controllerchange();
-  assert.equal(antigua.conexionAbierta, true);
-  assert.equal(nueva.aviso.open, true);
-  assert.equal(nueva.estados[0].hidden, false);
-  assert.ok(nueva.estados.slice(4, 7).every((el) => !el.hidden));
-  assert.deepEqual([...almacen].slice(0, 2), original);
-  nueva.eventos.pageshow({persisted: true});
-  assert.equal(nueva.dialogo.open, true);
-  assert.equal(nueva.recargas(), 0);
-  let cancelado = false;
-  nueva.modal.cancel({preventDefault() { cancelado = true; }});
-  assert.equal(cancelado, true);
-  nueva.modal.click();
-  assert.equal(nueva.recargas(), 1);
+  const sinBase = pantallaPwa(almacen);
+  await sinBase.worker.controllerchange();
+  assert.equal(sinBase.aviso.hidden, true);
+  assert.equal(sinBase.aperturas(), 0);
+  const baseVacia = pantallaPwa(almacen, 0);
+  await baseVacia.worker.controllerchange();
+  assert.equal(baseVacia.aviso.hidden, true);
+  assert.equal(baseVacia.aperturas(), baseVacia.cierres());
+  assert.deepEqual([...almacen], original);
+});
 
-  // Escenario separado con solo un dictado y después con enumeración indisponible.
-  almacen.clear();
-  almacen.set('ofl:omnis:otro:9:outbox', '[]');
-  await nueva.eventos.storage();
-  assert.equal(nueva.estados[0].hidden, true);
-  assert.ok(!nueva.estados[2].hidden && !nueva.estados[3].hidden && !nueva.estados[4].hidden);
-  indexedDB.databases = async () => { throw new Error('almacenamiento no disponible'); };
-  await nueva.worker.controllerchange();
-  assert.equal(nueva.estados[1].hidden, false);
-  assert.equal(operacionesIDB, 0);
-  assert.deepEqual([...dictado.values()], [new Uint8Array([1, 2, 3])]);
+for (const [estado, entrada, dictados] of [
+  ['borrador', ['ofl:ordo-salud:clinica:1:draft:/consulta/#form', '{"campos":[["nota","Sintética"]]}']],
+  ['outbox', ['ofl:omnis:clinica:1:outbox', '[{"id":"sintetico","estado":"pendiente"}]']],
+  ['dictado', null, 1],
+]) {
+  test(`aviso muestra ${estado} y permite cerrarlo sin modificar almacenamiento`, async () => {
+    const almacen = new Map(entrada ? [entrada] : []);
+    const original = [...almacen];
+    const pantalla = pantallaPwa(almacen, dictados);
+    await pantalla.worker.controllerchange();
+    assert.equal(pantalla.aviso.hidden, false);
+    assert.deepEqual(pantalla.estados.filter((el) => !el.hidden).map((el) => el.dataset.estado), [estado]);
+    pantalla.cerrarAviso();
+    assert.equal(pantalla.aviso.hidden, true);
+    await pantalla.eventos.storage();
+    await pantalla.worker.controllerchange();
+    assert.equal(pantalla.aviso.hidden, true);
+    assert.deepEqual([...almacen], original);
+    assert.equal(pantalla.aperturas(), pantalla.cierres());
+  });
+}
+
+test('restaurar una pestaña desde el historial conserva el bloqueo de sesión', () => {
+  const pantalla = pantallaPwa(new Map());
+  pantalla.eventos.pageshow({persisted: true});
+  assert.equal(pantalla.dialogo.open, true);
+  assert.equal(pantalla.recargas(), 0);
+  let cancelado = false;
+  pantalla.modal.cancel({preventDefault() { cancelado = true; }});
+  assert.equal(cancelado, true);
+  pantalla.modal.click();
+  assert.equal(pantalla.recargas(), 1);
 });
 
 function pantalla(agente, responder) {

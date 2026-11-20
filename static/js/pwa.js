@@ -33,50 +33,84 @@
     });
   }
 
+  const avisoPendientes = document.getElementById('os-transicion-pwa');
+  let avisoCerrado = false;
   let revisionInventario = 0;
+
+  function contarDictados(bd) {
+    return new Promise((resolver) => {
+      const apertura = bd.open('ordo-dictado');
+      // La base puede desaparecer entre enumerar y abrir. Abortar evita recrearla.
+      apertura.onupgradeneeded = () => apertura.transaction.abort();
+      apertura.onerror = apertura.onblocked = () => resolver(0);
+      apertura.onsuccess = () => {
+        const conexion = apertura.result;
+        try {
+          if (!conexion.objectStoreNames.contains('pendientes')) {
+            resolver(0);
+            return;
+          }
+          const lectura = conexion.transaction('pendientes', 'readonly').objectStore('pendientes').count();
+          lectura.onsuccess = () => resolver(lectura.result);
+          lectura.onerror = () => resolver(0);
+        } catch (err) {
+          resolver(0);
+        } finally {
+          // Deja terminar la lectura y libera la conexión sin bloquear una actualización.
+          conexion.close();
+        }
+      };
+    });
+  }
+
+  if (avisoPendientes) {
+    avisoPendientes.querySelector('[data-os-cerrar-pendientes]').addEventListener('click', () => {
+      avisoCerrado = true;
+      avisoPendientes.hidden = true;
+    });
+  }
+
   async function revisarPendientes() {
-    const aviso = document.getElementById('os-transicion-pwa');
-    if (!aviso) return;
+    if (!avisoPendientes || avisoCerrado) return;
     const revision = ++revisionInventario;
     const indicios = new Set();
-    function mostrar(enCurso = false) {
-      if (revision !== revisionInventario) return;
-      aviso.querySelectorAll('[data-estado]').forEach((el) => {
-        const estado = el.dataset.estado;
-        if (estado === 'sin-indicios') el.hidden = enCurso || indicios.size > 0;
-        else el.hidden = !(indicios.has(estado) || (enCurso && estado === 'incompleto'));
+    function mostrar() {
+      if (revision !== revisionInventario || avisoCerrado) return;
+      avisoPendientes.querySelectorAll('[data-estado]').forEach((el) => {
+        el.hidden = !indicios.has(el.dataset.estado);
       });
-      if (indicios.size) aviso.open = true;
+      avisoPendientes.hidden = indicios.size === 0;
     }
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const clave = localStorage.key(i);
-        if (!/^ofl:(ordo-salud|omnis):/.test(clave)) continue;
-        const tipo = /^ofl:[^:]+:[^:]+:[^:]+:(draft:.+|outbox|precarga)$/.exec(clave)?.[1];
-        if (tipo?.startsWith('draft:')) indicios.add('borrador');
-        else indicios.add(tipo || 'otro');
+        const tipo = /^ofl:(?:ordo-salud|omnis):[^:]+:[^:]+:(draft:.+|outbox)$/.exec(clave)?.[1];
+        if (!tipo) continue;
+        try {
+          const valor = JSON.parse(localStorage.getItem(clave));
+          if (tipo === 'outbox' && Array.isArray(valor) && valor.some((item) => item?.id)) {
+            indicios.add('outbox');
+          } else if (tipo.startsWith('draft:') && Array.isArray(valor?.campos) && valor.campos.length) {
+            indicios.add('borrador');
+          }
+        } catch (err) {
+          // Un valor ilegible no acredita un pendiente y se conserva intacto.
+        }
       }
     } catch (err) {
-      indicios.add('inaccesible');
-    }
-    mostrar(true);
-    try {
-      if (!window.caches?.keys) indicios.add('incompleto');
-      else if ((await window.caches.keys()).some((nombre) =>
-        nombre === 'ordo-paginas-v1' || nombre === 'omnis-paginas-v1')) indicios.add('paginas');
-    } catch (err) {
-      indicios.add('inaccesible');
-    }
-    mostrar(true);
-    try {
-      if (!window.indexedDB?.databases) indicios.add('incompleto');
-      else if ((await window.indexedDB.databases()).some((base) => base.name === 'ordo-dictado')) {
-        indicios.add('dictado');
-      }
-    } catch (err) {
-      indicios.add('inaccesible');
+      // El almacenamiento local puede estar inaccesible.
     }
     mostrar();
+    try {
+      const bd = window.indexedDB;
+      if (bd?.databases && (await bd.databases()).some((base) => base.name === 'ordo-dictado') &&
+          !avisoCerrado && revision === revisionInventario && (await contarDictados(bd)) > 0) {
+        indicios.add('dictado');
+        mostrar();
+      }
+    } catch (err) {
+      // La enumeración puede estar deshabilitada o fallar.
+    }
   }
   revisarPendientes();
   if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('controllerchange', revisarPendientes);
