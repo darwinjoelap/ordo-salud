@@ -57,6 +57,11 @@
             <p class="small mb-1">{{ tarjeta.motivo }}</p>
             {% if tarjeta.error_confirmacion %}<p class="text-danger mb-2">{{ tarjeta.error_confirmacion }}</p>{% endif %}
           {% else %}
+            {% if tarjeta.edad_calculada != None %}
+              <p class="small text-muted">Edad: {{ tarjeta.edad_calculada }} años (calculada desde la ficha del paciente para la fecha de valoración).</p>
+            {% else %}
+              <p class="small text-warning-emphasis">Registra la fecha de nacimiento en la ficha del paciente para calcular esta escala.</p>
+            {% endif %}
             <fieldset class="mb-2">
               {% with codigo=tarjeta.escala.codigo %}
                 {% url 'clinica:preoperatorio_calcular_escala' consulta.pk codigo as calcular_url %}

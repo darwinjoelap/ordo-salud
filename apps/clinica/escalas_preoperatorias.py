@@ -165,12 +165,18 @@ ESTADOS = {
 
 
 class EscalaForm(FormBase, forms.Form):
-    def __init__(self, escala, datos=None, *, inicial=None):
+    def __init__(self, escala, datos=None, *, inicial=None,
+                 edad_desde_ficha=False, edad_del_paciente=None):
         super().__init__(data=datos, initial=inicial, prefix=escala.codigo)
         self.escala = escala
         self.campos_clinicos = (AMBITO, *escala.campos)
         for campo in self.campos_clinicos:
             self.fields[campo.codigo] = campo.formulario()
+        if edad_desde_ficha and 'edad' in self.fields:
+            # El valor procede de la ficha y fecha de valoración, nunca del POST.
+            self.fields['edad'].disabled = True
+            self.fields['edad'].widget = forms.HiddenInput()
+            self.initial['edad'] = edad_del_paciente
         self.fields['fecha'] = forms.DateField(
             label='Fecha de valoración de los factores', required=False,
             widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'form-control'}),
@@ -263,14 +269,30 @@ def tarjeta(escala, consulta, usuario, version, *, datos=None, anterior=None):
     if escala.restriccion:
         return {'escala': escala, 'estado': ESTADOS['no_disponible'], 'motivo': escala.restriccion}
     inicial = (anterior or {}).get('insumos', {'fecha': timezone.localdate()})
-    form = EscalaForm(escala, datos, inicial=inicial)
+    fecha_edad = datos.get(f'{escala.codigo}-fecha') if datos is not None else inicial.get('fecha')
+    if isinstance(fecha_edad, str):
+        try:
+            fecha_edad = date.fromisoformat(fecha_edad)
+        except ValueError:
+            fecha_edad = None
+    if not isinstance(fecha_edad, date):
+        fecha_edad = timezone.localdate()
+    nacimiento = consulta.paciente.fecha_nacimiento
+    edad_calculada = None
+    if nacimiento is not None and fecha_edad >= nacimiento:
+        edad_calculada = (fecha_edad.year - nacimiento.year
+                          - ((fecha_edad.month, fecha_edad.day) <
+                             (nacimiento.month, nacimiento.day)))
+    form = EscalaForm(escala, datos, inicial=inicial,
+                      edad_desde_ficha=True, edad_del_paciente=edad_calculada)
     resultado = form.calcular()
     if form.is_bound:
         problema = _problema_quirurgico(consulta, escala.codigo, form.cleaned_data)
         if problema:
             resultado = problema
     salida = {'escala': escala, 'form_escala': form, 'resultado': resultado, 'anterior': anterior,
-              'estado': ESTADOS.get(resultado.estado), 'motivo': resultado.motivo,
+              'edad_calculada': edad_calculada, 'estado': ESTADOS.get(resultado.estado),
+              'motivo': resultado.motivo,
               'parametros': ','.join(form.add_prefix(campo) for campo in form.fields)}
     if resultado.estado == 'evaluado':
         salida['factores'] = form.desglose(resultado)

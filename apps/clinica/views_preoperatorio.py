@@ -74,6 +74,8 @@ def valorar(request, pk):
     anteriores = escalas.confirmados(actual)
     tarjetas = []
     for escala in escalas.ESCALAS:
+        if escala.codigo == 'dasi':
+            continue  # No ofrecer instrumentos sin autorización comercial.
         codigo = escala.codigo
         tiene_datos = datos is not None and any(k.startswith(codigo + '-') for k in datos)
         tarjeta = escalas.tarjeta(escala, consulta, request.user, actual.pk if actual else 0,

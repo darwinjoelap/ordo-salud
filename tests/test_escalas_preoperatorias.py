@@ -1,5 +1,8 @@
 """Flujo de la valoración, confirmación e inmutabilidad del informe."""
 from io import BytesIO
+from datetime import date
+
+from django.utils import timezone
 
 from django.urls import reverse
 from pypdf import PdfReader
@@ -18,6 +21,10 @@ class EscalasPreoperatoriasTest(FlujoPreoperatorio, BaseTest):
         super().setUp()
         self.configurar_evaluacion()
         with self.en_tenant():
+            Paciente.objects.filter(pk=self.paciente.pk).update(
+                fecha_nacimiento=date(timezone.localdate().year - 71, 1, 1))
+            self.paciente.refresh_from_db()
+            self.consulta.paciente.refresh_from_db()
             cirugia = self.consulta.preoperatorio
             cirugia.caracter = 'ELECTIVA'
             cirugia.save(update_fields=['caracter'])
@@ -40,8 +47,9 @@ class EscalasPreoperatoriasTest(FlujoPreoperatorio, BaseTest):
 
     def test_escalas_en_formulario_y_derechos_pendientes(self):
         vista = self.cliente.get(self.valorar)
-        for nombre in ('Goldman', 'Detsky', 'Caprini', 'ARISCAT', 'RCRI de Lee', 'DASI', 'ASA-PS', 'Capacidad funcional'):
+        for nombre in ('Goldman', 'Detsky', 'Caprini', 'ARISCAT', 'RCRI de Lee', 'ASA-PS', 'Capacidad funcional'):
             self.assertContains(vista, nombre)
+        self.assertNotContains(vista, 'DASI')
         self.assertContains(vista, 'Pendiente de autorización')
         for codigo in ('caprini', 'dasi'):
             r = self.cliente.post(self.previa(codigo), {f'{codigo}-ambito': 'si'})
@@ -49,6 +57,15 @@ class EscalasPreoperatoriasTest(FlujoPreoperatorio, BaseTest):
             self.assertNotContains(r, 'Confirmar este resultado')
         with self.en_tenant():
             self.assertFalse(ValoracionPreoperatoria.objects.exists())
+
+    def test_edad_de_ficha_no_admite_manipulacion_del_post(self):
+        vista = self.cliente.get(self.valorar)
+        self.assertContains(vista, 'Edad: 71 años')
+        self.assertNotContains(vista, 'name="rcri-edad" type="number"')
+        datos = {**self.rcri, 'rcri-edad': '16'}
+        calculada = self.cliente.post(self.previa(), datos)
+        self.assertContains(calculada, '0 puntos · I')
+        self.assertEqual(calculada.context['tarjeta']['form_escala'].cleaned_data['edad'], 71)
 
     def test_calculo_sin_javascript_no_persiste_y_conserva_borrador_de_formulario(self):
         r = self.cliente.post(self.valorar, {
