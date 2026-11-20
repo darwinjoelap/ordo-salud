@@ -1,0 +1,48 @@
+name: Validar órdenes en consulta y aviso PWA (temporal)
+on:
+  push:
+    branches: [fix/ordenes-consulta-y-aviso]
+permissions:
+  contents: read
+jobs:
+  ordenes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ordo_ordenes
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ordo_ordenes
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      SECRET_KEY: pruebas-sinteticas
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      BASE_DOMAIN: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Comprobar código y migraciones
+        run: |
+          python -m compileall -q apps/clinica apps/documentos tests
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+          node --check static/js/estudios.js
+          node --check static/js/pwa.js
+      - name: Pruebas PostgreSQL aislado
+        run: |
+          python manage.py test tests.test_orden_estudios tests.test_catalogo_estudios tests.test_fase07_consulta tests.test_fase10_documentos tests.test_evaluacion_preoperatoria_etapa2 --noinput -v 2
+      - name: Diff sin errores
+        run: |
+          git fetch origin main --depth=50
+          git diff --check FETCH_HEAD HEAD
