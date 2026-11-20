@@ -285,6 +285,8 @@ class EstudioCatalogo(TenantModel, Auditable):
         self.nombre_normalizado = ''.join(
             letra for letra in normalizado if not unicodedata.combining(letra)
         )
+        if kwargs.get('update_fields') is not None and 'nombre' in kwargs['update_fields']:
+            kwargs['update_fields'] = set(kwargs['update_fields']) | {'nombre_normalizado'}
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -313,8 +315,9 @@ class EstudioPreoperatorio(TenantModel):
         ordering = ['pk']
 
     def get_tipo_display(self):
-        """Nombre congelado en la valoración; compatible con informes históricos."""
-        return self.nombre or super().get_tipo_display()
+        """Nombre y unidad congelados para el informe; compatible con estudios antiguos."""
+        nombre = self.nombre or dict(self.Tipo.choices).get(self.tipo, self.tipo)
+        return f'{nombre} ({self.unidad})' if self.unidad else nombre
 
 
 class InformePreoperatorio(TenantModel):

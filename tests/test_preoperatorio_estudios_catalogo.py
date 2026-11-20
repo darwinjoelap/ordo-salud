@@ -3,7 +3,7 @@ from datetime import date
 
 from apps.clinica.models.consulta import EstudioCatalogo, EstudioPreoperatorio, ValoracionPreoperatoria
 
-from .base import BaseTest
+from .base import BaseTest, crear_consultorio
 from .test_evaluacion_preoperatoria_etapa2 import FlujoPreoperatorio
 
 
@@ -31,6 +31,7 @@ class CatalogoEnPreoperatorioTest(FlujoPreoperatorio, BaseTest):
             self.assertEqual((estudio.catalogo_id, estudio.nombre),
                              (self.examen.pk, 'Perfil metabólico'))
             self.assertEqual(estudio.unidad, 'mg/dL')
+            self.assertEqual(estudio.get_tipo_display(), 'Perfil metabólico (mg/dL)')
             self.examen.nombre = 'Examen renombrado'
             self.examen.save()
             self.assertEqual(primera.estudios.get().nombre, 'Perfil metabólico')
@@ -54,3 +55,17 @@ class CatalogoEnPreoperatorioTest(FlujoPreoperatorio, BaseTest):
             pendiente = ValoracionPreoperatoria.objects.first().estudios.get()
             self.assertEqual(pendiente.resultado, '')
             self.assertEqual(pendiente.observaciones, 'Resultado pendiente')
+
+    def test_catalogo_ajeno_no_puede_inyectarse_en_valoracion(self):
+        otro, _ = crear_consultorio(slug='otro-preop-catalogo', usuario='otropreop')
+        with self.en_tenant(otro):
+            ajeno = EstudioCatalogo.objects.create(nombre='Examen de otra clínica', categoria='LAB')
+        datos = self.valoracion(estudios=[{
+            'catalogo': ajeno.pk, 'tipo': 'LAB', 'control_seleccion': 'on',
+            'seleccionado': 'on', 'resultado': 'Valor inventado',
+        }])
+        r = self.cliente.post(self.valorar, datos)
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('catalogo', r.context['estudios'].forms[0].errors)
+        with self.en_tenant():
+            self.assertFalse(ValoracionPreoperatoria.objects.exists())
