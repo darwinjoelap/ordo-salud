@@ -14,6 +14,15 @@ class CatalogoEnPreoperatorioTest(FlujoPreoperatorio, BaseTest):
         with self.en_tenant():
             self.examen = EstudioCatalogo.objects.create(nombre='Perfil metabólico', categoria='LAB')
 
+    def test_catalogo_se_muestra_compacto_con_campos_inicialmente_ocultos(self):
+        respuesta = self.cliente.get(self.valorar)
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, 'border-bottom py-1')
+        self.assertContains(respuesta, 'data-fila-estudio')
+        self.assertContains(respuesta, 'data-detalles-estudio hidden')
+        self.assertContains(respuesta, '/static/js/estudios.js')
+        self.assertContains(respuesta, 'Perfil metabólico')
+
     def test_seleccion_registra_resultado_y_conserva_version_original(self):
         formulario = self.cliente.get(self.valorar)
         self.assertContains(formulario, 'Perfil metabólico')

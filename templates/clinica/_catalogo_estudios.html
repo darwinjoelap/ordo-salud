@@ -1,36 +1,36 @@
 {% comment %}Selector común para órdenes y estudios de preoperatorio.
 No crea cargos ni mezcla los resultados con una orden de solicitud.{% endcomment %}
-<section class="border rounded p-3 mb-3" data-catalogo-estudios data-modo="{{ modo_catalogo }}"
-         data-consulta="{{ consulta.pk }}">
-  <h3 class="h6 mb-2">Catálogo de exámenes</h3>
+<section class="{% if modo_catalogo == 'preoperatorio' %}mb-0{% else %}border rounded p-3 mb-3{% endif %}"
+         data-catalogo-estudios data-modo="{{ modo_catalogo }}" data-consulta="{{ consulta.pk }}">
+  {% if modo_catalogo != 'preoperatorio' %}<h3 class="h6 mb-2">Catálogo de exámenes</h3>{% endif %}
   {% if modo_catalogo == 'preoperatorio' %}
     {{ estudios.management_form }}
     {{ estudios.non_form_errors }}
-    <p class="small text-muted">Marca los estudios realizados o pendientes. Cada selección permite registrar fecha, resultado y observaciones.</p>
+    <p class="small text-muted mb-2">Marca cada examen para registrar su fecha, resultado y observación.</p>
     <div data-catalogo-lista>
       {% for estudio in estudios %}
-        <fieldset class="border rounded p-2 mb-2" data-fila-estudio>
+        <div class="border-bottom py-1" data-fila-estudio>
           {{ estudio.catalogo }}{{ estudio.nombre }}{{ estudio.tipo }}{{ estudio.control_seleccion }}
-          <label class="d-flex gap-2 align-items-center mb-1">
+          <label class="d-flex align-items-center gap-2 py-1 mb-0">
             {{ estudio.seleccionado }}
-            <span class="fw-semibold">{{ estudio.nombre_examen|default:"Estudio histórico" }}</span>
+            <span>{{ estudio.nombre_examen|default:"Estudio histórico" }}</span>
             <span class="small text-muted ms-auto">{{ estudio.categoria_examen }}</span>
           </label>
-          <div data-detalles-estudio>
+          <div class="ps-4 pt-1 pb-2" data-detalles-estudio {% if not estudio.seleccionado.value %}hidden{% endif %}>
             <div class="row g-2">
               <div class="col-md-4">{% include 'partials/campo.html' with campo=estudio.fecha %}</div>
-              <div class="col-md-8">{% include 'partials/campo.html' with campo=estudio.unidad %}</div>
-              <div class="col-12">{% include 'partials/campo.html' with campo=estudio.resultado %}</div>
-              <div class="col-12">{% include 'partials/campo.html' with campo=estudio.observaciones %}</div>
+              <div class="col-md-8">{% include 'partials/campo.html' with campo=estudio.resultado %}</div>
+              <div class="col-md-6">{% include 'partials/campo.html' with campo=estudio.observaciones %}</div>
+              <div class="col-md-6">{% include 'partials/campo.html' with campo=estudio.unidad %}</div>
               {% if estudio.adjuntos.field.queryset.exists or estudio.adjuntos.errors %}
                 <div class="col-12">{% include 'partials/campo.html' with campo=estudio.adjuntos %}</div>
               {% endif %}
               <div class="d-none">{{ estudio.DELETE }}</div>
             </div>
           </div>
-          {% for error in estudio.non_field_errors %}<p class="text-danger small">{{ error }}</p>{% endfor %}
-          {% for campo in estudio.hidden_fields %}{% for error in campo.errors %}<p class="text-danger small">{{ error }}</p>{% endfor %}{% endfor %}
-        </fieldset>
+          {% for error in estudio.non_field_errors %}<p class="text-danger small mb-1">{{ error }}</p>{% endfor %}
+          {% for campo in estudio.hidden_fields %}{% for error in campo.errors %}<p class="text-danger small mb-1">{{ error }}</p>{% endfor %}{% endfor %}
+        </div>
       {% empty %}
         <p class="small text-muted">El catálogo está vacío. Puedes registrar el primer examen aquí.</p>
       {% endfor %}
@@ -56,7 +56,7 @@ No crea cargos ni mezcla los resultados con una orden de solicitud.{% endcomment
       {% endfor %}
     </div>
   {% endif %}
-  <div class="border-top pt-2 mt-2" data-alta-estudio
+  <div class="pt-2 mt-2" data-alta-estudio
        data-endpoint="{% url 'clinica:estudio_catalogo_nuevo' %}">
     <button class="btn btn-outline-secondary btn-sm" type="button" data-alta-abrir>
       <i class="bi bi-plus-circle me-1"></i>Agregar examen al catálogo

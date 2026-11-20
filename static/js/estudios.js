@@ -93,13 +93,13 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error('La valoración tiene demasiados estudios; guarda y vuelve a abrirla.');
       }
       const prefijo = 'estudios-' + n;
-      const fila = nuevoElemento('fieldset', {class: 'border rounded p-2 mb-2',
+      const fila = nuevoElemento('div', {class: 'border-bottom py-1',
         'data-fila-estudio': ''});
       hidden(fila, prefijo + '-catalogo', estudio.id);
       hidden(fila, prefijo + '-nombre', estudio.nombre);
       hidden(fila, prefijo + '-tipo', estudio.categoria);
       hidden(fila, prefijo + '-control_seleccion', 'on');
-      const label = nuevoElemento('label', {class: 'd-flex gap-2 align-items-center mb-1'});
+      const label = nuevoElemento('label', {class: 'd-flex gap-2 align-items-center py-1 mb-0'});
       const check = nuevoElemento('input', {class: 'form-check-input m-0',
         type: 'checkbox', name: prefijo + '-seleccionado', value: 'on'});
       check.checked = true;
@@ -108,7 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
       label.appendChild(nuevoElemento('span', {class: 'small text-muted ms-auto'},
         estudio.categoria));
       fila.appendChild(label);
-      const detalles = nuevoElemento('div', {'data-detalles-estudio': ''});
+      const detalles = nuevoElemento('div', {class: 'ps-4 pt-1 pb-2',
+        'data-detalles-estudio': ''});
       campo(detalles, prefijo, 'fecha', 'date', 'Fecha del examen');
       campo(detalles, prefijo, 'unidad', 'text', 'Unidad (opcional)');
       campo(detalles, prefijo, 'resultado', 'textarea', 'Resultado / hallazgos (si está disponible)');
