@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import views_consultas as vc
+from . import views_estudios as ve
 from . import views_medicamentos as vm
 from . import views_plantillas as vp
 from . import views_preoperatorio as vpre
@@ -11,6 +12,7 @@ app_name = 'clinica'
 urlpatterns = [
     path('pacientes/<int:paciente_pk>/procedimientos/nuevo/', vpr.nuevo, name='procedimiento_nuevo'),
     path('procedimientos/<int:pk>/anular/', vpr.anular, name='procedimiento_anular'),
+    path('catalogo-estudios/nuevo/', ve.nuevo, name='estudio_catalogo_nuevo'),
     path('medicamentos/', vm.lista, name='medicamentos'),
     path('medicamentos/nuevo/', vm.editar, name='medicamento_nuevo'),
     path('medicamentos/<int:pk>/', vm.editar, name='medicamento'),

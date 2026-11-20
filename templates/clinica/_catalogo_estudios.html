@@ -1,0 +1,93 @@
+{% comment %}Selector común para órdenes y estudios de preoperatorio.
+No crea cargos ni mezcla los resultados con una orden de solicitud.{% endcomment %}
+<section class="border rounded p-3 mb-3" data-catalogo-estudios data-modo="{{ modo_catalogo }}"
+         data-consulta="{{ consulta.pk }}">
+  <h3 class="h6 mb-2">Catálogo de exámenes</h3>
+  {% if modo_catalogo == 'preoperatorio' %}
+    {{ estudios.management_form }}
+    {{ estudios.non_form_errors }}
+    <p class="small text-muted">Marca los estudios realizados o pendientes. Cada selección permite registrar fecha, resultado y observaciones.</p>
+    <div data-catalogo-lista>
+      {% for estudio in estudios %}
+        <fieldset class="border rounded p-2 mb-2" data-fila-estudio>
+          {{ estudio.catalogo }}{{ estudio.nombre }}{{ estudio.tipo }}{{ estudio.control_seleccion }}
+          <label class="d-flex gap-2 align-items-center mb-1">
+            {{ estudio.seleccionado }}
+            <span class="fw-semibold">{{ estudio.nombre_examen|default:"Estudio histórico" }}</span>
+            <span class="small text-muted ms-auto">{{ estudio.categoria_examen }}</span>
+          </label>
+          <div data-detalles-estudio>
+            <div class="row g-2">
+              <div class="col-md-4">{% include 'partials/campo.html' with campo=estudio.fecha %}</div>
+              <div class="col-md-8">{% include 'partials/campo.html' with campo=estudio.unidad %}</div>
+              <div class="col-12">{% include 'partials/campo.html' with campo=estudio.resultado %}</div>
+              <div class="col-12">{% include 'partials/campo.html' with campo=estudio.observaciones %}</div>
+              {% if estudio.adjuntos.field.queryset.exists or estudio.adjuntos.errors %}
+                <div class="col-12">{% include 'partials/campo.html' with campo=estudio.adjuntos %}</div>
+              {% endif %}
+              <div class="d-none">{{ estudio.DELETE }}</div>
+            </div>
+          </div>
+          {% for error in estudio.non_field_errors %}<p class="text-danger small">{{ error }}</p>{% endfor %}
+          {% for campo in estudio.hidden_fields %}{% for error in campo.errors %}<p class="text-danger small">{{ error }}</p>{% endfor %}{% endfor %}
+        </fieldset>
+      {% empty %}
+        <p class="small text-muted">El catálogo está vacío. Puedes registrar el primer examen aquí.</p>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="small text-muted">Selecciona los exámenes solicitados y escribe las indicaciones de cada uno.</p>
+    {% if form.examenes.errors %}<div class="text-danger small">{{ form.examenes.errors }}</div>{% endif %}
+    <div data-catalogo-lista>
+      {% for opcion in form.catalogo_opciones %}
+        <fieldset class="border rounded p-2 mb-2" data-fila-estudio>
+          <label class="d-flex gap-2 align-items-center">
+            <input class="form-check-input m-0" type="checkbox" name="examenes"
+                   value="{{ opcion.examen.pk }}" {% if opcion.marcado %}checked{% endif %}>
+            <span class="fw-semibold">{{ opcion.examen.nombre }}</span>
+            <span class="small text-muted ms-auto">{{ opcion.examen.get_categoria_display }}</span>
+          </label>
+          <div data-detalles-estudio class="mt-2">
+            {% include 'partials/campo.html' with campo=opcion.indicacion %}
+          </div>
+        </fieldset>
+      {% empty %}
+        <p class="small text-muted">Registra el primer examen para comenzar.</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+  <div class="border-top pt-2 mt-2" data-alta-estudio
+       data-endpoint="{% url 'clinica:estudio_catalogo_nuevo' %}">
+    <button class="btn btn-outline-secondary btn-sm" type="button" data-alta-abrir>
+      <i class="bi bi-plus-circle me-1"></i>Agregar examen al catálogo
+    </button>
+    <div class="border rounded p-3 mt-2" data-alta-panel hidden>
+      <div class="row g-2">
+        <div class="col-md-7">
+          <label class="form-label" for="alta-examen-nombre">Nombre del examen</label>
+          <input class="form-control" type="text" id="alta-examen-nombre"
+                 data-alta-nombre maxlength="200" autocomplete="off">
+        </div>
+        <div class="col-md-5">
+          <label class="form-label" for="alta-examen-categoria">Categoría</label>
+          <select class="form-select" id="alta-examen-categoria" data-alta-categoria>
+            <option value="LAB">Laboratorio</option>
+            <option value="ECG">Electrocardiograma</option>
+            <option value="RX">Radiografía / imágenes</option>
+            <option value="OTRO">Otros estudios</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="alta-examen-descripcion">Descripción opcional</label>
+          <textarea class="form-control" id="alta-examen-descripcion"
+                    rows="2" maxlength="500" data-alta-descripcion></textarea>
+        </div>
+      </div>
+      <div class="mt-2 d-flex gap-2">
+        <button class="btn btn-primary btn-sm" type="button" data-alta-guardar>Guardar examen</button>
+        <button class="btn btn-outline-secondary btn-sm" type="button" data-alta-cancelar>Cancelar</button>
+      </div>
+      <p class="small text-danger mt-2 mb-0" role="alert" data-alta-error></p>
+    </div>
+  </div>
+</section>

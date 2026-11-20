@@ -1,6 +1,7 @@
 from django import forms
 
 from apps.core.forms import FormBase
+from apps.clinica.models.consulta import EstudioCatalogo
 
 FECHA = forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d')
 HORA = forms.TimeInput(attrs={'type': 'time'}, format='%H:%M')
@@ -31,6 +32,48 @@ class InformeForm(DocumentoForm):
     dirigido_a = forms.CharField(label='Dirigido a (opcional)', max_length=150, required=False)
     introduccion = forms.CharField(label='Introducción (opcional)', required=False, widget=_area(2))
     conclusion = forms.CharField(label='Conclusión (opcional)', required=False, widget=_area(3))
+
+
+class OrdenEstudiosForm(DocumentoForm):
+    """Selecciona exámenes del catálogo del consultorio; no registra resultados ni cargos."""
+
+    examenes = forms.ModelMultipleChoiceField(
+        label='Exámenes solicitados', queryset=EstudioCatalogo.objects.none(), required=True,
+        widget=forms.CheckboxSelectMultiple,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from apps.clinica.estudios import catalogo_activo
+
+        activos = list(catalogo_activo())
+        self.fields['examenes'].queryset = EstudioCatalogo.objects.filter(pk__in=[e.pk for e in activos])
+        seleccionados = set(self.data.getlist('examenes')) if self.is_bound else set()
+        self.catalogo_opciones = []
+        for examen in activos:
+            clave = f'indicacion_{examen.pk}'
+            self.fields[clave] = forms.CharField(
+                label='Indicaciones u observaciones', required=False, max_length=1000,
+                widget=forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            )
+            self.catalogo_opciones.append({
+                'examen': examen, 'marcado': str(examen.pk) in seleccionados,
+                'indicacion': self[clave],
+            })
+
+    def datos(self):
+        salida = super().datos()
+        salida.pop('examenes', None)
+        for clave in list(salida):
+            if clave.startswith('indicacion_'):
+                salida.pop(clave)
+        salida['estudios'] = [
+            {'catalogo_id': examen.pk, 'nombre': examen.nombre,
+             'categoria': examen.categoria,
+             'indicaciones': self.cleaned_data.get(f'indicacion_{examen.pk}', '')}
+            for examen in self.cleaned_data['examenes']
+        ]
+        return salida
 
 
 class ReferenciaForm(DocumentoForm):

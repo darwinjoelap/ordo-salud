@@ -255,6 +255,42 @@ class ValoracionPreoperatoria(TenantModel, Auditable):
         ordering = ['-pk']
 
 
+class EstudioCatalogo(TenantModel, Auditable):
+    """Examen configurable por consultorio; nunca equivale a un servicio de cobro."""
+
+    class Categoria(models.TextChoices):
+        LABORATORIO = 'LAB', 'Laboratorio'
+        ECG = 'ECG', 'Electrocardiograma'
+        RADIOGRAFIA = 'RX', 'Radiografía / imágenes'
+        OTRO = 'OTRO', 'Otros estudios'
+
+    nombre = models.CharField(max_length=200)
+    nombre_normalizado = models.CharField(max_length=220, editable=False)
+    categoria = models.CharField(max_length=4, choices=Categoria.choices)
+    descripcion = models.CharField(max_length=500, blank=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta(TenantModel.Meta):
+        ordering = ['categoria', 'nombre']
+        constraints = [
+            models.UniqueConstraint(fields=['tenant', 'nombre_normalizado'],
+                                    name='estudio_catalogo_tenant_nombre_unico'),
+        ]
+
+    def save(self, *args, **kwargs):
+        import unicodedata
+        nombre = ' '.join((self.nombre or '').split())
+        self.nombre = nombre
+        normalizado = unicodedata.normalize('NFKD', nombre.casefold())
+        self.nombre_normalizado = ''.join(
+            letra for letra in normalizado if not unicodedata.combining(letra)
+        )
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.nombre
+
+
 class EstudioPreoperatorio(TenantModel):
     class Tipo(models.TextChoices):
         LABORATORIO = 'LAB', 'Laboratorio'
@@ -263,14 +299,22 @@ class EstudioPreoperatorio(TenantModel):
         OTRO = 'OTRO', 'Otro estudio'
 
     valoracion = models.ForeignKey(ValoracionPreoperatoria, on_delete=models.PROTECT, related_name='estudios')
+    catalogo = models.ForeignKey(EstudioCatalogo, on_delete=models.PROTECT, blank=True, null=True,
+                                related_name='registros_preoperatorios')
+    nombre = models.CharField(max_length=200, blank=True)
     tipo = models.CharField(max_length=4, choices=Tipo.choices)
     fecha = models.DateField(null=True, blank=True)
-    resultado = models.TextField(max_length=3000)
+    resultado = models.TextField(max_length=3000, blank=True, default='')
+    unidad = models.CharField(max_length=40, blank=True)
     observaciones = models.TextField(max_length=2000, blank=True)
     adjuntos = models.ManyToManyField(Adjunto, blank=True, related_name='+')
 
     class Meta(TenantModel.Meta):
         ordering = ['pk']
+
+    def get_tipo_display(self):
+        """Nombre congelado en la valoración; compatible con informes históricos."""
+        return self.nombre or super().get_tipo_display()
 
 
 class InformePreoperatorio(TenantModel):

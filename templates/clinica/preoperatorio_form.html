@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block contenido %}
 <a href="{% url 'clinica:consulta' consulta.pk %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> Consulta</a>
 <h1 class="h4 my-2">{% if enmienda %}Enmendar valoración preoperatoria{% else %}Valoración preoperatoria{% endif %}</h1>
@@ -16,26 +17,7 @@
   <section class="card mb-3">
     <h2 class="h6 card-header">Estudios complementarios</h2>
     <div class="card-body">
-      {{ estudios.management_form }}
-      {{ estudios.non_form_errors }}
-      {% for estudio in estudios %}
-        <fieldset class="border rounded p-3 mb-2">
-          <legend class="float-none w-auto px-1 fs-6">{{ estudio.initial.tipo|yesno:"Estudio,Agregar estudio" }}</legend>
-          {{ estudio.non_field_errors }}
-          <div class="row g-2">
-            <div class="col-sm-6">{% include 'partials/campo.html' with campo=estudio.tipo %}</div>
-            <div class="col-sm-6">{% include 'partials/campo.html' with campo=estudio.fecha %}</div>
-            <div class="col-12">{% include 'partials/campo.html' with campo=estudio.resultado %}</div>
-            <div class="col-12">{% include 'partials/campo.html' with campo=estudio.observaciones %}</div>
-            {% if estudio.adjuntos.field.queryset.exists or estudio.adjuntos.errors %}
-              <div class="col-12">{% include 'partials/campo.html' with campo=estudio.adjuntos %}</div>
-            {% endif %}
-            {% if estudio.initial.tipo %}
-              <div class="col-12">{% include 'partials/campo.html' with campo=estudio.DELETE %}</div>
-            {% endif %}
-          </div>
-        </fieldset>
-      {% endfor %}
+      {% include 'clinica/_catalogo_estudios.html' with modo_catalogo='preoperatorio' %}
     </div>
   </section>
 
@@ -81,3 +63,5 @@
   </div>
 </form>
 {% endblock %}
+
+<script src="{% static 'js/estudios.js' %}" defer></script>

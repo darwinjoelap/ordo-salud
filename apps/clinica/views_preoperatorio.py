@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
@@ -12,6 +13,7 @@ from apps.core.excepciones import ErrorDeNegocio
 from apps.core.permisos import requiere
 
 from . import escalas_preoperatorias as escalas
+from . import estudios as catalogo_estudios
 from . import preoperatorio, views_consultas
 from .models import Consulta
 
@@ -39,8 +41,13 @@ def valorar(request, pk):
     inicial = {**(actual.datos if actual else {'mets_estado': 'NO_EVALUADO'}),
                'version': actual.pk if actual else 0, 'validada': False}
     form = preoperatorio.ValoracionForm(datos, initial=inicial, enmienda=enmienda)
+    iniciales_estudios = catalogo_estudios.filas_para_preoperatorio(actual)
+    historicos_ids = [fila.get('catalogo') for fila in iniciales_estudios if fila.get('catalogo')]
+    from .models.consulta import EstudioCatalogo
+    catalogo = EstudioCatalogo.objects.filter(Q(activo=True) | Q(pk__in=historicos_ids)).distinct()
     estudios = preoperatorio.EstudiosFormSet(
-        datos, initial=preoperatorio.datos_estudios(actual), prefix='estudios', form_kwargs={'adjuntos': adjuntos},
+        datos, initial=iniciales_estudios, prefix='estudios',
+        form_kwargs={'adjuntos': adjuntos, 'catalogo': catalogo},
     )
     errores_escalas = {}
     previa = request.POST.get('calcular') if datos is not None else None
@@ -85,6 +92,7 @@ def valorar(request, pk):
     return render(request, 'clinica/preoperatorio_form.html', {
         'titulo': 'Valoración preoperatoria', 'consulta': consulta, 'form': form, 'estudios': estudios,
         'enmienda': enmienda, 'tarjetas_escalas': tarjetas,
+        'catalogo_examenes': catalogo_estudios.catalogo_activo(),
     })
 
 

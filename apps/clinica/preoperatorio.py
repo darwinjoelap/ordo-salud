@@ -13,7 +13,8 @@ from apps.core.permisos import puede_usar_preoperatorio
 
 from .escalas_preoperatorias import confirmados
 from .models.consulta import (
-    Adjunto, Consulta, EstudioPreoperatorio, EvaluacionPreoperatoria, InformePreoperatorio, ValoracionPreoperatoria,
+    Adjunto, Consulta, EstudioCatalogo, EstudioPreoperatorio, EvaluacionPreoperatoria,
+    InformePreoperatorio, ValoracionPreoperatoria,
 )
 
 
@@ -104,19 +105,57 @@ class ValoracionForm(FormBase, forms.Form):
 
 
 class EstudioForm(FormBase, forms.Form):
-    tipo = forms.ChoiceField(label='Tipo', choices=[('', 'Selecciona un tipo')] + EstudioPreoperatorio.Tipo.choices)
+    """Una casilla por examen; conserva compatibilidad con estudios históricos sin catálogo."""
+
+    catalogo = forms.ModelChoiceField(queryset=EstudioCatalogo.objects.none(), required=False,
+                                      widget=forms.HiddenInput)
+    nombre = forms.CharField(required=False, max_length=200, widget=forms.HiddenInput)
+    tipo = forms.ChoiceField(choices=EstudioPreoperatorio.Tipo.choices, required=False,
+                             widget=forms.HiddenInput)
+    control_seleccion = forms.BooleanField(required=False, widget=forms.HiddenInput)
+    seleccionado = forms.BooleanField(label='Seleccionar examen', required=False)
     fecha = _fecha()
-    resultado = _texto('Resultado o hallazgo', requerido=True)
+    resultado = _texto('Resultado / hallazgos (si está disponible)', max_length=3000)
+    unidad = forms.CharField(label='Unidad (opcional)', required=False, max_length=40)
     observaciones = _texto('Observaciones', max_length=2000)
     adjuntos = forms.ModelMultipleChoiceField(label='Adjuntos existentes', queryset=Adjunto.objects.none(),
                                              required=False)
 
-    def __init__(self, *args, adjuntos, **kwargs):
+    def __init__(self, *args, adjuntos, catalogo, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['adjuntos'].queryset = adjuntos
+        self.fields['catalogo'].queryset = catalogo
+        self.categoria_examen = self.initial.get('tipo', '')
+        self.nombre_examen = (self.initial.get('nombre')
+                             or dict(EstudioPreoperatorio.Tipo.choices).get(self.categoria_examen, 'Estudio'))
+        if self.is_bound:
+            codigo = self.data.get(self.add_prefix('catalogo'))
+            if codigo and str(codigo).isdigit():
+                opcion = catalogo.filter(pk=int(codigo)).first()
+                if opcion:
+                    self.nombre_examen = opcion.nombre
+                    self.categoria_examen = opcion.categoria
+            elif not self.nombre_examen:
+                self.nombre_examen = self.data.get(self.add_prefix('nombre'), '')
+
+    def clean(self):
+        datos = super().clean()
+        # Formularios anteriores no enviaban el control de selección.
+        antiguo = (not datos.get('control_seleccion') and datos.get('tipo')
+                   and datos.get('resultado'))
+        if not datos.get('seleccionado') and not antiguo:
+            return datos
+        catalogo = datos.get('catalogo')
+        if catalogo is not None:
+            datos['tipo'] = catalogo.categoria
+            datos['nombre'] = catalogo.nombre
+        elif not datos.get('tipo'):
+            self.add_error('tipo', 'Selecciona un examen del catálogo.')
+        return datos
 
 
-EstudiosFormSet = forms.formset_factory(EstudioForm, extra=1, can_delete=True, validate_max=True)
+EstudiosFormSet = forms.formset_factory(EstudioForm, extra=0, can_delete=True,
+                                       max_num=100, validate_max=True, absolute_max=150)
 
 
 def adjuntos_visibles(consulta, membresia):
@@ -146,10 +185,13 @@ def valoracion_actual(evaluacion):
 def datos_estudios(valoracion):
     if valoracion is None:
         return []
-    return [{'tipo': e.tipo, 'fecha': e.fecha, 'resultado': e.resultado, 'observaciones': e.observaciones,
-             'adjuntos': sorted(a.pk for a in e.adjuntos.all())}
-            for e in valoracion.estudios.prefetch_related('adjuntos').all()]
-
+    return [
+        {'catalogo': e.catalogo_id, 'nombre': e.nombre, 'tipo': e.tipo,
+         'fecha': e.fecha, 'resultado': e.resultado, 'unidad': e.unidad,
+         'observaciones': e.observaciones,
+         'adjuntos': sorted(a.pk for a in e.adjuntos.all())}
+        for e in valoracion.estudios.prefetch_related('adjuntos').all()
+    ]
 
 @transaction.atomic
 def guardar_valoracion(consulta, membresia, form, estudios, *, escalas=None):
@@ -169,12 +211,40 @@ def guardar_valoracion(consulta, membresia, form, estudios, *, escalas=None):
         raise ErrorDeNegocio('Para corregir una consulta cerrada indica el motivo y valida la conclusión.')
     visibles = adjuntos_visibles(consulta, membresia)
     ids_permitidos = set(visibles.values_list('pk', flat=True))
-    filas = [{**fila, 'adjuntos': sorted(a.pk for a in fila['adjuntos'])}
-             for fila in estudios if fila and not fila['DELETE']]
-    for fila in filas:
-        fila.pop('DELETE')
-        if not ids_permitidos.issuperset(fila['adjuntos']):
+    historicos = {fila.get('catalogo') for fila in datos_estudios(actual)}
+    filas = []
+    for fila in estudios:
+        if not fila or fila.get('DELETE'):
+            continue
+        # Los formularios del catálogo tienen casilla explícita; los antiguos no.
+        seleccionado = fila.get('seleccionado') or (
+            not fila.get('control_seleccion') and fila.get('tipo') and fila.get('resultado')
+        )
+        if not seleccionado:
+            continue
+        catalogo = fila.get('catalogo')
+        if catalogo is not None:
+            if (catalogo.tenant_id != consulta.tenant_id
+                    or (not catalogo.activo and catalogo.pk not in historicos)):
+                raise ErrorDeNegocio('El examen seleccionado ya no está disponible.')
+            tipo, nombre = catalogo.categoria, catalogo.nombre
+        else:
+            tipo = fila.get('tipo')
+            nombre = fila.get('nombre') or ''
+            if tipo not in dict(EstudioPreoperatorio.Tipo.choices):
+                raise ErrorDeNegocio('Selecciona un examen válido.')
+            if nombre and not any(anterior.get('nombre') == nombre and anterior.get('tipo') == tipo
+                                for anterior in datos_estudios(actual)):
+                raise ErrorDeNegocio('El examen debe registrarse primero en el catálogo.')
+        adjuntos_ids = sorted(a.pk for a in fila['adjuntos'])
+        if not ids_permitidos.issuperset(adjuntos_ids):
             raise PermissionDenied
+        filas.append({
+            'catalogo': catalogo.pk if catalogo else None, 'nombre': nombre,
+            'tipo': tipo, 'fecha': fila.get('fecha'),
+            'resultado': fila.get('resultado') or '', 'unidad': fila.get('unidad') or '',
+            'observaciones': fila.get('observaciones') or '', 'adjuntos': adjuntos_ids,
+        })
     if actual and actual.datos == datos and datos_estudios(actual) == filas:
         return actual, False
     if (actual.pk if actual else 0) != form.cleaned_data['version']:
@@ -182,9 +252,11 @@ def guardar_valoracion(consulta, membresia, form, estudios, *, escalas=None):
     version = ValoracionPreoperatoria.objects.create(evaluacion=evaluacion, datos=datos,
                                                      motivo_enmienda=motivo, creado_por=membresia.usuario)
     for fila in filas:
-        ids = fila.pop('adjuntos')
-        estudio = EstudioPreoperatorio.objects.create(valoracion=version, **fila)
-        estudio.adjuntos.set(ids)
+        valores = {**fila, 'catalogo_id': fila['catalogo']}
+        valores.pop('catalogo')
+        adjuntos_ids = valores.pop('adjuntos')
+        estudio = EstudioPreoperatorio.objects.create(valoracion=version, **valores)
+        estudio.adjuntos.set(adjuntos_ids)
     return version, True
 
 
