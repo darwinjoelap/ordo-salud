@@ -34,7 +34,18 @@
   }
 
   const avisoPendientes = document.getElementById('os-transicion-pwa');
+  // La X se recuerda al recargar y navegar en la misma pestaña, sin borrar borradores.
+  // El aviso volverá a estar disponible en una sesión nueva del navegador.
+  const claveAviso = avisoPendientes
+    ? 'ordo.transicion.descartado.' + (avisoPendientes.dataset.tenant || '') + '.' +
+      (avisoPendientes.dataset.usuario || '')
+    : null;
   let avisoCerrado = false;
+  try {
+    avisoCerrado = Boolean(claveAviso && sessionStorage.getItem(claveAviso) === '1');
+  } catch (err) {
+    // El almacenamiento de sesión puede estar deshabilitado.
+  }
   let revisionInventario = 0;
 
   function contarDictados(bd) {
@@ -67,6 +78,11 @@
     avisoPendientes.querySelector('[data-os-cerrar-pendientes]').addEventListener('click', () => {
       avisoCerrado = true;
       avisoPendientes.hidden = true;
+      try {
+        if (claveAviso) sessionStorage.setItem(claveAviso, '1');
+      } catch (err) {
+        // Se oculta esta página aunque el almacenamiento no esté disponible.
+      }
     });
   }
 

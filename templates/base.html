@@ -107,7 +107,7 @@
     {% endfor %}
     {% if user.is_authenticated and tenant %}
       <section id="os-transicion-pwa" class="alert alert-warning alert-dismissible py-2 mb-3" hidden
-               aria-labelledby="os-transicion-titulo">
+               aria-labelledby="os-transicion-titulo" data-tenant="{{ tenant.pk }}" data-usuario="{{ user.pk }}">
         <h2 id="os-transicion-titulo" class="h6">Actualización de Ordo Salud</h2>
         <button type="button" class="btn-close" data-os-cerrar-pendientes aria-label="Cerrar advertencia"></button>
         <p data-estado="borrador" hidden>Este navegador conserva un borrador de formulario.</p>
