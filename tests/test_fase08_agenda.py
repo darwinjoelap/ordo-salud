@@ -97,8 +97,11 @@ class AgendaTest(BaseTest):
         with self.en_tenant():
             from apps.clinica.models import PlantillaHistoria
             control = PlantillaHistoria.objects.get(nombre='Control')
-            tipo = TipoCita.objects.create(nombre='Control', duracion_min=20, tipo_consulta='CONTROL',
-                                           plantilla=control)
+            tipo = TipoCita.objects.get(nombre='Control')
+            tipo.duracion_min = 20
+            tipo.tipo_consulta = 'CONTROL'
+            tipo.plantilla = control
+            tipo.save()
         self.nueva(tipo=tipo.pk)
         with self.en_tenant():
             c = Cita.objects.get()

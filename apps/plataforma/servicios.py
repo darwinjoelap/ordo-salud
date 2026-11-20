@@ -84,6 +84,15 @@ def crear_tenant(datos):
         especialidades.append(datos['especialidad_titular'])
     habilitar_especialidades(tenant, especialidades)
 
+    # Los nuevos consultorios comienzan con los mismos tipos de consulta usados en la historia.
+    # Los tipos adicionales y las configuraciones existentes no se reemplazan.
+    from apps.agenda.models import TipoCita
+    from apps.core.tenancy import usando_tenant
+    with usando_tenant(tenant):
+        for codigo, nombre in (('PRIMERA', 'Primera consulta'), ('CONTROL', 'Control'),
+                               ('EMERGENCIA', 'Emergencia'), ('OTRA', 'Otra')):
+            TipoCita.objects.get_or_create(nombre=nombre, defaults={'tipo_consulta': codigo})
+
     U = get_user_model()
     clave = clave_temporal()
     titular = U.objects.create_user(datos['usuario_titular'], clave, tenant_cuenta=tenant,

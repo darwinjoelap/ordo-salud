@@ -24,8 +24,12 @@ class OfflineTest(BaseTest):
             self.paciente = Paciente.objects.create(nombres='Elena', apellidos='Paz', sexo='F')
             control = PlantillaHistoria.objects.get(nombre='Control')
             servicio = Servicio.objects.create(nombre='Control', precio_usd=30)
-            self.tipo = TipoCita.objects.create(nombre='Control', duracion_min=20, tipo_consulta='CONTROL',
-                                                plantilla=control, servicio=servicio)
+            self.tipo = TipoCita.objects.get(nombre='Control')
+            self.tipo.duracion_min = 20
+            self.tipo.tipo_consulta = 'CONTROL'
+            self.tipo.plantilla = control
+            self.tipo.servicio = servicio
+            self.tipo.save()
             self.cita = Cita.objects.create(paciente=self.paciente, profesional=self.perfil, tipo=self.tipo,
                                             especialidad=self.perfil.especialidad, fecha=timezone.localdate(),
                                             hora_inicio=time(9), hora_fin=time(9, 20), estado='EN_SALA')

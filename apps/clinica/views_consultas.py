@@ -177,6 +177,22 @@ def nueva(request, paciente_pk, *, es_preoperatoria=False):
         tipo = datos.get('tipo') if datos.get('tipo') in Consulta.Tipo.values else (
             cita.tipo.tipo_consulta if cita is not None and cita.tipo_id else Consulta.Tipo.PRIMERA)
 
+    servicios_consulta, servicios_elegidos, error_servicios = [], [], ''
+    if cita is None and not es_preoperatoria:
+        from apps.agenda.servicios_previstos import catalogo
+        disponibles = list(catalogo(especialidad_id=perfil.especialidad_id).order_by('nombre'))
+        mapa = {servicio.pk: servicio for servicio in disponibles}
+        try:
+            ids = {int(pk) for pk in datos.getlist('servicios')}
+        except (TypeError, ValueError):
+            ids = set()
+            error_servicios = 'Revisa los servicios seleccionados.'
+        if ids - mapa.keys():
+            error_servicios = 'Hay servicios no disponibles para la especialidad de este profesional.'
+        servicios_elegidos = [mapa[pk] for pk in sorted(ids) if pk in mapa]
+        servicios_consulta = [{'servicio': servicio, 'marcado': servicio.pk in ids}
+                             for servicio in disponibles]
+
     if request.method == 'POST' and not request.POST.get('completa'):
         try:
             consulta, creada = srv.iniciar_consulta(paciente=paciente, profesional=perfil, plantilla=plantilla,
@@ -201,7 +217,7 @@ def nueva(request, paciente_pk, *, es_preoperatoria=False):
     formularios = _formularios(consulta, request.POST if request.method == 'POST' else None)
     if request.method == 'POST':
         cirugia_valida = form_cirugia is None or form_cirugia.is_valid()
-        if all(f.is_valid() for _, f in formularios) and cirugia_valida:
+        if all(f.is_valid() for _, f in formularios) and cirugia_valida and not error_servicios:
             accion = request.POST.get('accion')
             desde = timezone.now()
             try:
@@ -214,6 +230,20 @@ def nueva(request, paciente_pk, *, es_preoperatoria=False):
                         datos_cirugia=form_cirugia.cleaned_data if form_cirugia is not None else None)
                     if not es_nueva:
                         return _volver_al_inicio(request, creada)
+                    if cita is None and servicios_elegidos:
+                        from apps.cobros.models import Servicio
+                        from apps.cobros.servicios import crear_cargo
+                        for seleccionado in servicios_elegidos:
+                            servicio = (Servicio.objects.select_for_update()
+                                        .filter(pk=seleccionado.pk, activo=True)
+                                        .filter(Q(especialidad__isnull=True) |
+                                                Q(especialidad_id=perfil.especialidad_id)).first())
+                            if servicio is None:
+                                raise ErrorDeNegocio('El catálogo de servicios cambió. Revisa la selección.')
+                            if not creada.cargos.filter(servicio=servicio).exists():
+                                crear_cargo(paciente=paciente, consulta=creada, profesional=perfil,
+                                           servicio=servicio, descripcion=servicio.nombre,
+                                           precio_usd=servicio.precio_usd)
                     observaciones.guardar(creada, request.POST)
                     auditoria.registrar(request, 'CREAR', creada, paciente_id=paciente.pk)
                     vincular_dictado(request, creada)
@@ -231,12 +261,13 @@ def nueva(request, paciente_pk, *, es_preoperatoria=False):
             if es_preoperatoria and accion == 'valorar':
                 return redirect('clinica:preoperatorio_valorar', pk=creada.pk)
             return redirect('clinica:consulta_editar', pk=creada.pk)
-        messages.error(request, 'Revisa los campos marcados en rojo; no se guardó nada.')
+        messages.error(request, error_servicios or 'Revisa los campos marcados en rojo; no se guardó nada.')
     from .selectors import consultas_visibles
     return render(request, 'clinica/consulta_form.html', {
         'titulo': f'{"Evaluación preoperatoria" if es_preoperatoria else "Nueva consulta"} · {paciente}',
         'consulta': consulta, 'formularios': formularios, 'nueva': True, 'form_cirugia': form_cirugia,
         'cita': cita, 'independiente': independiente, 'intento': intento,
+        'servicios_consulta': servicios_consulta, 'error_servicios': error_servicios,
         'previas': consultas_visibles(request, paciente)[:5],
         'observaciones': observaciones.para(request.membresia, paciente, consulta),
         'obs_texto': request.POST.get('observacion_importante', '') if request.method == 'POST' else '',

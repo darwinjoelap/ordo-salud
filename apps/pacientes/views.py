@@ -100,6 +100,9 @@ def detalle(request, pk):
                                                       estado__in=Cita.ACTIVAS)
                                   .select_related('profesional__membresia__usuario').order_by('fecha', 'hora_inicio'))
     m = request.membresia
+    if m and m.perfil_activo and tiene_permiso(request, 'consultas.crear'):
+        from apps.agenda.servicios_previstos import catalogo
+        contexto['servicios_consulta'] = catalogo(especialidad_id=m.perfil_activo.especialidad_id).order_by('nombre')
     if tiene_permiso(request, 'consultas.crear'):
         from apps.agenda.servicios import citas_para_iniciar
         contexto['citas_para_iniciar'] = citas_para_iniciar(paciente, m.perfil_activo)

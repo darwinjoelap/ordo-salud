@@ -31,6 +31,22 @@
     {% if consulta.lugar_id %}<input type="hidden" name="lugar" value="{{ consulta.lugar_id }}">{% endif %}
     {% if cita %}<input type="hidden" name="cita" value="{{ cita.pk }}">{% endif %}
   {% endif %}
+  {% if nueva and independiente and not form_cirugia and not cita and servicios_consulta %}
+    <section class="card mb-3">
+      <h2 class="h6 card-header">Servicios de esta consulta</h2>
+      <div class="card-body">
+        <p class="small text-muted">Los cargos se crean solo al guardar; abrir la consulta no cobra nada.</p>
+        {% if error_servicios %}<p class="text-danger small">{{ error_servicios }}</p>{% endif %}
+        {% for opcion in servicios_consulta %}
+        <label class="d-flex align-items-center gap-2 py-1">
+          <input type="checkbox" class="form-check-input m-0" name="servicios" value="{{ opcion.servicio.pk }}" {% if opcion.marcado %}checked{% endif %}>
+          <span>{{ opcion.servicio.nombre }}</span>
+          <span class="small ms-auto">{{ opcion.servicio.precio_usd }} USD</span>
+        </label>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
   {% if form_cirugia %}
     <section class="card mb-3">
       <h2 class="h6 card-header">Cirugía prevista</h2>

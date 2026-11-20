@@ -38,7 +38,10 @@ class ServiciosPrevistosTest(BaseTest):
             self.otro = Servicio.objects.create(nombre='Servicio pediátrico', precio_usd=Decimal('30'),
                                                 especialidad=self.pediatria)
             self.inactivo = Servicio.objects.create(nombre='Servicio inactivo', precio_usd=Decimal('5'), activo=False)
-            self.tipo = TipoCita.objects.create(nombre='Control', servicio=self.propio, duracion_min=45)
+            self.tipo = TipoCita.objects.get(nombre='Control')
+            self.tipo.servicio = self.propio
+            self.tipo.duracion_min = 45
+            self.tipo.save()
 
     def datos(self, servicios, **extra):
         return {'paciente': self.paciente.pk, 'profesional': self.perfil.pk, 'fecha': self.hoy.isoformat(),
@@ -52,6 +55,64 @@ class ServiciosPrevistosTest(BaseTest):
 
     def editar(self, cita, servicios, **extra):
         return self.cliente.post(f'/agenda/citas/{cita.pk}/editar/', self.datos(servicios, **extra))
+
+
+    def test_tipos_de_cita_iniciales_y_servicios_de_ficha(self):
+        with self.en_tenant():
+            nombres = set(TipoCita.objects.values_list('nombre', flat=True))
+            self.assertTrue({'Primera consulta', 'Control', 'Emergencia', 'Otra'} <= nombres)
+        self.assertContains(self.cliente.get('/agenda/citas/nueva/'), 'Primera consulta')
+        ficha = self.cliente.get(f'/pacientes/{self.paciente.pk}/')
+        self.assertContains(ficha, 'Servicios para consulta independiente')
+        self.assertContains(ficha, self.general.nombre)
+        self.assertNotContains(ficha, self.otro.nombre)
+
+    def test_consulta_independiente_cobra_servicios_una_vez(self):
+        url = reverse('clinica:consulta_nueva', args=(self.paciente.pk,))
+        r = self.cliente.get(url, {'independiente': '1',
+                                   'servicios': [self.general.pk, self.propio.pk]})
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Servicios de esta consulta')
+        self.assertContains(r, self.general.nombre)
+        datos = {'completa': '1', 'accion': 'guardar', 'independiente': '1',
+                 'intento': r.context['intento'],
+                 'servicios': [self.general.pk, self.propio.pk]}
+        respuesta = self.cliente.post(url, datos)
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(self.cliente.post(url, datos).status_code, 302)
+        with self.en_tenant():
+            cargos = list(Cargo.objects.filter(consulta__paciente=self.paciente))
+            self.assertEqual(len(cargos), 2)
+            self.assertEqual({(c.servicio_id, c.precio_usd) for c in cargos},
+                             {(self.general.pk, Decimal('10')), (self.propio.pk, Decimal('20'))})
+            self.assertTrue(all(c.cita_id is None for c in cargos))
+
+    def test_consulta_independiente_rechaza_servicios_ajenos_o_inactivos(self):
+        url = reverse('clinica:consulta_nueva', args=(self.paciente.pk,))
+        otro, _ = crear_consultorio(slug='otro-servicios')
+        with self.en_tenant(otro):
+            ajeno = Servicio.objects.create(nombre='Externo', precio_usd=Decimal('99'))
+        for servicio in (self.otro, self.inactivo, ajeno):
+            r = self.cliente.get(url, {'independiente': '1'})
+            datos = {'completa': '1', 'accion': 'guardar', 'independiente': '1',
+                     'intento': r.context['intento'], 'servicios': [servicio.pk]}
+            respuesta = self.cliente.post(url, datos)
+            self.assertEqual(respuesta.status_code, 200)
+            self.assertContains(respuesta, 'servicios no disponibles')
+        with self.en_tenant():
+            self.assertFalse(Cargo.objects.exists())
+            from apps.clinica.models import Consulta
+            self.assertFalse(Consulta.objects.exists())
+
+    def test_consulta_vinculada_respeta_plan_y_no_agrega_servicio_inyectado(self):
+        cita = self.agendar([self.general.pk])
+        url = reverse('clinica:consulta_nueva', args=(self.paciente.pk,))
+        respuesta = self.cliente.post(url, {'cita': cita.pk, 'completa': '1',
+                                            'accion': 'guardar', 'servicios': [self.propio.pk]})
+        self.assertEqual(respuesta.status_code, 302)
+        with self.en_tenant():
+            self.assertEqual(list(Cargo.objects.filter(cita=cita).values_list('servicio_id', flat=True)),
+                             [self.general.pk])
 
     def test_creacion_edicion_sin_cargo_y_precio_congelado(self):
         cita = self.agendar([self.general.pk, self.propio.pk], tipo=self.tipo.pk)

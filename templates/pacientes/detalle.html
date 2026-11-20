@@ -33,6 +33,20 @@
         {% for v, n in tipos_consulta %}<option value="{{ v }}" {% if v == 'CONTROL' and consultas %}selected{% elif v == 'PRIMERA' and not consultas %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
       {% if lugares %}<div class="col-md-3"><label class="form-label small">Lugar</label><select name="lugar" class="form-select">
         {% for l in lugares %}<option value="{{ l.pk }}">{{ l }}</option>{% endfor %}</select></div>{% endif %}
+      {% if servicios_consulta %}
+      <div class="col-12">
+        <fieldset class="border rounded p-2">
+          <legend class="float-none w-auto px-1 h6 mb-1">Servicios para consulta independiente</legend>
+          <p class="small text-muted mb-2">Se cobrarán al guardar la consulta. Si atiendes una cita agendada, se respetan los servicios de esa cita.</p>
+          {% for servicio in servicios_consulta %}
+          <label class="d-flex align-items-center gap-2 py-1">
+            <input type="checkbox" class="form-check-input m-0" name="servicios" value="{{ servicio.pk }}">
+            <span>{{ servicio.nombre }}</span><span class="small ms-auto">{{ servicio.precio_usd }} USD</span>
+          </label>
+          {% endfor %}
+        </fieldset>
+      </div>
+      {% endif %}
       <div class="col-auto d-flex flex-wrap gap-2">
         {% for cita in citas_para_iniciar %}
           <button class="btn btn-primary" name="cita" value="{{ cita.pk }}">Empezar cita #{{ cita.pk }} · {% if cita.hora_inicio %}{{ cita.hora_inicio|hora12 }}{% else %}Sin hora{% endif %}{% if cita.tipo %} · {{ cita.tipo.nombre }}{% endif %}</button>
