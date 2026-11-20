@@ -1,0 +1,42 @@
+name: Validar selector compacto preoperatorio (temporal)
+on:
+  push:
+    branches: [fix/preoperatorio-estudios-compactos]
+permissions:
+  contents: read
+jobs:
+  ui-preoperatorio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ordo_ui
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ordo_ui
+      DJANGO_SETTINGS_MODULE: config.settings.test
+      SECRET_KEY: clave-pruebas-no-produccion
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      BASE_DOMAIN: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Verificación de plantillas, Django y JS
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+          node --check static/js/estudios.js
+      - name: Pruebas específicas PostgreSQL
+        run: |
+          python manage.py test tests.test_preoperatorio_estudios_catalogo tests.test_evaluacion_preoperatoria_etapa2 tests.test_orden_estudios --noinput -v 2
