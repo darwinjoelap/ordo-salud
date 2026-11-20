@@ -11,6 +11,7 @@ from apps.core.excepciones import ErrorDeNegocio
 from apps.core.forms import FormBase
 from apps.core.permisos import puede_usar_preoperatorio
 
+from .escalas_preoperatorias import confirmados
 from .models.consulta import (
     Adjunto, Consulta, EstudioPreoperatorio, EvaluacionPreoperatoria, InformePreoperatorio, ValoracionPreoperatoria,
 )
@@ -151,7 +152,7 @@ def datos_estudios(valoracion):
 
 
 @transaction.atomic
-def guardar_valoracion(consulta, membresia, form, estudios):
+def guardar_valoracion(consulta, membresia, form, estudios, *, escalas=None):
     from .consultas import _bloquear_consulta
 
     consulta = _bloquear_consulta(consulta)
@@ -160,6 +161,9 @@ def guardar_valoracion(consulta, membresia, form, estudios):
     evaluacion = consulta.preoperatorio
     actual = valoracion_actual(evaluacion)
     datos = form.datos_clinicos()
+    resultados = {**confirmados(actual), **(escalas or {})}
+    if resultados:
+        datos['escalas_preoperatorias'] = resultados
     motivo = form.cleaned_data.get('motivo_enmienda', '')
     if consulta.estado == Consulta.Estado.CERRADA and (not datos['validada'] or len(motivo) < 5):
         raise ErrorDeNegocio('Para corregir una consulta cerrada indica el motivo y valida la conclusión.')

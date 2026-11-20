@@ -37,6 +37,8 @@ urlpatterns = [
     path('consultas/<int:pk>/preoperatorio/valoracion/', vpre.valorar, name='preoperatorio_valorar'),
     path('consultas/<int:pk>/preoperatorio/estudios/adjuntos/<int:adjunto_pk>/', vpre.adjunto_estudio,
          name='preoperatorio_adjunto'),
+    path('consultas/<int:pk>/preoperatorio/escalas/<slug:codigo>/calcular/', vpre.calcular_escala,
+         name='preoperatorio_calcular_escala'),
     path('consultas/<int:pk>/preoperatorio/emitir/', vpre.emitir, name='preoperatorio_emitir'),
     path('consultas/<int:pk>/editar/', vc.editar, name='consulta_editar'),
     path('consultas/<int:pk>/imprimir/', vc.imprimir, name='consulta_imprimir'),

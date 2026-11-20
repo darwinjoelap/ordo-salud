@@ -24,6 +24,7 @@ from apps.pacientes.models import Paciente, normalizar_texto
 
 from . import consultas as srv
 from . import observaciones, preoperatorio, registro
+from .escalas_preoperatorias import para_historia
 from .formularios import FormularioSeccion
 from .models import Adjunto, Cie10, Consulta, PlantillaHistoria
 
@@ -335,6 +336,7 @@ def detalle(request, pk):
             and valoracion and valoracion.datos.get('validada'),
             'estado_mets': dict(preoperatorio.ESTADOS_METS).get(valoracion.datos.get('mets_estado')) if valoracion else '',
             'informes_preoperatorios': evaluacion.informes.select_related('documento').defer('pdf_firmado', 'pdf_sin_firma'),
+            'escalas_confirmadas': para_historia(consulta, valoracion),
             'enmiendas_preoperatorias': evaluacion.valoraciones.exclude(motivo_enmienda='')
             .select_related('creado_por').defer('datos'),
         }

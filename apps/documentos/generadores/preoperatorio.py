@@ -5,6 +5,7 @@ from django.utils import timezone
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 
+from apps.clinica.escalas_preoperatorias import para_informe
 from apps.clinica.preoperatorio import CODIGO_INFORME, ESTADOS_METS
 
 from .base import CUERPO, construir, lineas, lugar_y_fecha, nota_confidencial, seccion, tabla_datos, titulo
@@ -96,6 +97,21 @@ def renderizar(doc, evaluacion, valoracion, lectura, *, con_firma):
     _campo(cuerpo, 'Justificación ASA-PS', datos.get('asa_justificacion'))
     _campo(cuerpo, 'Observaciones de ASA-PS', datos.get('asa_observaciones'))
     _campo(cuerpo, 'Observaciones de capacidad funcional', datos.get('mets_observaciones'))
+
+    resultados = para_informe(consulta, valoracion)
+    if resultados:
+        cuerpo += _seccion('Escalas preoperatorias confirmadas', tenant)
+        for resultado in resultados:
+            _campo(cuerpo, f"{resultado['nombre']} ({resultado['version']})",
+                   f"{resultado['puntaje']} puntos · {resultado['clase']}")
+            _campo(cuerpo, 'Interpretación', resultado['interpretacion'])
+            _campo(cuerpo, 'Valoración y confirmación',
+                   f"{resultado['fecha_evaluacion']} · {resultado['fecha_confirmacion']} · {resultado['autor']}")
+            _campo(cuerpo, 'Factores', '; '.join(
+                f"{f['factor']}: {f['valor']}" + (f" ({f['puntos']} puntos)" if f['puntos'] is not None else '')
+                for f in resultado['factores']
+            ))
+            _campo(cuerpo, 'Fuente', resultado['fuente'])
 
     cuerpo += _seccion('Conclusiones y recomendaciones', tenant)
     for clave, etiqueta in (

@@ -1,0 +1,82 @@
+{% if modo_escalas == 'resultado' %}
+  {% if tarjeta.error_confirmacion %}<p class="text-danger mb-2">{{ tarjeta.error_confirmacion }}</p>{% endif %}
+  {% if tarjeta.estado %}
+    <p class="small mb-1"><strong>{{ tarjeta.estado }}</strong>{% if tarjeta.motivo %} · {{ tarjeta.motivo }}{% endif %}</p>
+  {% elif tarjeta.firma %}
+    <div class="small" aria-live="polite">
+      <p class="mb-1"><strong>{{ tarjeta.resultado.total }} puntos · {{ tarjeta.resultado.clase }}</strong></p>
+      <p class="mb-2">{{ tarjeta.resultado.interpretacion }}</p>
+      {% with factores=tarjeta.factores %}{% include 'clinica/_escalas_preoperatorias.html' with modo_escalas='factores' %}{% endwith %}
+      <input type="hidden" name="{{ tarjeta.escala.codigo }}-firma" value="{{ tarjeta.firma }}">
+      <div class="form-check">
+        <input class="form-check-input" id="confirmar-{{ tarjeta.escala.codigo }}" name="{{ tarjeta.escala.codigo }}-confirmar" type="checkbox" value="1">
+        <label class="form-check-label" for="confirmar-{{ tarjeta.escala.codigo }}">Confirmar este resultado al guardar</label>
+      </div>
+    </div>
+  {% endif %}
+{% elif modo_escalas == 'factores' %}
+  <div class="table-responsive">
+    <table class="table table-sm mb-2">
+      <thead><tr><th scope="col">Factor</th><th scope="col">Valor</th><th scope="col" class="text-end">Puntos</th></tr></thead>
+      <tbody>
+        {% for factor in factores %}
+          <tr><th scope="row" class="fw-normal">{{ factor.factor }}</th><td>{{ factor.valor }}</td>
+            <td class="text-end">{{ factor.puntos|default_if_none:"—" }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% elif modo_escalas == 'lectura' %}
+  <h3 class="h6 mt-3">Escalas preoperatorias confirmadas</h3>
+  {% for escala in escalas_confirmadas %}
+    <details class="border rounded p-2 mb-2">
+      <summary>{{ escala.nombre }} · <strong>{{ escala.puntaje }} puntos · {{ escala.clase }}</strong></summary>
+      {% if escala.aviso_contexto %}
+        <p class="small text-warning-emphasis mt-2 mb-1">Requiere revisión: {{ escala.aviso_contexto }}</p>
+      {% endif %}
+      <p class="small mt-2 mb-1">{{ escala.interpretacion }}</p>
+      <p class="small mb-1">Evaluado el {{ escala.fecha_evaluacion }} · Confirmado el {{ escala.fecha_confirmacion }} por {{ escala.autor }}</p>
+      <p class="small mb-2"><a href="{{ escala.fuente }}" target="_blank" rel="noopener noreferrer">{{ escala.version }}</a></p>
+      {% with factores=escala.factores %}{% include 'clinica/_escalas_preoperatorias.html' with modo_escalas='factores' %}{% endwith %}
+    </details>
+  {% endfor %}
+{% else %}
+  <section class="card mb-3">
+    <h2 class="h6 card-header">Escalas preoperatorias</h2>
+    <div class="card-body">
+      {% for tarjeta in tarjetas_escalas %}
+        <details class="border rounded p-2 mb-2"{% if tarjeta.form_escala.is_bound or tarjeta.error_confirmacion %} open{% endif %}>
+          <summary>
+            {{ tarjeta.escala.nombre }}
+            {% if tarjeta.escala.restriccion %}<span class="text-muted small">· No disponible</span>
+            {% elif tarjeta.anterior %}<span class="text-muted small">· {{ tarjeta.anterior.puntaje }} puntos confirmados</span>{% endif %}
+          </summary>
+          <p class="small mt-2 mb-1">{{ tarjeta.escala.poblacion }}</p>
+          <p class="small mb-2"><a href="{{ tarjeta.escala.fuente }}" target="_blank" rel="noopener noreferrer">{{ tarjeta.escala.version }}</a></p>
+          {% if tarjeta.escala.restriccion %}
+            <p class="small mb-1">{{ tarjeta.motivo }}</p>
+            {% if tarjeta.error_confirmacion %}<p class="text-danger mb-2">{{ tarjeta.error_confirmacion }}</p>{% endif %}
+          {% else %}
+            <fieldset class="mb-2">
+              {% with codigo=tarjeta.escala.codigo %}
+                {% url 'clinica:preoperatorio_calcular_escala' consulta.pk codigo as calcular_url %}
+                <div class="row g-2" hx-post="{{ calcular_url }}" hx-trigger="change delay:350ms"
+                     hx-target="#resultado-{{ codigo }}" hx-include="closest fieldset" hx-params="{{ tarjeta.parametros }}">
+                  {% for campo in tarjeta.form_escala %}
+                    <div class="col-md-6">{% include 'partials/campo.html' with campo=campo %}</div>
+                  {% endfor %}
+                </div>
+                <button class="btn btn-sm btn-outline-primary mt-2" type="submit" formnovalidate name="calcular" value="{{ codigo }}"
+                        hx-post="{{ calcular_url }}" hx-target="#resultado-{{ codigo }}" hx-include="closest fieldset"
+                        hx-params="{{ tarjeta.parametros }}">Calcular</button>
+                <div class="mt-2" id="resultado-{{ codigo }}" aria-live="polite">
+                  {% include 'clinica/_escalas_preoperatorias.html' with modo_escalas='resultado' %}
+                </div>
+              {% endwith %}
+            </fieldset>
+          {% endif %}
+        </details>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}

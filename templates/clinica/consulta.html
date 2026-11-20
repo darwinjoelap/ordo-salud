@@ -88,6 +88,9 @@
           {% if v.validada %}<p class="mb-0 text-muted">Conclusión validada por {{ valoracion.creado_por.nombre_visible }} el {{ valoracion.creado_en|date:"d/m/Y" }}.</p>
           {% else %}<p class="mb-0 text-muted">Conclusión pendiente de validación.</p>{% endif %}
         {% endwith %}
+        {% if escalas_confirmadas %}
+          {% include 'clinica/_escalas_preoperatorias.html' with modo_escalas='lectura' %}
+        {% endif %}
       {% else %}<p class="text-muted mb-0">Valoración pendiente de registro.</p>{% endif %}
     </div>
     {% if enmiendas_preoperatorias %}

@@ -11,6 +11,7 @@ from apps.core import auditoria
 from apps.core.excepciones import ErrorDeNegocio
 from apps.core.permisos import requiere
 
+from . import escalas_preoperatorias as escalas
 from . import preoperatorio, views_consultas
 from .models import Consulta
 
@@ -41,12 +42,20 @@ def valorar(request, pk):
     estudios = preoperatorio.EstudiosFormSet(
         datos, initial=preoperatorio.datos_estudios(actual), prefix='estudios', form_kwargs={'adjuntos': adjuntos},
     )
-    if request.method == 'POST':
+    errores_escalas = {}
+    previa = request.POST.get('calcular') if datos is not None else None
+    if datos is not None and not previa:
         valoracion_valida = form.is_valid()
         if estudios.is_valid() and valoracion_valida:
+            cambios, errores_escalas = escalas.preparar_confirmaciones(
+                datos, consulta, request.user, form.cleaned_data['version'],
+            )
+        else:
+            cambios = None
+        if cambios is not None and not errores_escalas:
             try:
                 version, nueva = preoperatorio.guardar_valoracion(
-                    consulta, request.membresia, form, estudios.cleaned_data,
+                    consulta, request.membresia, form, estudios.cleaned_data, escalas=cambios,
                 )
             except ErrorDeNegocio as error:
                 form.add_error(None, str(error))
@@ -59,12 +68,38 @@ def valorar(request, pk):
                 if request.POST.get('continuar') == 'estudios':
                     redireccion = 'clinica:preoperatorio_valorar'
                 return redirect(redireccion, pk=pk)
-    else:
+    elif datos is None:
         auditoria.registrar(request, 'VER', consulta, paciente_id=consulta.paciente_id,
                             detalle='Valoración preoperatoria')
+    anteriores = escalas.confirmados(actual)
+    tarjetas = []
+    for escala in escalas.ESCALAS:
+        codigo = escala.codigo
+        tiene_datos = datos is not None and any(k.startswith(codigo + '-') for k in datos)
+        tarjeta = escalas.tarjeta(escala, consulta, request.user, actual.pk if actual else 0,
+                                  datos=datos if tiene_datos else None, anterior=anteriores.get(codigo))
+        tarjeta['error_confirmacion'] = errores_escalas.get(codigo)
+        tarjetas.append(tarjeta)
     return render(request, 'clinica/preoperatorio_form.html', {
         'titulo': 'Valoración preoperatoria', 'consulta': consulta, 'form': form, 'estudios': estudios,
-        'enmienda': enmienda,
+        'enmienda': enmienda, 'tarjetas_escalas': tarjetas,
+    })
+
+
+@login_required
+@requiere('historia.ver')
+@require_POST
+def calcular_escala(request, pk, codigo):
+    consulta, evaluacion = _evaluacion_visible(request, pk)
+    if not preoperatorio.puede_valorar(request.membresia, consulta):
+        raise PermissionDenied
+    escala = escalas.POR_CODIGO.get(codigo)
+    if escala is None:
+        raise Http404
+    actual = preoperatorio.valoracion_actual(evaluacion)
+    tarjeta = escalas.tarjeta(escala, consulta, request.user, actual.pk if actual else 0, datos=request.POST)
+    return render(request, 'clinica/_escalas_preoperatorias.html', {
+        'modo_escalas': 'resultado', 'tarjeta': tarjeta,
     })
 
 
