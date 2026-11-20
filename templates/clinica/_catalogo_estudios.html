@@ -1,7 +1,8 @@
 {% comment %}Selector común para órdenes y estudios de preoperatorio.
 No crea cargos ni mezcla los resultados con una orden de solicitud.{% endcomment %}
 <section class="{% if modo_catalogo == 'preoperatorio' %}mb-0{% else %}border rounded p-3 mb-3{% endif %}"
-         data-catalogo-estudios data-modo="{{ modo_catalogo }}" data-consulta="{{ consulta.pk }}">
+         data-catalogo-estudios data-modo="{{ modo_catalogo }}"
+         data-consulta="{{ consulta.pk|default_if_none:'' }}" data-paciente="{{ consulta.paciente.pk }}">
   {% if modo_catalogo != 'preoperatorio' %}<h3 class="h6 mb-2">Catálogo de exámenes</h3>{% endif %}
   {% if modo_catalogo == 'preoperatorio' %}
     {{ estudios.management_form }}
@@ -35,6 +36,39 @@ No crea cargos ni mezcla los resultados con una orden de solicitud.{% endcomment
         <p class="small text-muted">El catálogo está vacío. Puedes registrar el primer examen aquí.</p>
       {% endfor %}
     </div>
+  {% elif modo_catalogo == 'consulta' %}
+    <p class="small text-muted mb-2">Marca los exámenes de laboratorio o imágenes. Las indicaciones se guardan en esta consulta.</p>
+    <div data-catalogo-lista>
+      {% for examen in catalogo_ordenes %}
+        {% ifchanged examen.categoria %}
+          <div class="small fw-semibold text-secondary mt-2 mb-1">{{ examen.get_categoria_display }}</div>
+        {% endifchanged %}
+        <div class="border-bottom py-1" data-fila-estudio data-orden-categoria="{{ examen.categoria }}"
+             data-orden-nombre="{{ examen.nombre }}">
+          <label class="d-flex align-items-center gap-2 py-1 mb-0">
+            <input type="checkbox" class="form-check-input m-0" data-orden-examen value="{{ examen.pk }}">
+            <span>{{ examen.nombre }}</span>
+          </label>
+          <div class="ps-4 py-1" data-detalles-estudio hidden>
+            <label class="form-label small mb-1" for="orden-indicacion-{{ examen.pk }}">Indicaciones u observaciones</label>
+            <input class="form-control form-control-sm" type="text" maxlength="300"
+                   id="orden-indicacion-{{ examen.pk }}" data-orden-indicacion
+                   placeholder="Opcional: preparación, prioridad, proyecciones…">
+          </div>
+        </div>
+      {% empty %}
+        <p class="small text-muted mb-1">No hay exámenes en el catálogo de este consultorio.</p>
+      {% endfor %}
+    </div>
+    <p class="small text-muted mt-2 mb-1">Los campos de laboratorio, imágenes y otros estudios permanecen disponibles para solicitudes libres.</p>
+    {% if consulta.pk %}
+      <a class="btn btn-sm btn-outline-primary mt-1"
+         href="{% url 'documentos:emitir' 'orden_estudios' %}?consulta={{ consulta.pk }}">
+        <i class="bi bi-file-earmark-pdf me-1"></i>Generar orden de exámenes en PDF
+      </a>
+    {% else %}
+      <p class="small text-muted mb-0">Guarda esta consulta antes de emitir la orden en PDF.</p>
+    {% endif %}
   {% else %}
     <p class="small text-muted">Selecciona los exámenes solicitados y escribe las indicaciones de cada uno.</p>
     {% if form.examenes.errors %}<div class="text-danger small">{{ form.examenes.errors }}</div>{% endif %}

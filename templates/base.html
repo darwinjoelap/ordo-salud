@@ -105,19 +105,6 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
       </div>
     {% endfor %}
-    {% if user.is_authenticated and tenant %}
-      <section id="os-transicion-pwa" class="alert alert-warning alert-dismissible py-2 mb-3" hidden
-               aria-labelledby="os-transicion-titulo" data-tenant="{{ tenant.pk }}" data-usuario="{{ user.pk }}">
-        <h2 id="os-transicion-titulo" class="h6">Actualización de Ordo Salud</h2>
-        <button type="button" class="btn-close" data-os-cerrar-pendientes aria-label="Cerrar advertencia"></button>
-        <p data-estado="borrador" hidden>Este navegador conserva un borrador de formulario.</p>
-        <p data-estado="outbox" hidden>Este navegador conserva formularios en una cola anterior.</p>
-        <p data-estado="dictado" hidden>Este navegador conserva un dictado pendiente.</p>
-        <p class="mb-0">Conserva el perfil y las pestañas antiguas abiertas. Evita reenviar formularios,
-          cambiar de cuenta o usar sus enlaces de WhatsApp. Si pudo iniciarse un borrado de dictados,
-          cerrar una pestaña podría completarlo. Consulta al responsable antes de cerrar o recargar.</p>
-      </section>
-    {% endif %}
     {% block contenido %}{% endblock %}
   </main>
 

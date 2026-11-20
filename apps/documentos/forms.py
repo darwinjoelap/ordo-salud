@@ -48,7 +48,38 @@ class OrdenEstudiosForm(DocumentoForm):
 
         activos = list(catalogo_activo())
         self.fields['examenes'].queryset = EstudioCatalogo.objects.filter(pk__in=[e.pk for e in activos])
-        seleccionados = set(self.data.getlist('examenes')) if self.is_bound else set()
+        if not self.is_bound:
+            # La orden se emite DESPUÉS de guardar la consulta. Reutiliza lo seleccionado
+            # en su sección de órdenes sin consultar datos de otro paciente o profesional.
+            consulta_id = self.request.GET.get('consulta') if self.request else ''
+            if consulta_id and str(consulta_id).isdigit():
+                from apps.clinica import consultas as consultas_clinicas
+                from apps.clinica.models import Consulta
+
+                perfil = getattr(getattr(self.request, 'membresia', None), 'perfil_activo', None)
+                consulta = (Consulta.objects.filter(pk=consulta_id, paciente=self.paciente,
+                                                    profesional=perfil).first()
+                            if perfil is not None else None)
+                if consulta is not None:
+                    seccion = next((item for item in consulta.estructura
+                                    if item['codigo'] == 'nucleo.ordenes'), None)
+                    datos = (consultas_clinicas.datos_guardados(consulta)
+                             .get(seccion['seccion_id'], {}) if seccion else {})
+                    seleccion = []
+                    for examen in activos:
+                        clave = ('laboratorio' if examen.categoria == 'LAB'
+                                 else 'imagenes' if examen.categoria in ('RX', 'ECG') else 'otros')
+                        encabezado = '• ' + examen.nombre
+                        for linea in (datos.get(clave) or '').splitlines():
+                            linea = linea.strip()
+                            if linea == encabezado or linea.startswith(encabezado + ' — '):
+                                seleccion.append(examen.pk)
+                                self.initial['indicacion_' + str(examen.pk)] = (
+                                    linea[len(encabezado) + 3:] if linea != encabezado else '')
+                                break
+                    self.initial['examenes'] = seleccion
+        seleccionados = (set(self.data.getlist('examenes')) if self.is_bound
+                         else {str(pk) for pk in self.initial.get('examenes', [])})
         self.catalogo_opciones = []
         for examen in activos:
             clave = f'indicacion_{examen.pk}'

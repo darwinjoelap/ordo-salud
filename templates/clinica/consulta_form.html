@@ -72,6 +72,9 @@
       <div class="collapse {% if not item.colapsada or form.errors %}show{% endif %}" id="s{{ item.seccion_id }}">
         <div class="card-body">
           {% if item.codigo == 'nucleo.prescripcion' %}{% include 'clinica/_glosario_barra.html' %}{% endif %}
+          {% if item.codigo == 'nucleo.ordenes' %}
+            {% include 'clinica/_catalogo_estudios.html' with modo_catalogo='consulta' %}
+          {% endif %}
           {% include 'clinica/_seccion_form.html' with form=form %}
         </div>
       </div>
@@ -109,7 +112,7 @@
 {% endwith %}
 {% endblock %}
 {% block extra_js %}
-<script src="{% static 'js/secciones.js' %}"></script>{% if sugerir_ia %}<script src="{% static 'js/sugerir_ia.js' %}"></script>{% endif %}{% include 'clinica/_dictado.html' %}
+<script src="{% static 'js/secciones.js' %}"></script><script src="{% static 'js/estudios.js' %}" defer></script>{% if sugerir_ia %}<script src="{% static 'js/sugerir_ia.js' %}"></script>{% endif %}{% include 'clinica/_dictado.html' %}
 <script>
 // Historia completa en una pantalla: cada sección se contrae o se expande y el sistema lo recuerda (por médico y
 // equipo), así la ficha que ya está llena puede quedar contraída en las próximas consultas.

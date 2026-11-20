@@ -10,7 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function controles(fila) {
       const selector = modo === 'orden'
         ? 'input[type="checkbox"][name="examenes"]'
-        : 'input[type="checkbox"][name$="-seleccionado"]';
+        : modo === 'consulta'
+          ? 'input[type="checkbox"][data-orden-examen]'
+          : 'input[type="checkbox"][name$="-seleccionado"]';
       return fila.querySelector(selector);
     }
     function mostrarCampos() {
@@ -20,8 +22,72 @@ document.addEventListener('DOMContentLoaded', () => {
         if (detalles && seleccion) detalles.hidden = !seleccion.checked;
       });
     }
+    // La selección en consulta se guarda en sus campos clínicos nativos.
+    // Así permanece compatible con borradores offline, PDFs e historias previas.
+    const claves = {LAB: 'laboratorio', ECG: 'imagenes', RX: 'imagenes', OTRO: 'otros'};
+    const seccion = modo === 'consulta' ? panel.closest('[data-codigo="nucleo.ordenes"]') : null;
+    const camposOrden = {};
+    if (seccion) {
+      ['laboratorio', 'imagenes', 'otros'].forEach((clave) => {
+        camposOrden[clave] = seccion.querySelector('[data-campo="' + clave + '"] textarea');
+      });
+    }
+    function filasConsulta() {
+      return Array.from(panel.querySelectorAll('[data-fila-estudio][data-orden-nombre]')).map((fila) => ({
+        nombre: fila.dataset.ordenNombre, clave: claves[fila.dataset.ordenCategoria],
+        check: fila.querySelector('[data-orden-examen]'),
+        nota: fila.querySelector('[data-orden-indicacion]'),
+      })).filter((fila) => fila.clave && fila.check && fila.nota);
+    }
+    function extraerLinea(linea, nombre) {
+      const encabezado = '• ' + nombre;
+      const limpia = linea.trim();
+      if (limpia === encabezado) return '';
+      if (limpia.startsWith(encabezado + ' — ')) return limpia.slice(encabezado.length + 3);
+      return null;
+    }
+    function recuperarSeleccion() {
+      if (modo !== 'consulta') return;
+      filasConsulta().forEach((fila) => {
+        const textarea = camposOrden[fila.clave];
+        if (!textarea) return;
+        const guardada = textarea.value.split(/\r?\n/).map((linea) => extraerLinea(linea, fila.nombre))
+          .find((valor) => valor !== null);
+        if (guardada !== undefined) {
+          fila.check.checked = true;
+          fila.nota.value = guardada;
+        }
+      });
+    }
+    function guardarSeleccion() {
+      if (modo !== 'consulta') return;
+      const filas = filasConsulta();
+      ['laboratorio', 'imagenes', 'otros'].forEach((clave) => {
+        const textarea = camposOrden[clave];
+        if (!textarea) return;
+        const propias = filas.filter((fila) => fila.clave === clave);
+        const originales = textarea.value.split(/\r?\n/).filter((linea) =>
+          !propias.some((fila) => extraerLinea(linea, fila.nombre) !== null));
+        const elegidas = propias.filter((fila) => fila.check.checked).map((fila) => {
+          const nota = fila.nota.value.trim().replace(/[\r\n]+/g, ' ');
+          return '• ' + fila.nombre + (nota ? ' — ' + nota : '');
+        });
+        const nuevo = [...originales, ...elegidas].join('\n').trim();
+        if (textarea.value !== nuevo) {
+          textarea.value = nuevo;
+          textarea.dispatchEvent(new Event('input', {bubbles: true}));
+        }
+      });
+    }
+    recuperarSeleccion();
     panel.addEventListener('change', (evento) => {
-      if (evento.target.matches('input[type="checkbox"]')) mostrarCampos();
+      if (evento.target.matches('input[type="checkbox"]')) {
+        mostrarCampos();
+        guardarSeleccion();
+      }
+    });
+    panel.addEventListener('input', (evento) => {
+      if (evento.target.matches('[data-orden-indicacion]')) guardarSeleccion();
     });
     mostrarCampos();
 
@@ -86,6 +152,28 @@ document.addEventListener('DOMContentLoaded', () => {
       fila.appendChild(detalles);
       lista.appendChild(fila);
     }
+    function crearFilaConsulta(estudio) {
+      const fila = nuevoElemento('div', {class: 'border-bottom py-1',
+        'data-fila-estudio': '', 'data-orden-nombre': estudio.nombre,
+        'data-orden-categoria': estudio.categoria});
+      const label = nuevoElemento('label', {class: 'd-flex align-items-center gap-2 py-1 mb-0'});
+      const check = nuevoElemento('input', {type: 'checkbox', class: 'form-check-input m-0',
+        'data-orden-examen': '', value: estudio.id});
+      check.checked = true;
+      label.appendChild(check);
+      label.appendChild(nuevoElemento('span', {}, estudio.nombre));
+      fila.appendChild(label);
+      const detalle = nuevoElemento('div', {class: 'ps-4 py-1', 'data-detalles-estudio': ''});
+      const id = 'orden-indicacion-' + estudio.id;
+      detalle.appendChild(nuevoElemento('label', {class: 'form-label small mb-1', for: id},
+        'Indicaciones u observaciones'));
+      detalle.appendChild(nuevoElemento('input', {
+        id, type: 'text', maxlength: '300', class: 'form-control form-control-sm',
+        'data-orden-indicacion': '', placeholder: 'Opcional: preparación, prioridad, proyecciones…',
+      }));
+      fila.appendChild(detalle);
+      lista.appendChild(fila);
+    }
     function crearFilaPreoperatorio(estudio) {
       const total = panel.querySelector('input[name="estudios-TOTAL_FORMS"]');
       const n = Number(total?.value);
@@ -141,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const token = contenedor?.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
         if (token) datos.append('csrfmiddlewaretoken', token);
         datos.append('consulta', panel.dataset.consulta || '');
+        datos.append('paciente', panel.dataset.paciente || '');
         datos.append('nombre', alta.querySelector('[data-alta-nombre]').value.trim());
         datos.append('categoria', alta.querySelector('[data-alta-categoria]').value);
         datos.append('descripcion', alta.querySelector('[data-alta-descripcion]').value.trim());
@@ -156,11 +245,13 @@ document.addEventListener('DOMContentLoaded', () => {
           throw new Error(mensajes.join(' ') || 'No se pudo registrar el examen.');
         }
         if (modo === 'orden') crearFilaOrden(cuerpo);
+        else if (modo === 'consulta') crearFilaConsulta(cuerpo);
         else crearFilaPreoperatorio(cuerpo);
         editor.hidden = true;
         alta.querySelector('[data-alta-nombre]').value = '';
         alta.querySelector('[data-alta-descripcion]').value = '';
         mostrarCampos();
+        guardarSeleccion();
       } catch (ex) {
         if (error) error.textContent = ex.message || 'No se pudo registrar el examen.';
       } finally {

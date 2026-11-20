@@ -25,6 +25,7 @@ from apps.pacientes.models import Paciente, normalizar_texto
 from . import consultas as srv
 from . import observaciones, preoperatorio, registro
 from .escalas_preoperatorias import para_historia
+from .estudios import catalogo_activo
 from .formularios import FormularioSeccion
 from .models import Adjunto, Cie10, Consulta, PlantillaHistoria
 
@@ -268,6 +269,8 @@ def nueva(request, paciente_pk, *, es_preoperatoria=False):
         'consulta': consulta, 'formularios': formularios, 'nueva': True, 'form_cirugia': form_cirugia,
         'cita': cita, 'independiente': independiente, 'intento': intento,
         'servicios_consulta': servicios_consulta, 'error_servicios': error_servicios,
+        'catalogo_ordenes': list(catalogo_activo()) if any(
+            item['codigo'] == 'nucleo.ordenes' for item in consulta.estructura) else [],
         'previas': consultas_visibles(request, paciente)[:5],
         'observaciones': observaciones.para(request.membresia, paciente, consulta),
         'obs_texto': request.POST.get('observacion_importante', '') if request.method == 'POST' else '',
@@ -324,6 +327,8 @@ def editar(request, pk):
         'titulo': f'Consulta · {consulta.paciente}', 'consulta': consulta, 'formularios': formularios,
         'previas': previas, 'antecedentes': antecedentes, 'faltan': srv.faltantes(consulta),
         'form_cirugia': form_cirugia,
+        'catalogo_ordenes': list(catalogo_activo()) if any(
+            item['codigo'] == 'nucleo.ordenes' for item in consulta.estructura) else [],
         'observaciones': observaciones.para(request.membresia, consulta.paciente, consulta),
         'obs_texto': request.POST.get('observacion_importante', '') if request.method == 'POST'
         else consulta.observacion_importante,

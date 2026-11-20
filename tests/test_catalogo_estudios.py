@@ -45,6 +45,40 @@ class CatalogoEstudiosTest(BaseTest):
         with self.en_tenant():
             self.assertFalse(EstudioCatalogo.objects.exists())
 
+    def test_alta_desde_consulta_nueva_con_paciente_autorizado(self):
+        respuesta = self.cliente.post(self.url, {
+            'paciente': self.paciente.pk, 'nombre': 'Proteína C reactiva', 'categoria': 'LAB',
+        })
+        self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(respuesta.json()['nombre'], 'Proteína C reactiva')
+        with self.en_tenant():
+            self.assertEqual(EstudioCatalogo.objects.count(), 1)
+
+    def test_no_alta_con_paciente_ajeno_o_inactivo(self):
+        otro, _ = crear_consultorio(slug='otro-alta-consulta', usuario='otroalta')
+        with self.en_tenant(otro):
+            ajeno = Paciente.objects.create(nombres='Paciente', apellidos='De Otro Tenant')
+        respuesta = self.cliente.post(self.url, {
+            'paciente': ajeno.pk, 'nombre': 'Examen ajeno', 'categoria': 'LAB',
+        })
+        self.assertIn(respuesta.status_code, (403, 404))
+        with self.en_tenant():
+            self.paciente.activo = False
+            self.paciente.save()
+        respuesta = self.cliente.post(self.url, {
+            'paciente': self.paciente.pk, 'nombre': 'Examen inactivo', 'categoria': 'LAB',
+        })
+        self.assertIn(respuesta.status_code, (403, 404))
+        with self.en_tenant():
+            self.assertFalse(EstudioCatalogo.objects.exists())
+
+    def test_aviso_global_de_actualizacion_desaparece_definitivamente(self):
+        respuesta = self.cliente.get(f'/pacientes/{self.paciente.pk}/')
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertNotContains(respuesta, 'os-transicion-pwa')
+        self.assertNotContains(respuesta, 'Actualización de Ordo Salud')
+        self.assertContains(respuesta, 'js/pwa.js')
+
     def test_nunca_crea_cargos_al_registrar_examen(self):
         from apps.cobros.models import Cargo
 
