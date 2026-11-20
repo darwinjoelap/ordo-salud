@@ -117,14 +117,9 @@
   window.addEventListener('storage', revisarPendientes);
   window.addEventListener('pageshow', (evento) => {
     if (!evento.persisted) return;
-    // Una página restaurada puede pertenecer a una sesión anterior. Bloquear su uso sin descartar el DOM.
-    const bloqueo = document.getElementById('os-pagina-restaurada');
-    if (bloqueo && !bloqueo.open) {
-      // El diálogo no permite volver a interactuar con el documento de la sesión anterior.
-      bloqueo.addEventListener('cancel', (e) => e.preventDefault(), {once: false});
-      bloqueo.querySelector('[data-os-recargar]').addEventListener('click', () => location.reload(), {once: true});
-      bloqueo.showModal();
-    }
+    // Al volver del historial, actualizar el inventario sin bloquear la navegación
+    // ni recargar formularios que podrían contener datos sin guardar.
+    revisarPendientes();
   });
 
   function descartadoReciente() {
