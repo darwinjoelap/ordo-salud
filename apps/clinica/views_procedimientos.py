@@ -64,6 +64,8 @@ def nuevo(request, paciente_pk):
     lineas = previstos.lineas_de(cita) if cita else []
     plan = {linea.servicio_id: linea for linea in lineas} if cita and cita.servicios_explicitos else {}
     servicios = list(previstos.catalogo_procedimiento(cita, lineas).order_by('nombre'))
+    puede_conciliar = cita is not None and tiene_permiso(request, 'cobros.gestionar')
+    fecha = timezone.localdate()
     extras = _extras(request, paciente)
     if request.method == 'POST':
         pedidos = set(request.POST.getlist('servicios'))
@@ -78,33 +80,44 @@ def nuevo(request, paciente_pk):
                 version_cita = None
             if cita and version and version_cita is None:
                 raise ErrorDeNegocio('No se pudo verificar la versión de la cita. Vuelve a abrir el procedimiento.')
+            decisiones = {}
+            if puede_conciliar:
+                for servicio in elegidos:
+                    seleccion = request.POST.get(f'cargo_{servicio.pk}')
+                    if seleccion:
+                        decisiones[servicio.pk] = (request.POST.get(f'revision_{servicio.pk}', ''), seleccion)
             with transaction.atomic():
                 bloquear_cuenta(paciente.pk)
                 hechos = []
-                fecha = timezone.localdate()
                 for x in extras:
                     hechos += x['def'].guardar(request, paciente, request.POST, fecha) or []
                 proc = srv.registrar(
                     paciente=paciente, profesional=perfil or (cita.profesional if cita else None), servicios=elegidos,
                     otro_concepto=request.POST.get('otro_concepto', ''), otro_monto=request.POST.get('otro_monto'),
                     notas=request.POST.get('notas', ''), cita=cita, fecha=fecha, descripciones_extra=hechos,
-                    version_cita=version_cita)
+                    version_cita=version_cita, decisiones_cargos=decisiones)
+                vinculados = [seleccion for _, seleccion in decisiones.values() if seleccion != 'nuevo']
+                for cargo in proc.cargos.filter(pk__in=vinculados):
+                    auditoria.registrar(request, 'EDITAR', cargo, paciente_id=paciente.pk,
+                                        detalle=f'Cargo vinculado al procedimiento {proc.pk} y a la cita {cita.pk}.')
+                auditoria.registrar(request, 'CREAR', proc, paciente_id=paciente.pk, detalle=proc.descripcion)
         except ErrorDeNegocio as e:
             messages.error(request, str(e))
         else:
-            auditoria.registrar(request, 'CREAR', proc, paciente_id=paciente.pk, detalle=proc.descripcion)
-            total = f' · ${proc.total_usd:.2f} por cobrar' if proc.total_usd else ''
-            messages.success(request, f'Procedimiento registrado: {proc.descripcion}{total}.')
+            saldo = proc.saldo_usd
+            estado = f' · ${saldo:.2f} por cobrar' if saldo else (' · Pagado' if proc.total_usd else '')
+            messages.success(request, f'Procedimiento registrado: {proc.descripcion}{estado}.')
             return redirect(_volver(request, paciente))
     preseleccion = {str(linea.servicio_id) for linea in lineas}
     if request.method == 'POST':
         preseleccion = set(request.POST.getlist('servicios'))
-    opciones = [{'servicio': s, 'nombre': plan.get(s.pk, s).nombre, 'precio': plan.get(s.pk, s).precio_usd}
-                for s in servicios]
+    revisiones = srv.opciones_cargos(cita, fecha, [s.pk for s in servicios]) if puede_conciliar else {}
+    opciones = [{'servicio': s, 'nombre': plan.get(s.pk, s).nombre, 'precio': plan.get(s.pk, s).precio_usd,
+                 'revision': revisiones.get(s.pk)} for s in servicios]
     return render(request, 'clinica/procedimiento_form.html', {
         'titulo': f'Procedimiento · {paciente}', 'paciente': paciente, 'cita': cita, 'servicios': opciones,
         'preseleccion': preseleccion, 'extras': extras, 'datos': request.POST,
-        'volver': request.GET.get('volver', '')})
+        'volver': request.POST.get('volver') or request.GET.get('volver', '')})
 
 
 @login_required

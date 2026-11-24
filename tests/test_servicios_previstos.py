@@ -12,7 +12,9 @@ from apps.agenda.models import Cita, ServicioPrevisto, TipoCita
 from apps.clinica.consultas import crear_consulta_completa
 from apps.clinica.models import Procedimiento
 from apps.cobros import servicios as cobros
-from apps.cobros.models import Cargo, Servicio
+from apps.cobros.models import Cargo, Pago, PagoAplicado, Servicio
+from apps.cobros.selectors_cita import saldos_citas
+from apps.core.models import Auditoria
 from apps.core.tenancy import usando_tenant
 from apps.equipo import servicios as equipo
 from apps.equipo.models import Membresia
@@ -222,6 +224,94 @@ class ServiciosPrevistosTest(BaseTest):
         with self.en_tenant():
             proc = Procedimiento.objects.get(cita=cita)
             self.assertEqual(Cargo.objects.get(procedimiento=proc).precio_usd, Decimal('10'))
+
+    def test_procedimiento_conserva_cargos_y_pago_hechos_en_cuenta(self):
+        servicios = [self.general.pk, self.propio.pk]
+        cita = self.agendar(servicios)
+        cuenta = reverse('cobros:cuenta', args=(self.paciente.pk,))
+        for servicio in servicios:
+            self.assertEqual(self.cliente.post(cuenta, {'accion': 'cargo', 'servicio': servicio}).status_code, 302)
+        pago = {'accion': 'pago', 'monto': '30', 'moneda': 'USD', 'metodo': 'EFECTIVO'}
+        self.assertEqual(self.cliente.post(cuenta, pago).status_code, 302)
+        with self.en_tenant():
+            cargos = {cargo.servicio_id: cargo.pk for cargo in Cargo.objects.all()}
+            aplicaciones = list(PagoAplicado.objects.order_by('pk').values_list('pk', 'pago_id', 'cargo_id', 'monto_usd'))
+        url = reverse('clinica:procedimiento_nuevo', args=(self.paciente.pk,))
+        datos = {'cita': cita.pk, 'servicios': servicios, 'version_cita': cita.actualizado_en.isoformat()}
+        revision = self.cliente.post(url, datos)
+        self.assertContains(revision, 'Revisa los cargos existentes')
+        with self.en_tenant():
+            self.assertFalse(Procedimiento.objects.exists())
+            self.assertEqual(Cargo.objects.count(), 2)
+        for opcion in revision.context['servicios']:
+            pk = opcion['servicio'].pk
+            if pk in cargos:
+                self.assertContains(revision, f'Vincular cargo #{cargos[pk]}')
+                datos.update({f'revision_{pk}': opcion['revision']['firma'], f'cargo_{pk}': cargos[pk]})
+        self.assertEqual(self.cliente.post(url, datos).status_code, 302)
+        self.assertEqual(self.cliente.post(url, datos).status_code, 302)
+        with self.en_tenant():
+            proc = Procedimiento.objects.get(cita=cita)
+            self.assertEqual(set(proc.cargos.values_list('pk', flat=True)), set(cargos.values()))
+            self.assertEqual(Cargo.objects.count(), 2)
+            self.assertEqual(Pago.objects.count(), 1)
+            self.assertEqual(list(PagoAplicado.objects.order_by('pk').values_list('pk', 'pago_id', 'cargo_id', 'monto_usd')),
+                             aplicaciones)
+            self.assertEqual(saldos_citas([cita])[cita.pk].estado, 'pagado')
+            self.assertEqual(proc.saldo_usd, Decimal('0'))
+            eventos = Auditoria.objects.filter(accion='EDITAR', objeto_tipo='cobros.Cargo')
+            self.assertEqual(set(eventos.values_list('objeto_id', flat=True)), {str(pk) for pk in cargos.values()})
+        rapido = self.cliente.get(reverse('agenda:cobrar_cita', args=(cita.pk,)))
+        self.assertNotContains(rapido, 'Confirmo que recibí este pago')
+
+    def test_procedimiento_revalida_revision_y_permite_un_cargo_adicional_explicito(self):
+        pk = self.general.pk
+        cita = self.agendar([pk])
+        url = reverse('clinica:procedimiento_nuevo', args=(self.paciente.pk,))
+        datos = {'cita': cita.pk, 'servicios': [pk], 'version_cita': cita.actualizado_en.isoformat()}
+        with self.en_tenant():
+            anterior = cobros.crear_cargo(paciente=self.paciente, servicio=self.general, descripcion='', precio_usd=10)
+        formulario = self.cliente.get(url, {'cita': cita.pk})
+        opcion = next(o for o in formulario.context['servicios'] if o['servicio'].pk == pk)
+        datos.update({f'revision_{pk}': opcion['revision']['firma'], f'cargo_{pk}': 'nuevo'})
+        with self.en_tenant():
+            cobros.registrar_pago(paciente=self.paciente, monto=4, moneda='USD', metodo='EFECTIVO')
+        revision = self.cliente.post(url, datos)
+        self.assertContains(revision, 'Los cargos existentes cambiaron')
+        self.assertContains(revision, 'Abonado')
+        with self.en_tenant():
+            self.assertEqual(Cargo.objects.count(), 1)
+            self.assertFalse(Procedimiento.objects.exists())
+        opcion = next(o for o in revision.context['servicios'] if o['servicio'].pk == pk)
+        datos[f'revision_{pk}'] = opcion['revision']['firma']
+        self.assertEqual(self.cliente.post(url, datos).status_code, 302)
+        with self.en_tenant():
+            anterior.refresh_from_db()
+            self.assertIsNone(anterior.cita_id)
+            self.assertEqual(anterior.pagado_usd, Decimal('4'))
+            self.assertEqual(Cargo.objects.count(), 2)
+            self.assertEqual(Cargo.objects.get(cita=cita).saldo_usd, Decimal('10'))
+
+    def test_procedimiento_rechaza_vincular_cargo_de_otro_paciente(self):
+        pk = self.general.pk
+        cita = self.agendar([pk])
+        url = reverse('clinica:procedimiento_nuevo', args=(self.paciente.pk,))
+        with self.en_tenant():
+            otro = Paciente.objects.create(nombres='Otro', apellidos='Paciente')
+            ajeno = cobros.crear_cargo(paciente=otro, servicio=self.general, descripcion='', precio_usd=10)
+            propio = cobros.crear_cargo(paciente=self.paciente, servicio=self.general, descripcion='', precio_usd=10)
+        formulario = self.cliente.get(url, {'cita': cita.pk})
+        self.assertNotContains(formulario, f'Vincular cargo #{ajeno.pk}')
+        opcion = next(o for o in formulario.context['servicios'] if o['servicio'].pk == pk)
+        datos = {'cita': cita.pk, 'servicios': [pk], 'version_cita': cita.actualizado_en.isoformat(),
+                 f'revision_{pk}': opcion['revision']['firma'], f'cargo_{pk}': ajeno.pk}
+        self.assertContains(self.cliente.post(url, datos), 'Elige un cargo existente')
+        with self.en_tenant():
+            self.assertFalse(Procedimiento.objects.exists())
+        datos[f'cargo_{pk}'] = propio.pk
+        self.assertEqual(self.cliente.post(url, datos).status_code, 302)
+        with self.en_tenant():
+            self.assertEqual(Cargo.objects.get(cita=cita).pk, propio.pk)
 
     def test_cargos_y_pagos_previos_y_formulario_desactualizado(self):
         cita = self.agendar([self.general.pk])
