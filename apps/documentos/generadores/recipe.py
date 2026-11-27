@@ -13,7 +13,17 @@ from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.platypus import BaseDocTemplate, Frame, HRFlowable, PageTemplate, Spacer, Table, TableStyle
 
-from apps.core.pdf import ESTILOS, Paragraph, banner_de, dibujar_firma, dibujar_marca_agua, logo_de, marca_agua_de
+from apps.core.pdf import (
+    ESTILOS,
+    Paragraph,
+    archivo_bytes,
+    banner_de,
+    dibujar_firma,
+    dibujar_marca_agua,
+    logo_de,
+    marca_agua_de,
+    renderizar_pdf,
+)
 
 from .base import GRIS, LINEA, color_tenant
 
@@ -33,19 +43,6 @@ SUB = ParagraphStyle('r_sub', parent=ESTILOS['Normal'], fontName='Helvetica-Bold
 TEXTO = ParagraphStyle('r_texto', parent=ESTILOS['Normal'], fontSize=10, leading=13.5)
 ITEM = ParagraphStyle('r_item', parent=TEXTO, leftIndent=4 * mm)
 DETALLE = ParagraphStyle('r_detalle', parent=TEXTO, leftIndent=4 * mm, fontSize=9, textColor=colors.HexColor('#374151'))
-
-
-def _bytes(archivo):
-    if not archivo:
-        return None
-    try:
-        archivo.open('rb')
-        datos = archivo.read()
-        archivo.close()
-        ImageReader(BytesIO(datos)).getSize()
-        return datos
-    except Exception:  # noqa: BLE001  una imagen dañada nunca impide el récipe
-        return None
 
 
 def _texto(texto):
@@ -159,11 +156,11 @@ def contenido(consulta):
 def generar(doc, con_firma=True):
     profesional = doc.profesional
     datos = contenido(doc.consulta)
-    membrete = _bytes(banner_de(doc.tenant, profesional))
-    logo = _bytes(logo_de(doc.tenant, profesional))
+    membrete = archivo_bytes(banner_de(doc.tenant, profesional))
+    logo = archivo_bytes(logo_de(doc.tenant, profesional)) if membrete is None else None
     marca = marca_agua_de(doc.tenant, profesional)
-    firma = _bytes(profesional.firma) if con_firma and profesional else None
-    sello = _bytes(profesional.sello) if con_firma and profesional else None
+    firma = archivo_bytes(profesional.firma) if con_firma and profesional else None
+    sello = archivo_bytes(profesional.sello) if con_firma and profesional else None
 
     izquierda = _cabecera(doc, membrete, logo) + [Paragraph('Rp.', ETIQUETA), Spacer(1, 2 * mm)]
     derecha = _cabecera(doc, membrete, logo) + [Paragraph('Indicaciones', ETIQUETA), Spacer(1, 2 * mm)]
@@ -224,7 +221,7 @@ def generar(doc, con_firma=True):
                           pageTemplates=[PageTemplate(id='recipe', frames=[marco], onPage=pie)])
     # Si el récipe es muy largo, la tabla se parte por filas: se arma por bloques para que sí pueda partirse.
     try:
-        pdf.build([tabla])
+        renderizar_pdf(pdf, [tabla])
     except Exception:  # noqa: BLE001  LayoutError: una sola fila más alta que la hoja
         buffer = BytesIO()
         pdf = BaseDocTemplate(buffer, pagesize=(ANCHO_PAG, ALTO_PAG), title=f'Récipe {doc.numero}',
@@ -235,5 +232,5 @@ def generar(doc, con_firma=True):
                                         ALTO_PAG - 2 * MARGEN - ALTO_FIRMA,
                                         leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)], onPage=pie)])
         from reportlab.platypus import FrameBreak
-        pdf.build(izquierda + [FrameBreak()] + derecha)
+        renderizar_pdf(pdf, izquierda + [FrameBreak()] + derecha)
     return buffer.getvalue()

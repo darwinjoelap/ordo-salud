@@ -3,6 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.core.excepciones import ErrorDeNegocio
+from apps.core.pdf import medir_pdf
 from apps.core.secuencias import siguiente_numero
 
 from .models import DocumentoEmitido
@@ -46,4 +47,5 @@ def anular(doc, motivo):
 
 
 def pdf(doc, con_firma=True):
-    return doc.definicion.generar(doc, con_firma=con_firma)
+    with medir_pdf(doc.tipo):
+        return doc.definicion.generar(doc, con_firma=con_firma)

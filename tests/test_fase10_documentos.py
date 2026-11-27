@@ -1,11 +1,14 @@
 """Fase 10: documentos PDF (récipe, informe, referencia, reposo, constancia, recibo)."""
 from decimal import Decimal
 from io import BytesIO
+from unittest.mock import patch
 
+from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
+from pypdf import PdfReader
 
-from apps.clinica.models import Consulta, SeccionClinica
+from apps.clinica.models import Adjunto, Consulta, SeccionClinica
 from apps.cobros import servicios as cobros
 from apps.core.permisos import Rol
 from apps.documentos.generadores.clinicos import en_letras
@@ -15,18 +18,17 @@ from apps.equipo.models import Membresia
 from apps.pacientes.models import Paciente, Representante
 from apps.plataforma.models import Especialidad
 
-from .base import BaseTest
+from .base import BaseTest, crear_consultorio
 
 
-def _png():
+def _png(ancho=200):
     from PIL import Image
     b = BytesIO()
-    Image.new('RGBA', (200, 80), (20, 40, 160, 255)).save(b, 'PNG')
+    Image.new('RGBA', (ancho, 80), (20, 40, 160, 255)).save(b, 'PNG')
     return SimpleUploadedFile('firma.png', b.getvalue(), content_type='image/png')
 
 
 def _texto_pdf(contenido):
-    from pypdf import PdfReader
     return '\n'.join(p.extract_text() for p in PdfReader(BytesIO(contenido)).pages)
 
 
@@ -76,6 +78,46 @@ class DocumentosTest(BaseTest):
         self.cliente.get(f'/documentos/emitir/recipe/?consulta={self.consulta.pk}')
         with self.en_tenant():
             self.assertEqual(DocumentoEmitido.objects.count(), 1)
+
+    def test_recipe_lee_solo_las_imagenes_que_usa_en_cada_apertura(self):
+        self.cliente.get(f'/documentos/emitir/recipe/?consulta={self.consulta.pk}')
+        with self.en_tenant():
+            doc = DocumentoEmitido.objects.get(tipo='recipe')
+            perfil = Membresia.objects.get(usuario=self.titular).perfil
+            perfil.logo = _png()
+            perfil.membrete = _png(ancho=480)
+            perfil.firma = _png(ancho=160)
+            perfil.sello = _png(ancho=120)
+            perfil.save()
+        escenarios = [
+            (False, True, True, [perfil.logo.name, perfil.firma.name, perfil.sello.name], 1),
+            (False, True, False, [perfil.logo.name], 1),
+            (True, False, False, [perfil.membrete.name], 0),
+            (True, True, False, [perfil.membrete.name, perfil.logo.name], 0),
+        ]
+        for membrete, marca, firma, nombres, reutilizadas in escenarios:
+            with self.subTest(membrete=membrete, marca=marca, firma=firma):
+                perfil.usar_membrete_propio = membrete
+                perfil.marca_agua = marca
+                perfil.save(update_fields=['usar_membrete_propio', 'marca_agua'])
+                with (
+                    patch.object(FileSystemStorage, '_open', autospec=True, side_effect=FileSystemStorage._open) as abrir,
+                    self.assertLogs('apps.core.pdf', level='INFO') as logs,
+                ):
+                    params = {} if firma else {'firma': '0'}
+                    respuesta = self.cliente.get(f'/documentos/{doc.pk}/pdf/', params)
+                self.assertEqual(respuesta.status_code, 200)
+                self.assertCountEqual([llamada.args[1] for llamada in abrir.call_args_list], nombres)
+                self.assertIn(f'lecturas={len(nombres)} reutilizadas={reutilizadas} fallos=0', logs.output[0])
+                pagina = PdfReader(BytesIO(respuesta.content)).pages[0]
+                self.assertIn('Ibuprofeno', pagina.extract_text())
+                imagenes = {(i.image.width, i.image.convert('RGBA').getpixel((0, 0))[3]) for i in pagina.images}
+                esperadas = {(480 if membrete else 200, 255)}
+                if marca:
+                    esperadas.add((200, 20))
+                if firma:
+                    esperadas.update({(160, 255), (120, 255)})
+                self.assertEqual(imagenes, esperadas)
 
     def test_informe_con_secciones_y_conclusion(self):
         r = self.cliente.post('/documentos/emitir/informe/', {'consulta': self.consulta.pk, 'ciudad': 'Maracay',
@@ -130,6 +172,7 @@ class DocumentosTest(BaseTest):
         with self.en_tenant():
             perfil = Membresia.objects.get(usuario=self.titular).perfil
             perfil.firma = _png()
+            perfil.sello = _png(ancho=160)
             perfil.save()
         self.cliente.post('/documentos/emitir/reposo/', {'consulta': self.consulta.pk, 'dias': 1, 'desde': '2026-10-20'})
         with self.en_tenant():
@@ -137,7 +180,8 @@ class DocumentosTest(BaseTest):
         con = self.cliente.get(f'/documentos/{doc.pk}/pdf/').content
         sin = self.cliente.get(f'/documentos/{doc.pk}/pdf/?firma=0').content
         self.assertGreater(len(con), len(sin) + 200)
-        # otro médico del consultorio (historia compartida) lo ve, pero sin la imagen de la firma
+        self.assertEqual({imagen.image.width for imagen in PdfReader(BytesIO(con)).pages[0].images}, {160, 200})
+        # Otro médico del consultorio lo ve, con historia compartida y sin las imágenes de firma y sello.
         esp = Especialidad.objects.get(codigo='medicina_general')
         actor = Membresia.objects.get(usuario=self.titular)
         m, clave = equipo.agregar(self.tenant, actor, 'drdos', 'Luis', 'Mar', Rol.MEDICO, especialidad=esp)
@@ -192,3 +236,36 @@ class DocumentosTest(BaseTest):
         self.assertEqual(en_letras(21), 'veintiún')
         self.assertEqual(en_letras(45), 'cuarenta y cinco')
         self.assertEqual(en_letras(120), 'ciento veinte')
+
+
+class InformeConAdjuntoTest(BaseTest):
+    def test_informe_cardiologico_incluye_adjunto_y_reutiliza_logo(self):
+        tenant, titular = crear_consultorio('Cardiología de prueba', 'prueba-cardio', especialidad='cardiologia_pediatrica')
+        cliente = self.entrar(tenant, 'titular')
+        with self.en_tenant(tenant):
+            paciente = Paciente.objects.create(nombres='Paciente', apellidos='Sintético', sexo='F')
+            perfil = Membresia.objects.get(usuario=titular).perfil
+            perfil.logo = _png()
+            perfil.save(update_fields=['logo'])
+        r = self.iniciar_independiente(paciente, {'tipo': 'PRIMERA'}, cliente=cliente)
+        self.assertEqual(r.status_code, 302)
+        with self.en_tenant(tenant):
+            consulta = Consulta.objects.get()
+            adjunto = Adjunto.objects.create(paciente=paciente, consulta=consulta, nombre='estudio.png',
+                                            archivo=_png(ancho=320), tipo_contenido='image/png')
+        r = cliente.post('/documentos/emitir/cp_informe/',
+                         {'consulta': consulta.pk, 'incluir_imagenes': 'on', 'incluir_notas': 'on'})
+        self.assertEqual(r.status_code, 302)
+        with self.en_tenant(tenant):
+            doc = DocumentoEmitido.objects.get(tipo='cp_informe')
+        with (
+            patch.object(FileSystemStorage, '_open', autospec=True, side_effect=FileSystemStorage._open) as abrir,
+            self.assertLogs('apps.core.pdf', level='INFO') as logs,
+        ):
+            r = cliente.get(f'/documentos/{doc.pk}/pdf/')
+        self.assertEqual(r.status_code, 200)
+        self.assertCountEqual([llamada.args[1] for llamada in abrir.call_args_list],
+                              [perfil.logo.name, adjunto.archivo.name])
+        self.assertIn('lecturas=2 reutilizadas=1 fallos=0', logs.output[0])
+        paginas = PdfReader(BytesIO(r.content)).pages
+        self.assertTrue(any(imagen.image.width == 320 for pagina in paginas for imagen in pagina.images))

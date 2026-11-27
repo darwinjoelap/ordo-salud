@@ -2,8 +2,13 @@
 Piezas comunes de los PDF (adaptado de Ordo). TODOS los documentos usan encabezado_tenant() y pie_tenant()
 para que la Configuración del consultorio y el perfil del profesional se reflejen en récipes e informes.
 """
+import logging
 import re
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, field
 from io import BytesIO
+from time import perf_counter
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
@@ -39,18 +44,60 @@ ESTILO_DATO_DER = ParagraphStyle('dato_der', parent=ESTILO_DATO, alignment=TA_RI
 ESTILO_CENTRO = ParagraphStyle('centro', parent=ESTILO_DATO, alignment=TA_CENTER)
 
 
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _MedicionPDF:
+    imagenes: dict[tuple[int, str], bytes | None] = field(default_factory=dict)
+    aciertos: int = 0
+    fallos: int = 0
+    segundos_lectura: float = 0
+    segundos_renderizado: float = 0
+
+
+_medicion_pdf: ContextVar[_MedicionPDF | None] = ContextVar('medicion_pdf', default=None)
+
+
+@contextmanager
+def medir_pdf(tipo):
+    """Reutiliza imágenes y mide solo durante la generación de este documento."""
+    medicion = _MedicionPDF()
+    token = _medicion_pdf.set(medicion)
+    inicio = perf_counter()
+    try:
+        yield
+    finally:
+        _medicion_pdf.reset(token)
+        logger.info(
+            'PDF tipo=%s total_ms=%.1f lectura_ms=%.1f renderizado_ms=%.1f lecturas=%d reutilizadas=%d fallos=%d',
+            tipo, (perf_counter() - inicio) * 1000, medicion.segundos_lectura * 1000,
+            medicion.segundos_renderizado * 1000, len(medicion.imagenes), medicion.aciertos, medicion.fallos,
+        )
+
+
+def renderizar_pdf(plantilla, contenido):
+    medicion = _medicion_pdf.get()
+    if medicion is None:
+        return plantilla.build(contenido)
+    inicio = perf_counter()
+    try:
+        return plantilla.build(contenido)
+    finally:
+        medicion.segundos_renderizado += perf_counter() - inicio
+
+
 def imagen_ajustada(archivo, ancho_max, alto_max):
     """Image de ReportLab a escala, o None si no hay archivo o está dañado (nunca impide el PDF)."""
-    if not archivo:
+    datos = archivo_bytes(archivo)
+    if datos is None:
         return None
     try:
-        archivo.open('rb')
-        datos = BytesIO(archivo.read())
-        archivo.close()
-        ancho, alto = ImageReader(datos).getSize()
+        buffer = BytesIO(datos)
+        ancho, alto = ImageReader(buffer).getSize()
         escala = min(ancho_max / ancho, alto_max / alto)
-        datos.seek(0)
-        return Image(datos, width=ancho * escala, height=alto * escala)
+        buffer.seek(0)
+        return Image(buffer, width=ancho * escala, height=alto * escala)
     except Exception:  # noqa: BLE001
         return None
 
@@ -63,10 +110,29 @@ def archivo_bytes(archivo):
     """Bytes de un ImageField (local o R2) o None. Nunca lanza: una imagen dañada no impide el PDF."""
     if not archivo:
         return None
+    medicion = _medicion_pdf.get()
+    if medicion is None:
+        return _leer_imagen(archivo)
+    clave = (id(archivo.storage), archivo.name)
+    if clave in medicion.imagenes:
+        medicion.aciertos += 1
+        return medicion.imagenes[clave]
+    datos = _leer_imagen(archivo, medicion)
+    medicion.imagenes[clave] = datos
+    if datos is None:
+        medicion.fallos += 1
+    return datos
+
+
+def _leer_imagen(archivo, medicion=None):
     try:
-        archivo.open('rb')
-        datos = archivo.read()
-        archivo.close()
+        inicio = perf_counter()
+        try:
+            with archivo.open('rb') as origen:
+                datos = origen.read()
+        finally:
+            if medicion is not None:
+                medicion.segundos_lectura += perf_counter() - inicio
         ImageReader(BytesIO(datos)).getSize()
         return datos
     except Exception:  # noqa: BLE001

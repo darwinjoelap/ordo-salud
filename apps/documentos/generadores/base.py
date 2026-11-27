@@ -22,6 +22,7 @@ from apps.core.pdf import (
     dibujar_marca_agua,
     encabezado_tenant,
     marca_agua_de,
+    renderizar_pdf,
 )
 
 GRIS = colors.HexColor('#6B7280')
@@ -156,7 +157,8 @@ def construir(doc, cuerpo, *, con_firma=True, titulo_pdf=''):
                   leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
     plantilla = BaseDocTemplate(buffer, pagesize=letter, title=titulo_pdf or doc.numero,
                                 pageTemplates=[PageTemplate(id='doc', frames=[marco], onPage=pagina)])
-    plantilla.build(encabezado_tenant(tenant, profesional=profesional) + cuerpo)
+    encabezado = encabezado_tenant(tenant, profesional=profesional)
+    renderizar_pdf(plantilla, encabezado + cuerpo)
     return buffer.getvalue()
 
 
