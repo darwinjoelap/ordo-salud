@@ -156,12 +156,17 @@ def cita_form(request, pk=None):
             inicial['profesional'] = profesional
     form = CitaForm(request.POST or None, instance=cita or Cita(tenant=request.tenant), initial=inicial,
                     solo=_solo_propia(request))
+    exonerada_antes = bool(cita and cita.exonerada)
     if request.method == 'POST' and form.is_valid():
         try:
-            cita, avisos = srv.guardar_cita(
-                form.instance, sobrecupo=form.cleaned_data.get('sobrecupo'), servicios=form.ids_servicios(),
-                version=form.cleaned_data['version_cita'],
-            )
+            with transaction.atomic():
+                cita, avisos = srv.guardar_cita(
+                    form.instance, sobrecupo=form.cleaned_data.get('sobrecupo'), servicios=form.ids_servicios(),
+                    version=form.cleaned_data['version_cita'],
+                )
+                if cita.exonerada != exonerada_antes:
+                    auditoria.registrar(request, 'EDITAR' if pk else 'CREAR', cita, paciente_id=cita.paciente_id,
+                                        detalle='Atención exonerada' if cita.exonerada else 'Exoneración retirada')
         except ErrorDeNegocio as e:
             messages.error(request, str(e))
         else:

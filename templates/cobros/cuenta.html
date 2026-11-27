@@ -4,7 +4,7 @@
   <div class="me-auto">
     <h1 class="h3 mb-0">Cuenta de {{ paciente }}</h1>
     <a href="{% url 'pacientes:detalle' paciente.pk %}" class="small"><i class="bi bi-arrow-left"></i> Ficha del paciente</a>
-    {% if consulta %}<div class="small text-muted">Cobrando la consulta del {{ consulta.fecha|date:"d/m/Y" }} · {{ consulta.profesional }}</div>{% endif %}
+    {% if consulta %}<div class="small text-muted">Consulta del {{ consulta.fecha_hora|date:"d/m/Y" }} · {{ consulta.profesional }}{% if consulta.exonerada %} · Atención exonerada{% endif %}</div>{% endif %}
   </div>
   <div class="text-end">
     <div class="small text-muted">Deuda exigible</div>

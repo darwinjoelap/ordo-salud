@@ -109,7 +109,7 @@ def _estructura_preoperatoria():
 
 @transaction.atomic
 def abrir_consulta(*, paciente, profesional, plantilla=None, tipo=Consulta.Tipo.PRIMERA, lugar=None,
-                   fecha_hora=None, inicio_independiente=None, es_preoperatoria=False):
+                   fecha_hora=None, inicio_independiente=None, es_preoperatoria=False, exonerada=False):
     if not es_preoperatoria:
         plantilla = plantilla or plantilla_para(profesional)
     if plantilla is None and not es_preoperatoria:
@@ -122,7 +122,7 @@ def abrir_consulta(*, paciente, profesional, plantilla=None, tipo=Consulta.Tipo.
         paciente=paciente, profesional=profesional, especialidad=profesional.especialidad, plantilla=plantilla,
         lugar=lugar, estructura=_estructura_preoperatoria() if es_preoperatoria else congelar_estructura(plantilla),
         fecha_hora=fecha_hora or timezone.now(), tipo=tipo,
-        inicio_independiente=inicio_independiente)
+        inicio_independiente=inicio_independiente, exonerada=exonerada)
 
 
 def consulta_nueva(*, paciente, profesional, plantilla=None, tipo=Consulta.Tipo.PRIMERA, lugar=None,
@@ -140,7 +140,7 @@ def consulta_nueva(*, paciente, profesional, plantilla=None, tipo=Consulta.Tipo.
 
 @transaction.atomic
 def iniciar_consulta(*, paciente, profesional, plantilla, tipo, lugar, cita=None, fecha_hora=None,
-                     inicio_independiente=None, es_preoperatoria=False):
+                     inicio_independiente=None, es_preoperatoria=False, exonerada=False):
     """Serializa por paciente y reconoce el inicio por cita o por UUID independiente."""
     from apps.agenda.models import Cita
     from apps.agenda.servicios import vincular_consulta
@@ -172,7 +172,7 @@ def iniciar_consulta(*, paciente, profesional, plantilla, tipo, lugar, cita=None
             return previa, False
     consulta = abrir_consulta(paciente=paciente, profesional=profesional, plantilla=plantilla, tipo=tipo,
                               lugar=lugar, fecha_hora=fecha_hora, inicio_independiente=inicio_independiente,
-                              es_preoperatoria=es_preoperatoria)
+                              es_preoperatoria=es_preoperatoria, exonerada=exonerada)
     if cita is not None:
         vincular_consulta(cita, consulta, profesional)
     return consulta, True
@@ -181,11 +181,11 @@ def iniciar_consulta(*, paciente, profesional, plantilla, tipo, lugar, cita=None
 @transaction.atomic
 def iniciar_consulta_completa(*, paciente, profesional, plantilla, tipo, lugar, datos_por_seccion, cita=None,
                               fecha_hora=None, cerrar=False, usuario=None, inicio_independiente=None,
-                              datos_cirugia=None):
+                              datos_cirugia=None, exonerada=False):
     consulta, creada = iniciar_consulta(paciente=paciente, profesional=profesional, plantilla=plantilla, tipo=tipo,
                                         lugar=lugar, cita=cita, fecha_hora=fecha_hora,
                                         inicio_independiente=inicio_independiente,
-                                        es_preoperatoria=datos_cirugia is not None)
+                                        es_preoperatoria=datos_cirugia is not None, exonerada=exonerada)
     if not creada:
         return consulta, False
     guardar_secciones(consulta, datos_por_seccion, datos_cirugia=datos_cirugia)
@@ -392,6 +392,27 @@ def _bloquear_consulta(consulta):
 
     bloquear_cuenta(consulta.paciente_id)
     return Consulta.objects.select_for_update(no_key=True).get(pk=consulta.pk)
+
+
+@transaction.atomic
+def exonerar_consulta(consulta):
+    from apps.agenda.models import Cita
+    from apps.cobros.servicios import bloquear_cuenta, validar_exoneracion
+
+    bloquear_cuenta(consulta.paciente_id)
+    cita = Cita.objects.select_for_update().filter(paciente_id=consulta.paciente_id, consulta=consulta).first()
+    consulta = Consulta.objects.select_for_update(no_key=True).get(pk=consulta.pk)
+    if not consulta.editable:
+        raise ErrorDeNegocio('La consulta ya está cerrada o anulada.')
+    if consulta.exonerada:
+        return False
+    validar_exoneracion(consulta=consulta, cita=cita)
+    if cita is not None:
+        cita.exonerada = True
+        cita.save(update_fields=['exonerada', 'actualizado_en'])
+    consulta.exonerada = True
+    consulta.save(update_fields=['exonerada', 'actualizado_en'])
+    return True
 
 
 @transaction.atomic

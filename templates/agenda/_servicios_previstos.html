@@ -1,12 +1,13 @@
 <fieldset class="border rounded p-2">
   <legend class="float-none w-auto px-1 h6 mb-1">Servicios previstos</legend>
+  {% include 'partials/campo.html' with campo=form.exonerada %}
   {% for error in form.servicios.errors %}<p class="text-danger small mb-1">{{ error }}</p>{% endfor %}
   {% if form.plan_bloqueado %}
     <p class="small text-muted mb-1">La cita tiene atención o cargos registrados. Para corregir importes, revisa Cobros.</p>
     {% for linea in form.lineas_actuales.values %}<div class="small">{{ linea.nombre }}{% if form.plan_explicito %} · {{ linea.precio_usd|usd }}{% endif %}</div>{% endfor %}
   {% else %}
     {{ form.servicios_presentes }}
-    <p class="small text-muted mb-1">El precio se guarda al elegir el servicio. La cita por sí sola no genera cargos.</p>
+    <p class="small text-muted mb-1">La cita por sí sola no genera cargos. Si la exoneras, tampoco se generan al atenderla.</p>
     <div data-servicios-previstos data-explicito="{% if form.plan_explicito or form.is_bound %}1{% endif %}">
       {% for opcion in form.opciones_servicios %}
         <label class="d-flex align-items-center gap-2 py-1" data-servicio-especialidad="{{ opcion.servicio.especialidad_id|default_if_none:'' }}">

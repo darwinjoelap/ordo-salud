@@ -57,7 +57,7 @@ def _resumen(cita, lineas, revisar):
         estado = 'abonado' if any(linea.pagado for linea in lineas) else 'pendiente'
     elif any(linea.pagado for linea in lineas):
         estado = 'pagado'
-    elif any(linea.cargo.exonerado and linea.cargo.estado != Cargo.Estado.ANULADO for linea in lineas):
+    elif cita.exonerada or any(linea.cargo.exonerado and linea.cargo.estado != Cargo.Estado.ANULADO for linea in lineas):
         estado = 'exonerado'
     else:
         estado = 'sin_cargo'

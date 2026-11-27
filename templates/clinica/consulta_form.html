@@ -31,6 +31,15 @@
     {% if consulta.lugar_id %}<input type="hidden" name="lugar" value="{{ consulta.lugar_id }}">{% endif %}
     {% if cita %}<input type="hidden" name="cita" value="{{ cita.pk }}">{% endif %}
   {% endif %}
+  {% if consulta.exonerada or cita.exonerada %}
+    <p class="small"><span class="badge text-bg-light border">Atención exonerada</span></p>
+  {% elif puede_exonerar %}
+    <div class="form-check mb-3">
+      <input type="checkbox" class="form-check-input" name="exonerar" id="exonerar-atencion"{% if exonerar %} checked{% endif %}>
+      <label class="form-check-label" for="exonerar-atencion">Exonerar esta atención</label>
+      <div class="form-text">Puedes guardar y cerrar sin generar cargos para esta atención.</div>
+    </div>
+  {% endif %}
   {% if nueva and independiente and not form_cirugia and not cita and servicios_consulta %}
     <section class="card mb-3">
       <h2 class="h6 card-header">Servicios de esta consulta</h2>

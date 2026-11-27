@@ -10,7 +10,7 @@ from django.utils import timezone
 from apps.agenda import servicios as agenda
 from apps.agenda.models import Cita, ServicioPrevisto, TipoCita
 from apps.clinica.consultas import crear_consulta_completa
-from apps.clinica.models import Procedimiento
+from apps.clinica.models import Consulta, Procedimiento, SeccionClinica
 from apps.cobros import servicios as cobros
 from apps.cobros.models import Cargo, Pago, PagoAplicado, Servicio
 from apps.cobros.selectors_cita import saldos_citas
@@ -58,6 +58,91 @@ class ServiciosPrevistosTest(BaseTest):
     def editar(self, cita, servicios, **extra):
         return self.cliente.post(f'/agenda/citas/{cita.pk}/editar/', self.datos(servicios, **extra))
 
+    def datos_cierre(self):
+        with self.en_tenant():
+            secciones = dict(SeccionClinica.objects.visibles().values_list('codigo', 'pk'))
+        return {'completa': '1', 'accion': 'cerrar',
+                f"s{secciones['nucleo.motivo']}-motivo": 'Control clínico',
+                f"s{secciones['nucleo.diagnosticos']}-diagnosticos__0__codigo": 'J02.9'}
+
+    def test_cita_exonerada_cierra_con_o_sin_servicios_y_conserva_deuda_previa(self):
+        with self.en_tenant():
+            deuda = cobros.crear_cargo(paciente=self.paciente, descripcion='Atención anterior', precio_usd=25)
+        url = reverse('clinica:consulta_nueva', args=(self.paciente.pk,))
+        for servicios in ([], [self.propio.pk]):
+            with self.subTest(servicios=servicios):
+                cita = self.agendar(servicios, tipo=self.tipo.pk, exonerada='on')
+                self.assertContains(self.cliente.get(f'/agenda/citas/{cita.pk}/'), 'Exonerado')
+                self.assertEqual(self.cliente.post(url, {**self.datos_cierre(), 'cita': cita.pk}).status_code, 302)
+                with self.en_tenant():
+                    cita.refresh_from_db()
+                    self.assertEqual(cita.estado, Cita.Estado.ATENDIDA)
+                    self.assertEqual(cita.consulta.estado, Consulta.Estado.CERRADA)
+                    self.assertTrue(cita.consulta.exonerada)
+                    self.assertEqual(saldos_citas([cita])[cita.pk].estado, 'exonerado')
+                    self.assertEqual(ServicioPrevisto.objects.filter(cita=cita).count(), len(servicios))
+        with self.en_tenant():
+            self.assertEqual(list(Cargo.objects.values_list('pk', flat=True)), [deuda.pk])
+            self.assertEqual(cobros.estado_cuenta(self.paciente)['saldo'], Decimal('25'))
+
+    def test_consulta_exonerada_ignora_seleccion_de_servicios_y_conserva_requisitos_clinicos(self):
+        datos = {'completa': '1', 'accion': 'cerrar', 'exonerar': 'on', 'servicios': [self.propio.pk]}
+        respuesta = self.iniciar_independiente(self.paciente, datos)
+        self.assertEqual(respuesta.status_code, 302)
+        with self.en_tenant():
+            consulta = Consulta.objects.get()
+            self.assertTrue(consulta.exonerada)
+            self.assertEqual(consulta.estado, Consulta.Estado.BORRADOR)
+        respuesta = self.cliente.post(f'/consultas/{consulta.pk}/editar/', self.datos_cierre())
+        self.assertRedirects(respuesta, f'/consultas/{consulta.pk}/', fetch_redirect_response=False)
+        with self.en_tenant():
+            consulta.refresh_from_db()
+            self.assertTrue(consulta.exonerada)
+            self.assertFalse(Cargo.objects.exists())
+
+    def test_exonera_desde_consulta_vinculada_antes_de_generar_cargos(self):
+        cita = self.agendar([self.propio.pk])
+        url = reverse('clinica:consulta_nueva', args=(self.paciente.pk,))
+        datos = {**self.datos_cierre(), 'cita': cita.pk, 'exonerar': 'on'}
+        for _ in range(2):
+            self.assertEqual(self.cliente.post(url, datos).status_code, 302)
+        with self.en_tenant():
+            cita.refresh_from_db()
+            self.assertTrue(cita.exonerada and cita.consulta.exonerada)
+            self.assertEqual(cita.consulta.estado, Consulta.Estado.CERRADA)
+            self.assertFalse(Cargo.objects.exists())
+
+    def test_exonerar_consulta_en_curso_conserva_cargos_ya_registrados(self):
+        cita = self.agendar([self.propio.pk])
+        with self.en_tenant():
+            consulta = agenda.atender(cita, self.perfil)
+        respuesta = self.cliente.post(f'/consultas/{consulta.pk}/editar/', {**self.datos_cierre(), 'exonerar': 'on'})
+        self.assertContains(respuesta, 'Esta atención tiene cargos registrados.')
+        with self.en_tenant():
+            consulta.refresh_from_db()
+            self.assertFalse(consulta.exonerada)
+            self.assertEqual(Cargo.objects.get(consulta=consulta).saldo_usd, Decimal('20'))
+            vacia = self.agendar([])
+            consulta_sin_cargos = agenda.atender(vacia, self.perfil)
+        respuesta = self.cliente.post(
+            f'/consultas/{consulta_sin_cargos.pk}/editar/', {**self.datos_cierre(), 'exonerar': 'on'})
+        self.assertRedirects(respuesta, f'/consultas/{consulta_sin_cargos.pk}/', fetch_redirect_response=False)
+        with self.en_tenant():
+            vacia.refresh_from_db()
+            self.assertTrue(vacia.exonerada and vacia.consulta.exonerada)
+            self.assertEqual(Cargo.objects.count(), 1)
+
+    def test_procedimiento_de_cita_exonerada_se_registra_sin_cargo_ni_monto(self):
+        cita = self.agendar([self.propio.pk], exonerada='on')
+        url = reverse('clinica:procedimiento_nuevo', args=(self.paciente.pk,))
+        datos = {'cita': cita.pk, 'servicios': [self.propio.pk], 'otro_concepto': 'Curación',
+                 'version_cita': cita.actualizado_en.isoformat()}
+        self.assertEqual(self.cliente.post(url, datos).status_code, 302)
+        with self.en_tenant():
+            cita.refresh_from_db()
+            self.assertEqual(cita.estado, Cita.Estado.ATENDIDA)
+            self.assertIn('Curación', Procedimiento.objects.get(cita=cita).descripcion)
+            self.assertFalse(Cargo.objects.exists())
 
     def test_tipos_de_cita_iniciales_y_servicios_de_ficha(self):
         with self.en_tenant():

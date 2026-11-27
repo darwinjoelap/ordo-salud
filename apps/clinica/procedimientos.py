@@ -88,8 +88,6 @@ def registrar(*, paciente, profesional, servicios=(), otro_concepto='', otro_mon
     servicios = list({s.pk: s for s in servicios}.values())
     otro_concepto = (otro_concepto or '').strip()
     monto = _monto(otro_monto)
-    if otro_concepto and monto is None:
-        raise ErrorDeNegocio('Indica el monto del concepto (0 si no se cobra).')
     if not servicios and not otro_concepto and not descripciones_extra:
         raise ErrorDeNegocio('Elige al menos un servicio o escribe qué se hizo.')
     fecha = fecha or timezone.localdate()
@@ -104,7 +102,7 @@ def registrar(*, paciente, profesional, servicios=(), otro_concepto='', otro_mon
             raise ErrorDeNegocio('La cita ya no está disponible para registrar un procedimiento.')
         if version_cita is not None and version_cita != cita.actualizado_en:
             raise ErrorDeNegocio('La cita cambió. Abre de nuevo el procedimiento para revisar los servicios previstos.')
-        if cita.cargos.exists() and (servicios or monto):
+        if not cita.exonerada and cita.cargos.exists() and (servicios or monto):
             raise ErrorDeNegocio('La cita ya tiene cargos. Revisa los cobros antes de registrar otros importes.')
         lineas = previstos.lineas_de(cita)
         plan = {linea.servicio_id: linea for linea in lineas} if cita.servicios_explicitos else {}
@@ -113,7 +111,11 @@ def registrar(*, paciente, profesional, servicios=(), otro_concepto='', otro_mon
         if disponibles.keys() != ids:
             raise ErrorDeNegocio('Algún servicio no está disponible para esta cita.')
         servicios = [disponibles[s.pk] for s in servicios]
-        existentes = _resolver_cargos(cita, fecha, ids, decisiones_cargos or {})
+        if not cita.exonerada:
+            existentes = _resolver_cargos(cita, fecha, ids, decisiones_cargos or {})
+    exonerado = cita is not None and cita.exonerada
+    if otro_concepto and monto is None and not exonerado:
+        raise ErrorDeNegocio('Indica el monto del concepto (0 si no se cobra).')
     nombres = [plan.get(s.pk, s).nombre for s in servicios]
     if otro_concepto:
         nombres.append(otro_concepto)
@@ -121,21 +123,22 @@ def registrar(*, paciente, profesional, servicios=(), otro_concepto='', otro_mon
     proc = Procedimiento.objects.create(paciente=paciente, profesional=profesional, cita=cita,
                                         fecha=fecha, descripcion=descripcion[:250],
                                         notas=notas.strip())
-    for servicio in servicios:
-        cargo = existentes.get(servicio.pk)
-        if cargo is None:
-            linea = plan.get(servicio.pk, servicio)
-            cargo = crear_cargo(paciente=paciente, servicio=servicio, descripcion=linea.nombre,
-                                precio_usd=linea.precio_usd, cita=cita, profesional=profesional, fecha=proc.fecha)
-        else:
-            cargo.cita = cita
-        cargo.procedimiento = proc
-        cargo.save(update_fields=['cita', 'procedimiento', 'actualizado_en'])
-    if otro_concepto and monto:
-        cargo = crear_cargo(paciente=paciente, descripcion=otro_concepto, precio_usd=monto, cita=cita,
-                            profesional=profesional, fecha=proc.fecha)
-        cargo.procedimiento = proc
-        cargo.save(update_fields=['procedimiento'])
+    if not exonerado:
+        for servicio in servicios:
+            cargo = existentes.get(servicio.pk)
+            if cargo is None:
+                linea = plan.get(servicio.pk, servicio)
+                cargo = crear_cargo(paciente=paciente, servicio=servicio, descripcion=linea.nombre,
+                                    precio_usd=linea.precio_usd, cita=cita, profesional=profesional, fecha=proc.fecha)
+            else:
+                cargo.cita = cita
+            cargo.procedimiento = proc
+            cargo.save(update_fields=['cita', 'procedimiento', 'actualizado_en'])
+        if otro_concepto and monto:
+            cargo = crear_cargo(paciente=paciente, descripcion=otro_concepto, precio_usd=monto, cita=cita,
+                                profesional=profesional, fecha=proc.fecha)
+            cargo.procedimiento = proc
+            cargo.save(update_fields=['procedimiento'])
     if cita is not None and cita.estado != Cita.Estado.ATENDIDA:
         cita.estado = Cita.Estado.ATENDIDA
         cita.save(update_fields=['estado', 'actualizado_en'])

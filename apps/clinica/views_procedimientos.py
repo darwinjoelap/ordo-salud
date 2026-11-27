@@ -64,7 +64,7 @@ def nuevo(request, paciente_pk):
     lineas = previstos.lineas_de(cita) if cita else []
     plan = {linea.servicio_id: linea for linea in lineas} if cita and cita.servicios_explicitos else {}
     servicios = list(previstos.catalogo_procedimiento(cita, lineas).order_by('nombre'))
-    puede_conciliar = cita is not None and tiene_permiso(request, 'cobros.gestionar')
+    puede_conciliar = cita is not None and not cita.exonerada and tiene_permiso(request, 'cobros.gestionar')
     fecha = timezone.localdate()
     extras = _extras(request, paciente)
     if request.method == 'POST':

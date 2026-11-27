@@ -34,7 +34,7 @@ class CitaForm(FormBase, forms.ModelForm):
 
     class Meta:
         model = Cita
-        fields = ['paciente', 'profesional', 'tipo', 'lugar', 'fecha', 'hora_inicio', 'motivo', 'notas']
+        fields = ['paciente', 'profesional', 'tipo', 'lugar', 'fecha', 'hora_inicio', 'motivo', 'notas', 'exonerada']
         widgets = {'fecha': FECHA, 'hora_inicio': HORA, 'notas': forms.Textarea(attrs={'rows': 2})}
         labels = {'tipo': 'Tipo de cita', 'hora_inicio': 'Hora (vacía = tentativa)'}
 
@@ -45,6 +45,7 @@ class CitaForm(FormBase, forms.ModelForm):
         self.fields['profesional'].queryset = profesionales_activos().filter(pk=solo.pk) if solo else profesionales_activos()
         self.fields['tipo'].queryset = TipoCita.objects.filter(Q(activo=True) | Q(pk=self.instance.tipo_id))
         self.plan_bloqueado = self.instance.pk and previstos.plan_bloqueado(self.instance)
+        self.fields['exonerada'].disabled = bool(self.plan_bloqueado)
         self.plan_explicito = self.instance.servicios_explicitos
         if self.instance.pk:
             self.initial['version_cita'] = self.instance.actualizado_en.isoformat()

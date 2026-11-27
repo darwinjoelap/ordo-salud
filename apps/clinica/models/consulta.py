@@ -59,6 +59,7 @@ class Consulta(TenantModel, Auditable):
     tipo = models.CharField('Tipo', max_length=10, choices=Tipo.choices, default=Tipo.PRIMERA)
     estado = models.CharField('Estado', max_length=10, choices=Estado.choices, default=Estado.BORRADOR,
                               db_index=True)
+    exonerada = models.BooleanField('Atención exonerada', default=False)
     motivo = models.CharField('Motivo (resumen)', max_length=300, blank=True)
     diagnostico = models.CharField('Diagnóstico principal (resumen)', max_length=300, blank=True)
     cerrada_en = models.DateTimeField('Cerrada', null=True, blank=True)

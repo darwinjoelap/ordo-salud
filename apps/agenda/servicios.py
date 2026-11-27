@@ -87,6 +87,8 @@ def guardar_cita(cita, *, sobrecupo=False, servicios=None, version=None):
             raise ErrorDeNegocio('No se puede cambiar el paciente de una cita existente.')
         if (version or cita.actualizado_en) != anterior.actualizado_en:
             raise ErrorDeNegocio('La cita cambió mientras la editabas. Vuelve a abrirla antes de guardar.')
+        if cita.exonerada != anterior.exonerada and previstos.plan_bloqueado(anterior):
+            raise ErrorDeNegocio('La cita tiene atención o cargos registrados. Revisa la exoneración en Cobros.')
         cita.estado = anterior.estado
         cita.servicios_explicitos = anterior.servicios_explicitos
     elif not Paciente.objects.filter(pk=cita.paciente_id, activo=True).exists():
@@ -183,7 +185,7 @@ def atender(cita, perfil):
 def vincular_consulta(cita, consulta, perfil):
     """Vincula una atención y genera a lo sumo un cargo por servicio previsto."""
     from apps.clinica.models import Consulta
-    from apps.cobros.servicios import bloquear_cuenta, crear_cargo
+    from apps.cobros.servicios import bloquear_cuenta, crear_cargo, validar_exoneracion
 
     bloquear_cuenta(consulta.paciente_id)
     cita = Cita.objects.select_for_update().get(pk=cita.pk)
@@ -192,13 +194,19 @@ def vincular_consulta(cita, consulta, perfil):
     if (cita.paciente_id, cita.profesional_id, cita.tenant_id) != (
             consulta.paciente_id, perfil.pk, consulta.tenant_id) or consulta.profesional_id != perfil.pk:
         raise ErrorDeNegocio('La consulta no corresponde a esta cita.')
-    consulta = Consulta.objects.get(pk=consulta.pk)
-    if consulta.estado == Consulta.Estado.ANULADA:
+    actual = Consulta.objects.get(pk=consulta.pk)
+    if actual.estado == Consulta.Estado.ANULADA:
         raise ErrorDeNegocio('No se puede vincular una consulta anulada.')
+    if actual.exonerada and not cita.exonerada:
+        validar_exoneracion(cita=cita, consulta=actual)
+        cita.exonerada = True
+    if cita.exonerada and not actual.exonerada:
+        Consulta.objects.filter(pk=actual.pk).update(exonerada=True)
+    consulta.exonerada = cita.exonerada
     cita.consulta = consulta
     cita.estado = Cita.Estado.ATENDIDA
-    cita.save(update_fields=['consulta', 'estado', 'actualizado_en'])
-    if cita.cargos.exists() or consulta.cargos.exists():
+    cita.save(update_fields=['consulta', 'estado', 'exonerada', 'actualizado_en'])
+    if cita.exonerada or cita.cargos.exists() or consulta.cargos.exists():
         return
     for linea in previstos.lineas_de(cita):
         crear_cargo(paciente=cita.paciente, servicio=linea.servicio, descripcion=linea.nombre,

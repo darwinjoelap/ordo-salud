@@ -9,11 +9,12 @@
     <div class="small text-muted">{{ consulta.profesional }} · {{ consulta.especialidad }} · {{ consulta.get_tipo_display }}{% if consulta.lugar %} · {{ consulta.lugar }}{% endif %}</div>
   </div>
   <div class="d-flex gap-2 flex-wrap">
+    {% if consulta.exonerada %}<span class="badge text-bg-light border align-self-center">Atención exonerada</span>{% endif %}
     {% if consulta.estado == 'BORRADOR' %}<span class="badge text-bg-warning align-self-center">En curso</span>{% if puede_continuar %}<a href="{% url 'clinica:consulta_editar' consulta.pk %}" class="btn btn-primary btn-sm"><i class="bi bi-pencil me-1"></i>Continuar</a>{% endif %}
     {% elif consulta.estado == 'CERRADA' %}<span class="badge text-bg-success align-self-center" title="Cerrada el {{ consulta.cerrada_en|date:'d/m/Y' }}">Cerrada</span>
     {% else %}<span class="badge text-bg-danger align-self-center">Anulada</span>{% endif %}
     <a href="{% url 'clinica:consulta_imprimir' consulta.pk %}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-printer me-1"></i>Imprimir</a>
-    {% if 'cobros.gestionar' in permisos and consulta.estado != 'ANULADA' %}<a href="{% url 'cobros:cuenta' consulta.paciente_id %}?consulta={{ consulta.pk }}" class="btn btn-outline-success btn-sm"><i class="bi bi-cash-coin me-1"></i>Cobrar</a>{% endif %}
+    {% if 'cobros.gestionar' in permisos and consulta.estado != 'ANULADA' %}<a href="{% url 'cobros:cuenta' consulta.paciente_id %}?consulta={{ consulta.pk }}" class="btn btn-outline-success btn-sm"><i class="bi bi-cash-coin me-1"></i>{% if consulta.exonerada %}Cuenta{% else %}Cobrar{% endif %}</a>{% endif %}
     {% if consulta.estado != 'ANULADA' %}{% menu_documentos p consulta %}{% endif %}
   </div>
 </div>

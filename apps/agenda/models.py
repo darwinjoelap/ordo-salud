@@ -120,6 +120,7 @@ class Cita(TenantModel, Auditable):
                                         related_name='controles', editable=False,
                                         help_text='Consulta que indicó este control (próximo control).')
     servicios_explicitos = models.BooleanField(default=False, editable=False)
+    exonerada = models.BooleanField('Exonerar esta atención', default=False)
     recordatorio_en = models.DateTimeField('Intento de recordatorio', null=True, blank=True)
     motivo_cancelacion = models.CharField('Motivo de cancelación', max_length=200, blank=True)
 

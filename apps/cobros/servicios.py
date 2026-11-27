@@ -4,6 +4,7 @@ Reglas de cobro (Fase 09). Toda escritura de cargos y pagos pasa por aquí.
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.excepciones import ErrorDeNegocio
@@ -27,6 +28,15 @@ def bloquear_cuenta(paciente_id):
     from apps.pacientes.models import Paciente
 
     return Paciente.objects.select_for_update(no_key=True).get(pk=paciente_id)
+
+
+def validar_exoneracion(*, consulta, cita=None):
+    """La exoneración de la atención se registra antes de resolver cargos en Cobros."""
+    relaciones = Q(consulta=consulta)
+    if cita is not None:
+        relaciones |= Q(cita=cita) | Q(procedimiento__cita=cita)
+    if Cargo.objects.filter(relaciones, exonerado=False).exclude(estado=Cargo.Estado.ANULADO).exists():
+        raise ErrorDeNegocio('Esta atención tiene cargos registrados. Revísalos en Cuenta antes de exonerarla.')
 
 
 def equivalente_usd(monto, moneda, tasa):

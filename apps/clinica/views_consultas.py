@@ -178,19 +178,21 @@ def nueva(request, paciente_pk, *, es_preoperatoria=False):
         tipo = datos.get('tipo') if datos.get('tipo') in Consulta.Tipo.values else (
             cita.tipo.tipo_consulta if cita is not None and cita.tipo_id else Consulta.Tipo.PRIMERA)
 
+    exonerar = request.method == 'POST' and not es_preoperatoria and datos.get('exonerar') == 'on'
     servicios_consulta, servicios_elegidos, error_servicios = [], [], ''
     if cita is None and not es_preoperatoria:
         from apps.agenda.servicios_previstos import catalogo
         disponibles = list(catalogo(especialidad_id=perfil.especialidad_id).order_by('nombre'))
         mapa = {servicio.pk: servicio for servicio in disponibles}
-        try:
-            ids = {int(pk) for pk in datos.getlist('servicios')}
-        except (TypeError, ValueError):
-            ids = set()
-            error_servicios = 'Revisa los servicios seleccionados.'
-        if ids - mapa.keys():
-            error_servicios = 'Hay servicios no disponibles para la especialidad de este profesional.'
-        servicios_elegidos = [mapa[pk] for pk in sorted(ids) if pk in mapa]
+        ids = set()
+        if not exonerar:
+            try:
+                ids = {int(pk) for pk in datos.getlist('servicios')}
+            except (TypeError, ValueError):
+                error_servicios = 'Revisa los servicios seleccionados.'
+            if ids - mapa.keys():
+                error_servicios = 'Hay servicios no disponibles para la especialidad de este profesional.'
+            servicios_elegidos = [mapa[pk] for pk in sorted(ids) if pk in mapa]
         servicios_consulta = [{'servicio': servicio, 'marcado': servicio.pk in ids}
                              for servicio in disponibles]
 
@@ -198,13 +200,14 @@ def nueva(request, paciente_pk, *, es_preoperatoria=False):
         try:
             consulta, creada = srv.iniciar_consulta(paciente=paciente, profesional=perfil, plantilla=plantilla,
                                                     tipo=tipo, lugar=lugar, cita=cita,
-                                                    inicio_independiente=inicio_independiente)
+                                                    inicio_independiente=inicio_independiente, exonerada=exonerar)
         except ErrorDeNegocio as e:
             messages.warning(request, str(e))
             return redirect('pacientes:detalle', pk=paciente.pk)
         if not creada:
             return _volver_al_inicio(request, consulta)
-        auditoria.registrar(request, 'CREAR', consulta, paciente_id=paciente.pk)
+        auditoria.registrar(request, 'CREAR', consulta, paciente_id=paciente.pk,
+                            detalle='Atención exonerada' if consulta.exonerada else '')
         return redirect('clinica:consulta_editar', pk=consulta.pk)
 
     try:
@@ -228,7 +231,8 @@ def nueva(request, paciente_pk, *, es_preoperatoria=False):
                         datos_por_seccion=_datos_secciones(formularios, datos, parcial=es_preoperatoria),
                         cita=cita, inicio_independiente=inicio_independiente, fecha_hora=_inicio(request.POST.get('inicio')),
                         cerrar=accion == 'cerrar', usuario=request.user,
-                        datos_cirugia=form_cirugia.cleaned_data if form_cirugia is not None else None)
+                        datos_cirugia=form_cirugia.cleaned_data if form_cirugia is not None else None,
+                        exonerada=exonerar)
                     if not es_nueva:
                         return _volver_al_inicio(request, creada)
                     if cita is None and servicios_elegidos:
@@ -246,7 +250,8 @@ def nueva(request, paciente_pk, *, es_preoperatoria=False):
                                            servicio=servicio, descripcion=servicio.nombre,
                                            precio_usd=servicio.precio_usd)
                     observaciones.guardar(creada, request.POST)
-                    auditoria.registrar(request, 'CREAR', creada, paciente_id=paciente.pk)
+                    auditoria.registrar(request, 'CREAR', creada, paciente_id=paciente.pk,
+                                        detalle='Atención exonerada' if creada.exonerada else '')
                     vincular_dictado(request, creada)
             except ErrorDeNegocio as e:
                 messages.warning(request, str(e))
@@ -269,6 +274,7 @@ def nueva(request, paciente_pk, *, es_preoperatoria=False):
         'consulta': consulta, 'formularios': formularios, 'nueva': True, 'form_cirugia': form_cirugia,
         'cita': cita, 'independiente': independiente, 'intento': intento,
         'servicios_consulta': servicios_consulta, 'error_servicios': error_servicios,
+        'puede_exonerar': not es_preoperatoria, 'exonerar': exonerar,
         'catalogo_ordenes': list(catalogo_activo()) if any(
             item['codigo'] == 'nucleo.ordenes' for item in consulta.estructura) else [],
         'previas': consultas_visibles(request, paciente)[:5],
@@ -290,36 +296,46 @@ def editar(request, pk):
     datos = request.POST if request.method == 'POST' else None
     formularios = _formularios(consulta, datos)
     form_cirugia = preoperatorio.CirugiaForm(datos, instance=evaluacion, prefix='cirugia') if evaluacion else None
+    puede_exonerar = not evaluacion and not es_soporte(request.membresia)
+    exonerar = puede_exonerar and datos is not None and datos.get('exonerar') == 'on'
     if request.method == 'POST':
         cirugia_valida = form_cirugia is None or form_cirugia.is_valid()
         if all(f.is_valid() for _, f in formularios) and cirugia_valida:
             desde = timezone.now()
             try:
-                srv.guardar_secciones(consulta, _datos_secciones(formularios, datos, parcial=bool(evaluacion)),
-                                      datos_cirugia=form_cirugia.cleaned_data if form_cirugia is not None else None)
+                with transaction.atomic():
+                    exonerada = exonerar and srv.exonerar_consulta(consulta)
+                    srv.guardar_secciones(consulta, _datos_secciones(formularios, datos, parcial=bool(evaluacion)),
+                                          datos_cirugia=form_cirugia.cleaned_data if form_cirugia is not None else None)
+                    if exonerada:
+                        auditoria.registrar(request, 'EDITAR', consulta, paciente_id=consulta.paciente_id,
+                                            detalle='Atención exonerada')
             except ErrorDeNegocio as e:
-                if not evaluacion:
+                if not evaluacion and not exonerar:
                     raise
                 messages.warning(request, str(e))
-                return redirect('clinica:consulta', pk=pk)
-            observaciones.guardar(consulta, request.POST)
-            auditoria.registrar(request, 'EDITAR', consulta, paciente_id=consulta.paciente_id)
-            vincular_dictado(request, consulta)
-            _aviso_control(request, consulta, desde)
-            if request.POST.get('accion') == 'cerrar':
-                try:
-                    srv.cerrar_consulta(consulta, request.user)
-                except ErrorDeNegocio as e:
-                    messages.warning(request, f'Guardada, pero no se cerró. {e}')
-                    return redirect('clinica:consulta_editar', pk=pk)
-                auditoria.registrar(request, 'CERRAR', consulta, paciente_id=consulta.paciente_id)
-                messages.success(request, 'Consulta cerrada.')
-                return redirect('clinica:consulta', pk=pk)
-            messages.success(request, 'Consulta guardada.')
-            if evaluacion and request.POST.get('accion') == 'valorar':
-                return redirect('clinica:preoperatorio_valorar', pk=pk)
-            return redirect('clinica:consulta_editar', pk=pk)
-        messages.error(request, 'Revisa los campos marcados en rojo; no se guardó nada.')
+                if evaluacion:
+                    return redirect('clinica:consulta', pk=pk)
+            else:
+                observaciones.guardar(consulta, request.POST)
+                auditoria.registrar(request, 'EDITAR', consulta, paciente_id=consulta.paciente_id)
+                vincular_dictado(request, consulta)
+                _aviso_control(request, consulta, desde)
+                if request.POST.get('accion') == 'cerrar':
+                    try:
+                        srv.cerrar_consulta(consulta, request.user)
+                    except ErrorDeNegocio as e:
+                        messages.warning(request, f'Guardada, pero no se cerró. {e}')
+                        return redirect('clinica:consulta_editar', pk=pk)
+                    auditoria.registrar(request, 'CERRAR', consulta, paciente_id=consulta.paciente_id)
+                    messages.success(request, 'Consulta cerrada.')
+                    return redirect('clinica:consulta', pk=pk)
+                messages.success(request, 'Consulta guardada.')
+                if evaluacion and request.POST.get('accion') == 'valorar':
+                    return redirect('clinica:preoperatorio_valorar', pk=pk)
+                return redirect('clinica:consulta_editar', pk=pk)
+        else:
+            messages.error(request, 'Revisa los campos marcados en rojo; no se guardó nada.')
     from .selectors import consultas_visibles
     previas = [c for c in consultas_visibles(request, consulta.paciente) if c.pk != consulta.pk][:5]
     antecedentes = getattr(consulta.paciente, 'antecedentes', None)
@@ -327,6 +343,7 @@ def editar(request, pk):
         'titulo': f'Consulta · {consulta.paciente}', 'consulta': consulta, 'formularios': formularios,
         'previas': previas, 'antecedentes': antecedentes, 'faltan': srv.faltantes(consulta),
         'form_cirugia': form_cirugia,
+        'puede_exonerar': puede_exonerar, 'exonerar': exonerar,
         'catalogo_ordenes': list(catalogo_activo()) if any(
             item['codigo'] == 'nucleo.ordenes' for item in consulta.estructura) else [],
         'observaciones': observaciones.para(request.membresia, consulta.paciente, consulta),
