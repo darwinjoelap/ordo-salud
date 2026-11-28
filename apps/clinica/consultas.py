@@ -357,18 +357,24 @@ def _guardar_paciente(consulta, item, datos, paciente=None):
         datos = {k: v for k, v in datos.items() if k not in vinculados}     # viven allá, no se duplican aquí
     actual = RegistroSeccionPaciente.objects.filter(paciente=paciente, seccion_id=item['seccion_id'],
                                                     vigente=True).first()
-    if actual is not None and actual.datos == datos:
-        return
     calculados = {c['clave'] for c in item.get('campos', []) if c['tipo'] == 'calculado'}
     if not any(k not in calculados for k in datos):
         # Llegó vacía (no se mostró o no se tocó): nunca borra una ficha que tiene datos.
         return
+    version = item['version']
+    if actual is not None and actual.version_seccion > version:
+        # Un borrador anterior solo modifica los campos que conoce su esquema congelado.
+        claves = {c['clave'] for c in item['campos']}
+        datos = {**{k: v for k, v in actual.datos.items() if k not in claves}, **datos}
+        version = actual.version_seccion
     if actual is not None:
+        if actual.datos == datos:
+            return
         actual.vigente = False
         actual.save(update_fields=['vigente', 'actualizado_en'])
     if datos:
         RegistroSeccionPaciente.objects.create(paciente=paciente, seccion_id=item['seccion_id'],
-                                               version_seccion=item['version'], datos=datos, consulta=consulta)
+                                               version_seccion=version, datos=datos, consulta=consulta)
 
 
 def _guardar(consulta, item, datos):

@@ -95,13 +95,14 @@ DESARROLLO_HITOS = SeccionDef('ped.desarrollo_hitos', 'Desarrollo psicomotor e h
 ]})
 
 PATOLOGICOS = SeccionDef('ped.patologicos', 'Antecedentes patológicos pediátricos', ambito='PACIENTE', orden=24,
-                         esquema={'campos': [
+                         version=2, esquema={'campos': [
     {'clave': 'traumatismos', 'tipo': 'si_no', 'etiqueta': 'Traumatismos / accidentes', 'ancho': 4},
     {'clave': 'traumatismos_detalle', 'tipo': 'texto', 'etiqueta': 'Detalle', 'ancho': 8,
      'visible_si': {'campo': 'traumatismos', **SI}},
     {'clave': 'exantematicas', 'tipo': 'si_no', 'etiqueta': 'Enfermedades exantemáticas', 'ancho': 4},
     {'clave': 'exantematicas_detalle', 'tipo': 'texto', 'etiqueta': 'Cuáles (varicela, sarampión, rubéola…)',
      'ancho': 8, 'visible_si': {'campo': 'exantematicas', **SI}},
+    {'clave': 'otros', 'tipo': T, 'etiqueta': 'Otros', 'filas': 2},
 ]})
 
 FAMILIARES = SeccionDef('ped.familiares', 'Antecedentes familiares', ambito='PACIENTE', orden=26, esquema={'campos': [
@@ -210,5 +211,9 @@ DESARROLLO = SeccionDef('ped.desarrollo', 'Desarrollo psicomotor', orden=43, esq
     {'clave': 'desarrollo', 'tipo': T, 'etiqueta': 'Evaluación del desarrollo', 'filas': 2},
 ]})
 
+VACUNAS_PENDIENTES = SeccionDef('ped.vacunas_pendientes', 'Vacunas pendientes', orden=95, esquema={'campos': [
+    {'clave': 'notas', 'tipo': T, 'etiqueta': 'Anotaciones', 'filas': 3},
+]})
+
 FICHA = [PERINATALES, ALIMENTACION, DESARROLLO_HITOS, PATOLOGICOS, FAMILIARES, ENTORNO]
-CONSULTA = [TIPO, ANTROPOMETRIA, HABITOS, DESARROLLO]
+CONSULTA = [TIPO, ANTROPOMETRIA, HABITOS, DESARROLLO, VACUNAS_PENDIENTES]

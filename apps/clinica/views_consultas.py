@@ -62,8 +62,20 @@ def _formularios(consulta, data=None):
 
 
 def _datos_secciones(formularios, datos, *, parcial=False):
-    return {item['seccion_id']: form.datos_limpios for item, form in formularios
-            if not parcial or any(campo.html_name in datos for campo in form)}
+    secciones = {}
+    for item, form in formularios:
+        enviada = any(campo.html_name in datos for campo in form)
+        if parcial and not enviada:
+            continue
+        limpios = form.datos_limpios.copy()
+        if item['ambito'] == 'PACIENTE' and enviada:
+            # Una consulta enviada desde un formulario anterior puede omitir un campo de texto recién agregado.
+            for campo in item['campos']:
+                clave = campo['clave']
+                if campo['tipo'] == 'texto_largo' and clave in form.guardados and form.add_prefix(clave) not in datos:
+                    limpios[clave] = form.guardados[clave]
+        secciones[item['seccion_id']] = limpios
+    return secciones
 
 
 def _aviso_control(request, consulta, desde):

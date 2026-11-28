@@ -1,13 +1,25 @@
 """Fase 13.2: módulo de pediatría (plantillas, ficha pediátrica, antropometría con percentiles OMS)."""
 from datetime import date, timedelta
 from decimal import Decimal
+from importlib import import_module
+from types import SimpleNamespace
 
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 from django.utils import timezone
 
 from apps.clinica.consultas import datos_guardados
-from apps.clinica.models import Consulta, PlantillaHistoria, RegistroSeccionPaciente, SeccionClinica, SignosVitales
+from apps.clinica.models import (
+    Consulta,
+    PlantillaHistoria,
+    PlantillaSeccion,
+    RegistroSeccionPaciente,
+    SeccionClinica,
+    SignosVitales,
+)
+from apps.clinica.servicios import sincronizar_catalogo
 from apps.especialidades.pediatria import oms
-from apps.especialidades.pediatria.models import MedicionCrecimiento
+from apps.especialidades.pediatria.models import MedicionCrecimiento, VacunaAplicada
 from apps.pacientes.models import Paciente
 
 from .base import BaseTest, crear_consultorio
@@ -45,9 +57,92 @@ class PediatriaTest(BaseTest):
         codigos = [i['codigo'] for i in c.estructura]
         self.assertEqual(codigos[:4], ['ped.tipo', 'ped.antropometria', 'nucleo.signos_vitales', 'nucleo.motivo'])
         self.assertIn('ped.perinatales', codigos)             # historia completa en una pantalla (2026-10-22)
-        self.assertEqual(codigos[-1], 'ped.habitos')
+        self.assertEqual(codigos[-2:], ['ped.habitos', 'ped.vacunas_pendientes'])
         signos = next(i for i in c.estructura if i['codigo'] == 'nucleo.signos_vitales')
         self.assertNotIn('peso_kg', [x['clave'] for x in signos['campos']])     # el peso va en antropometría
+
+    def test_texto_libre_de_patologicos_y_vacunas_pendientes(self):
+        otros = self.campo('ped.patologicos', 'otros')
+        vacunas = self.campo('ped.vacunas_pendientes', 'notas')
+        consulta = self.abrir()
+        editar = f'/consultas/{consulta.pk}/editar/'
+        formulario = self.cliente.get(editar)
+        for campo in (otros, vacunas):
+            self.assertContains(formulario, f'name="{campo}"')
+        nota = 'Pendiente verificar el carné.\nConsultar fecha en el próximo control.'
+        respuesta = self.cliente.post(editar, {otros: 'Antecedente descrito por la familia.', vacunas: nota})
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertContains(self.cliente.get(f'/consultas/{consulta.pk}/'), 'Pendiente verificar el carné.')
+        siguiente = self.abrir()
+        with self.en_tenant():
+            datos = datos_guardados(siguiente)
+            self.assertEqual(datos[self.s['ped.patologicos']]['otros'], 'Antecedente descrito por la familia.')
+            self.assertNotIn(self.s['ped.vacunas_pendientes'], datos)
+            self.assertEqual(datos_guardados(consulta)[self.s['ped.vacunas_pendientes']]['notas'], nota)
+            self.assertFalse(VacunaAplicada.objects.filter(paciente=self.nino).exists())
+
+    def test_borrador_con_esquema_anterior_conserva_otros_en_la_ficha(self):
+        with self.en_tenant():
+            seccion = SeccionClinica.objects.get(codigo='ped.patologicos')
+            esquema_v1 = {'campos': [c for c in seccion.campos if c['clave'] != 'otros']}
+            SeccionClinica.objects.filter(pk=seccion.pk).update(version=1, esquema=esquema_v1)
+        anterior = self.abrir()
+        sincronizar_catalogo(verbosidad=0)
+        actual = self.abrir()
+        datos = {self.campo('ped.patologicos', 'traumatismos'): 'si'}
+        self.cliente.post(f'/consultas/{actual.pk}/editar/', {**datos, self.campo('ped.patologicos', 'otros'): 'Nota nueva'})
+        self.cliente.post(f'/consultas/{anterior.pk}/editar/', {
+            **datos, self.campo('ped.patologicos', 'traumatismos_detalle'): 'Detalle anterior corregido',
+        })
+        with self.en_tenant():
+            ficha = RegistroSeccionPaciente.objects.get(paciente=self.nino, seccion=seccion, vigente=True)
+            self.assertEqual(ficha.version_seccion, 2)
+            self.assertEqual(ficha.datos['otros'], 'Nota nueva')
+            self.assertEqual(ficha.datos['traumatismos_detalle'], 'Detalle anterior corregido')
+            self.assertNotIn('otros', anterior.registros.get(seccion=seccion).datos)
+            self.assertEqual(seccion.versiones.get(version=1).esquema, esquema_v1)
+
+    def test_inicio_desde_formulario_anterior_conserva_otros_si_no_envia_el_campo(self):
+        otros = self.campo('ped.patologicos', 'otros')
+        traumatismos = self.campo('ped.patologicos', 'traumatismos')
+        consulta = self.abrir()
+        self.cliente.post(f'/consultas/{consulta.pk}/editar/', {otros: 'Nota de ficha', traumatismos: 'si'})
+        self.iniciar_independiente(self.nino, {'completa': '1', 'accion': 'guardar'})
+        with self.en_tenant():
+            ficha = RegistroSeccionPaciente.objects.get(paciente=self.nino, seccion_id=self.s['ped.patologicos'],
+                                                        vigente=True)
+            self.assertEqual(ficha.datos, {'traumatismos': True, 'otros': 'Nota de ficha'})
+        r = self.iniciar_independiente(self.nino, {'completa': '1', 'accion': 'guardar', traumatismos: 'no'})
+        self.assertEqual(r.status_code, 302)
+        with self.en_tenant():
+            ficha = RegistroSeccionPaciente.objects.get(paciente=self.nino, seccion_id=self.s['ped.patologicos'],
+                                                        vigente=True)
+            self.assertEqual(ficha.datos, {'traumatismos': False, 'otros': 'Nota de ficha'})
+            actual = Consulta.objects.latest('id')
+        self.cliente.post(f'/consultas/{actual.pk}/editar/', {otros: '', traumatismos: 'no'})
+        ficha.refresh_from_db()
+        self.assertFalse(ficha.vigente)
+        with self.en_tenant():
+            self.assertEqual(RegistroSeccionPaciente.objects.get(
+                paciente=self.nino, seccion_id=self.s['ped.patologicos'], vigente=True,
+            ).datos, {'traumatismos': False})
+
+    def test_migracion_agrega_vacunas_pendientes_a_plantilla_personalizada_sin_reordenar(self):
+        nombre = '0004_vacunas_pendientes'
+        migracion = import_module(f'apps.especialidades.pediatria.migrations.{nombre}')
+        historicos = MigrationExecutor(connection).loader.project_state([('esp_pediatria', nombre)]).apps
+        with self.en_tenant():
+            especialidad = PlantillaHistoria.objects.first().especialidad
+            plantilla = PlantillaHistoria.objects.create(nombre='Consulta propia', especialidad=especialidad)
+            seccion = SeccionClinica.objects.get(codigo='ped.patologicos')
+            item = PlantillaSeccion.objects.create(plantilla=plantilla, seccion=seccion, orden=70, colapsada=True)
+            for _ in range(2):
+                migracion.agregar_seccion(historicos, SimpleNamespace(connection=connection))
+            item.refresh_from_db()
+            self.assertEqual((item.orden, item.colapsada), (70, True))
+            nueva = plantilla.items.get(seccion__codigo='ped.vacunas_pendientes')
+            self.assertEqual((nueva.orden, nueva.obligatoria, nueva.tenant_id), (80, False, self.tenant.pk))
+            self.assertEqual(plantilla.items.count(), 2)
 
     def test_antropometria_calcula_percentiles_y_guarda_medicion(self):
         c = self.abrir(plantilla='Primera consulta con ficha completa')

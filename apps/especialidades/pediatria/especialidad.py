@@ -14,7 +14,7 @@ from apps.clinica.registro import (
 
 from .calculos import CALCULOS
 from .documentos import DOCUMENTOS
-from .secciones import CONSULTA, FICHA
+from .secciones import CONSULTA, FICHA, VACUNAS_PENDIENTES
 
 # En pediatría peso y talla van en «Antropometría» (con percentiles): se ocultan de los signos vitales del núcleo.
 SIGNOS_PEDIATRICOS = ('nucleo.signos_vitales', {'ajustes': {'ocultos': [
@@ -27,14 +27,14 @@ FICHA_ABIERTA = [s.codigo for s in FICHA]        # historia completa en una pant
 CONSULTA_PEDIAE = ['ped.tipo', 'ped.antropometria', SIGNOS_PEDIATRICOS, 'nucleo.motivo', *FICHA_ABIERTA,
                    'nucleo.examen_fisico',
                    'ped.desarrollo', ('nucleo.diagnosticos', {'obligatoria': True}), 'nucleo.plan',
-                   'nucleo.prescripcion', 'nucleo.ordenes', 'ped.habitos']
+                   'nucleo.prescripcion', 'nucleo.ordenes', 'ped.habitos', VACUNAS_PENDIENTES.codigo]
 PRIMERA = ['ped.tipo', 'nucleo.motivo', 'nucleo.antecedentes', *FICHA_ABIERTA, 'ped.antropometria',
            SIGNOS_PEDIATRICOS, 'nucleo.examen_fisico', 'ped.desarrollo', 'nucleo.paraclinicos',
            ('nucleo.diagnosticos', {'obligatoria': True}), 'nucleo.plan', 'nucleo.prescripcion', 'nucleo.ordenes',
-           'ped.habitos']
+           'ped.habitos', VACUNAS_PENDIENTES.codigo]
 CONTROL_SANO = ['ped.tipo', 'ped.antropometria', SIGNOS_PEDIATRICOS, 'nucleo.motivo', *FICHA_ABIERTA, 'ped.habitos',
                 'ped.desarrollo', 'nucleo.examen_fisico', ('nucleo.diagnosticos', {'obligatoria': True}),
-                'nucleo.plan', 'nucleo.prescripcion']
+                'nucleo.plan', 'nucleo.prescripcion', VACUNAS_PENDIENTES.codigo]
 
 PLANTILLAS = [
     PlantillaDef('Consulta pediátrica', CONSULTA_PEDIAE, predeterminada=True,
